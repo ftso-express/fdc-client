@@ -14,9 +14,14 @@ const (
 )
 
 type Attestation struct {
+	Index     uint64
 	Request   string
 	Response  string
 	Fee       *big.Int
 	Status    Status
 	Consensus bool
+}
+
+func (at *Attestation) Verify() {
+	at.Status = Unprocessed
 }

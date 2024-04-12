@@ -1,0 +1,53 @@
+package roundManager
+
+import (
+	"errors"
+	"local/fdc/client/attestation"
+
+	"local/fdc/client/bitvote"
+)
+
+type Round struct {
+	RoundId          uint64
+	Attestations     []attestation.Attestation
+	BitVote          bitvote.BitVote
+	WeightedBitVotes []bitvote.WeightedBitVote
+	ConsensusBitVote bitvote.BitVote
+	TotalWeight      uint64
+}
+
+func (r *Round) SetBitVote() (bitvote.BitVote, error) {
+
+	tempVote, err := bitvote.ForRound(r.Attestations)
+
+	if err != nil {
+		return bitvote.BitVote{}, errors.New("bitvote can not be computed")
+	}
+
+	r.BitVote = tempVote
+	return tempVote, nil
+
+}
+func (r *Round) GetConsensusBitVote() bitvote.BitVote {
+
+	return bitvote.ConsensusBitVote(r.RoundId, r.WeightedBitVotes, r.TotalWeight, r.Attestations)
+
+}
+
+func (r *Round) SetConsensusStatus() {
+
+	bitvote.SetBitVoteStatus(r.Attestations, r.ConsensusBitVote)
+}
+
+func (r *Round) RetryRequestUnsuccessfulBut() {
+
+	for j := range r.Attestations {
+		if r.Attestations[j].Consensus && r.Attestations[j].Status != attestation.Success {
+			r.Attestations[j].Verify()
+		}
+	}
+}
+
+func (r *Round) MerkleTree() {}
+
+func (r *Round) MerkleRoot() {}

@@ -13,11 +13,16 @@ type BitVote struct {
 	BitVector *big.Int
 }
 
+type WeightedBitVote struct {
+	weight  uint64
+	bitVote BitVote
+}
+
 const (
 	NumOfSamples int = 100
 )
 
-func bitvote(attestations []attestation.Attestation) (BitVote, error) {
+func ForRound(attestations []attestation.Attestation) (BitVote, error) {
 	bitVector := big.NewInt(0)
 
 	if len(attestations) > 255 {
@@ -46,9 +51,9 @@ func (bv BitVote) fees(attestations []attestation.Attestation) *big.Int {
 	return fees
 }
 
-func BitVoteForSet(bitVotes []BitVote, weights []uint64, totalWeight uint64, shuffled []uint64) (BitVote, uint64) {
+func BitVoteForSet(weightedBitVotes []WeightedBitVote, totalWeight uint64, shuffled []uint64) (BitVote, uint64) {
 
-	bitVote := (bitVotes)[shuffled[0]]
+	bitVote := (weightedBitVotes)[shuffled[0]].bitVote
 
 	halfWeight := (totalWeight + 1) / 2
 
@@ -56,10 +61,10 @@ func BitVoteForSet(bitVotes []BitVote, weights []uint64, totalWeight uint64, shu
 
 	for _, v := range shuffled {
 		if supportingWeight < halfWeight {
-			bitVote = ANDbitwise(bitVote, bitVotes[v])
-			supportingWeight += weights[v]
-		} else if ANDbitwise(bitVote, bitVotes[v]).BitVector == bitVotes[v].BitVector {
-			supportingWeight += weights[v]
+			bitVote = ANDbitwise(bitVote, weightedBitVotes[v].bitVote)
+			supportingWeight += weightedBitVotes[v].weight
+		} else if ANDbitwise(bitVote, weightedBitVotes[v].bitVote).BitVector == weightedBitVotes[v].bitVote.BitVector {
+			supportingWeight += weightedBitVotes[v].weight
 		}
 
 	}
@@ -92,11 +97,11 @@ type bitVoteWithValue struct {
 	value   *big.Int
 }
 
-func ConsensusBitVote(roundId uint64, bitVotes []BitVote, weights []uint64, totalWeight uint64, attestations []attestation.Attestation) BitVote {
+func ConsensusBitVote(roundId uint64, weightedBitVotes []WeightedBitVote, totalWeight uint64, attestations []attestation.Attestation) BitVote {
 
 	var bitVote BitVote
 	maxValue := big.NewInt(0)
-	noOfVoters := len(weights)
+	noOfVoters := len(weightedBitVotes)
 	index := 0
 
 	ch := make(chan bitVoteWithValue)
@@ -105,7 +110,7 @@ func ConsensusBitVote(roundId uint64, bitVotes []BitVote, weights []uint64, tota
 		for i := 0; i < NumOfSamples; i++ {
 			seed := crypto.Keccak256([]byte{byte(roundId)}, []byte{byte(i)})
 			shuffled := FisherYates(uint64(noOfVoters), seed)
-			tempBitVote, supportingWeight := BitVoteForSet(bitVotes, weights, totalWeight, shuffled)
+			tempBitVote, supportingWeight := BitVoteForSet(weightedBitVotes, totalWeight, shuffled)
 			value := Value(tempBitVote, supportingWeight, attestations)
 
 			ch <- bitVoteWithValue{i, tempBitVote, value}
@@ -126,4 +131,12 @@ func ConsensusBitVote(roundId uint64, bitVotes []BitVote, weights []uint64, tota
 	}
 
 	return bitVote
+}
+
+func SetBitVoteStatus(attestations []attestation.Attestation, bitVote BitVote) {
+
+	for i := range attestations {
+		attestations[i].Consensus = bitVote.BitVector.Bit(int(attestations[i].Index)) == 1
+	}
+
 }
