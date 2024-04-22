@@ -106,16 +106,16 @@ func ConsensusBitVote(roundId uint64, weightedBitVotes []WeightedBitVote, totalW
 
 	ch := make(chan bitVoteWithValue)
 
-	go func() {
-		for i := 0; i < NumOfSamples; i++ {
-			seed := crypto.Keccak256([]byte{byte(roundId)}, []byte{byte(i)})
+	for i := 0; i < NumOfSamples; i++ {
+		go func(j int) {
+			seed := crypto.Keccak256([]byte{byte(roundId)}, []byte{byte(j)})
 			shuffled := FisherYates(uint64(noOfVoters), seed)
 			tempBitVote, supportingWeight := BitVoteForSet(weightedBitVotes, totalWeight, shuffled)
 			value := Value(tempBitVote, supportingWeight, attestations)
 
-			ch <- bitVoteWithValue{i, tempBitVote, value}
-		}
-	}()
+			ch <- bitVoteWithValue{j, tempBitVote, value}
+		}(i)
+	}
 
 	for i := 0; i < NumOfSamples; i++ {
 		result := <-ch
@@ -135,7 +135,7 @@ func ConsensusBitVote(roundId uint64, weightedBitVotes []WeightedBitVote, totalW
 
 func SetBitVoteStatus(attestations []attestation.Attestation, bitVote BitVote) {
 
-	for i := range attestations {
+	for i, _ := range attestations {
 		attestations[i].Consensus = bitVote.BitVector.Bit(int(attestations[i].Index)) == 1
 	}
 

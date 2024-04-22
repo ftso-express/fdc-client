@@ -6,6 +6,7 @@ type Status int
 
 const (
 	Unprocessed Status = iota
+	Waiting
 	Processing
 	Success
 	WrongMIC
@@ -23,5 +24,5 @@ type Attestation struct {
 }
 
 func (at *Attestation) Verify() {
-	at.Status = Unprocessed
+	at.Status = Waiting
 }

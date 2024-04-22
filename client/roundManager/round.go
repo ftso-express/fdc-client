@@ -30,8 +30,9 @@ func (r *Round) SetBitVote() (bitvote.BitVote, error) {
 }
 func (r *Round) GetConsensusBitVote() bitvote.BitVote {
 
-	return bitvote.ConsensusBitVote(r.RoundId, r.WeightedBitVotes, r.TotalWeight, r.Attestations)
+	r.ConsensusBitVote = bitvote.ConsensusBitVote(r.RoundId, r.WeightedBitVotes, r.TotalWeight, r.Attestations)
 
+	return r.ConsensusBitVote
 }
 
 func (r *Round) SetConsensusStatus() {
@@ -39,7 +40,7 @@ func (r *Round) SetConsensusStatus() {
 	bitvote.SetBitVoteStatus(r.Attestations, r.ConsensusBitVote)
 }
 
-func (r *Round) RetryRequestUnsuccessfulBut() {
+func (r *Round) RetryRequestUnsuccessfulButVoted() {
 
 	for j := range r.Attestations {
 		if r.Attestations[j].Consensus && r.Attestations[j].Status != attestation.Success {
