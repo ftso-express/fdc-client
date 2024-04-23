@@ -9,7 +9,7 @@ import (
 )
 
 type BitVote struct {
-	length    byte //number of relevant bits
+	Length    uint16 //number of relevant bits
 	BitVector *big.Int
 }
 
@@ -25,8 +25,8 @@ const (
 func ForRound(attestations []attestation.Attestation) (BitVote, error) {
 	bitVector := big.NewInt(0)
 
-	if len(attestations) > 255 {
-		return BitVote{}, errors.New("more than 255 attestations")
+	if len(attestations) > 65535 {
+		return BitVote{}, errors.New("more than 65536 attestations")
 	}
 
 	for i, a := range attestations {
@@ -35,7 +35,7 @@ func ForRound(attestations []attestation.Attestation) (BitVote, error) {
 		}
 
 	}
-	return BitVote{byte(len(attestations)), bitVector}, nil
+	return BitVote{uint16(len(attestations)), bitVector}, nil
 }
 
 func (bv BitVote) fees(attestations []attestation.Attestation) *big.Int {
@@ -81,7 +81,7 @@ func Value(bitVote BitVote, supportingWeight uint64, attestations []attestation.
 
 func ANDbitwise(a, b BitVote) BitVote {
 
-	maxLen := max(a.length, b.length)
+	maxLen := max(a.Length, b.Length)
 
 	bitVector := big.NewInt(0)
 

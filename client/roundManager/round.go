@@ -7,6 +7,18 @@ import (
 	"local/fdc/client/bitvote"
 )
 
+type Status int
+
+const (
+	Collect Status = iota
+	Choose
+	Retry
+	Commit
+	Reveal
+	Finished
+	Abandoned
+)
+
 type Round struct {
 	RoundId          uint64
 	Attestations     []attestation.Attestation
@@ -14,6 +26,7 @@ type Round struct {
 	WeightedBitVotes []bitvote.WeightedBitVote
 	ConsensusBitVote bitvote.BitVote
 	TotalWeight      uint64
+	Status           Status
 }
 
 func (r *Round) SetBitVote() (bitvote.BitVote, error) {
