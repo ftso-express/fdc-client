@@ -2,11 +2,14 @@ package collector
 
 import (
 	"errors"
+	"flare-common/database"
 	"flare-common/payload"
 	"local/fdc/client/bitvote"
 	"math/big"
 	"strconv"
 )
+
+func parseBitVotes(txs []database.Transaction) {}
 
 func ExtractBitVote(message payload.Message) (bitvote.BitVote, string, error) {
 

@@ -1,16 +1,15 @@
-package roundManager
+package attestation
 
 import (
 	"errors"
-	"local/fdc/client/attestation"
 
 	"local/fdc/client/bitvote"
 )
 
-type Status int
+type RoundStatus int
 
 const (
-	Collect Status = iota
+	Collect RoundStatus = iota
 	Choose
 	Retry
 	Commit

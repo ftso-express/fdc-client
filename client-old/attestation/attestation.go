@@ -23,4 +23,6 @@ type Attestation struct {
 	Consensus bool
 }
 
-func (a Attestation) GetHash()
+func (at *Attestation) Verify() {
+	at.Status = Waiting
+}

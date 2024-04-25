@@ -36,3 +36,7 @@ func (r *Round) Next() *Round {
 func (r *Round) ToStart() time.Duration {
 	return time.Until(r.Start)
 }
+
+func RoundLatest() *Round {
+	return GetRoundForTimestamp(uint64(time.Now().Unix()))
+}

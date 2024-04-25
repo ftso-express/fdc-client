@@ -1,8 +1,19 @@
 package database
 
-// Abstact entity, all other entities should be derived from it
+import "time"
+
+// Abstract entity, all other entities should be derived from it
 type BaseEntity struct {
 	ID uint64 `gorm:"primaryKey"`
+}
+
+// Should be synchronized with the flare-ftso-indexer project
+type State struct {
+	BaseEntity
+	Name           string `gorm:"type:varchar(50);index"`
+	Index          uint64 // blockNumber
+	BlockTimestamp uint64
+	Updated        time.Time
 }
 
 // Should be synchronized with the flare-ftso-indexer project

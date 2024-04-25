@@ -135,7 +135,7 @@ func ConsensusBitVote(roundId uint64, weightedBitVotes []WeightedBitVote, totalW
 
 func SetBitVoteStatus(attestations []attestation.Attestation, bitVote BitVote) {
 
-	for i, _ := range attestations {
+	for i := range attestations {
 		attestations[i].Consensus = bitVote.BitVector.Bit(int(attestations[i].Index)) == 1
 	}
 
