@@ -2,7 +2,6 @@ package restServer
 
 import (
 	"log"
-	"net/http"
 
 	swagger "github.com/davidebianchi/gswagger"
 	"github.com/davidebianchi/gswagger/support/gorilla"
@@ -11,10 +10,6 @@ import (
 	"github.com/swaggest/swgui"
 	v3 "github.com/swaggest/swgui/v3"
 )
-
-type ErrorHandler struct {
-	Handler func(w http.ResponseWriter)
-}
 
 type Router interface {
 	AddRoute(path string, handler RouteHandler, description ...string)

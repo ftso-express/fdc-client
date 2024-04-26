@@ -4,7 +4,7 @@ type PDPResponseStatus string
 
 const (
 	OK            PDPResponseStatus = "OK"
-	NOT_AVAILABLE PDPResponseStatus = "NOT_AVAILABLE4"
+	NOT_AVAILABLE PDPResponseStatus = "NOT_AVAILABLE"
 )
 
 type PDPResponse struct {
