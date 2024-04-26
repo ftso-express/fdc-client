@@ -4,7 +4,7 @@ import (
 	"errors"
 	"flare-common/database"
 	"flare-common/payload"
-	"local/fdc/client/bitvote"
+	"local/fdc/client-old/bitvote"
 	"math/big"
 	"strconv"
 )

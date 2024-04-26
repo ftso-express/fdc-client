@@ -30,7 +30,7 @@ type bitVoteWithValue struct {
 }
 
 // BitVoteFromAttestations calculates BitVote for an array of attestations.
-// For i-th attestation in array, i-th bit is 1 if and only if i-th attestation status is Success.
+// For i-th attestation in array, i-th bit in BitVote(from the right) is 1 if and only if i-th attestation status is Success.
 func BitVoteFromAttestations(attestations []*Attestation) (BitVote, error) {
 	bitVector := big.NewInt(0)
 

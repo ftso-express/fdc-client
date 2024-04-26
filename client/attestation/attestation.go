@@ -21,6 +21,7 @@ type Attestation struct {
 	Fee       *big.Int
 	Status    Status
 	Consensus bool
+	ABI       string
 }
 
 func (a Attestation) GetHash()
