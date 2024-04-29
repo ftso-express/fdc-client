@@ -15,26 +15,18 @@ var (
 )
 
 // Tree implementation with helper functions.
-type Tree struct {
-	tree []common.Hash
-}
-
-// New creates a new Merkle tree from the given hash values as bytes. It is
-// required that the values are sorted by their hex representation.
-func New(values []common.Hash) Tree {
-	return Tree{tree: values}
-}
+type Tree []common.Hash
 
 // NewFromHex creates a new Merkle tree from the given hex values. It is
 // required that the values are sorted as strings.
 func NewFromHex(hexValues []string) Tree {
-	values := make([]common.Hash, len(hexValues))
+	values := make(Tree, len(hexValues))
 
 	for i, hexValue := range hexValues {
 		values[i] = common.HexToHash(hexValue)
 	}
 
-	return New(values)
+	return values
 }
 
 // Given an array of leaf hashes, builds the Merkle tree.
@@ -56,7 +48,7 @@ func Build(hashes []common.Hash, initialHash bool) Tree {
 		tree[i] = SortedHashPair(tree[2*i+1], tree[2*i+2])
 	}
 
-	return New(tree)
+	return tree
 }
 
 // Given an array of hex-encoded leaf hashes, builds the Merkle tree.
@@ -92,25 +84,20 @@ func SortedHashPair(x, y common.Hash) common.Hash {
 
 // Root returns the Merkle root of the tree.
 func (t Tree) Root() (common.Hash, error) {
-	if len(t.tree) == 0 {
+	if len(t) == 0 {
 		return common.Hash{}, ErrEmptyTree
 	}
 
-	return t.tree[0], nil
-}
-
-// Tree returns the a slice representing the full tree.
-func (t Tree) Tree() []common.Hash {
-	return t.tree
+	return t[0], nil
 }
 
 // HashCount returns the number of leaves in the tree.
 func (t Tree) HashCount() int {
-	if len(t.tree) == 0 {
+	if len(t) == 0 {
 		return 0
 	}
 
-	return (len(t.tree) + 1) / 2
+	return (len(t) + 1) / 2
 }
 
 // SortedHashes returns all leaves in a slice.
@@ -120,7 +107,7 @@ func (t Tree) SortedHashes() []common.Hash {
 		return nil
 	}
 
-	return t.tree[numLeaves-1:]
+	return t[numLeaves-1:]
 }
 
 // GetHash returns the hash of the `i`th leaf.
@@ -130,8 +117,8 @@ func (t Tree) GetHash(i int) (common.Hash, error) {
 		return common.Hash{}, ErrInvalidIndex
 	}
 
-	pos := len(t.tree) - numLeaves + i
-	return t.tree[pos], nil
+	pos := len(t) - numLeaves + i
+	return t[pos], nil
 }
 
 // GetProof returns the Merkle proof for the `i`th leaf.
@@ -143,9 +130,9 @@ func (t Tree) GetProof(i int) ([]common.Hash, error) {
 
 	var proof []common.Hash
 
-	for pos := len(t.tree) - numLeaves + i; pos > 0; pos = parent(pos) {
+	for pos := len(t) - numLeaves + i; pos > 0; pos = parent(pos) {
 		sibling := pos + ((2 * (pos % 2)) - 1)
-		proof = append(proof, t.tree[sibling])
+		proof = append(proof, t[sibling])
 	}
 
 	return proof, nil

@@ -11,11 +11,12 @@ type Message struct {
 	Signature   string
 	Protocol    uint64
 	VotingRound uint64
+	Timestamp   uint64
 	Length      uint64
 	Payload     string
 }
 
-func ExtractPayloads(tx database.Transaction, protocol string) (map[uint64]Message, error) {
+func ExtractPayloads(tx database.Transaction) (map[uint64]Message, error) {
 
 	messages := make(map[uint64]Message)
 
@@ -40,7 +41,7 @@ func ExtractPayloads(tx database.Transaction, protocol string) (map[uint64]Messa
 		end := 14 + 2*length
 		payload := data[14:end]
 
-		message := Message{tx.FromAddress, tx.FunctionSig, protocol, votingRound, length, payload}
+		message := Message{tx.FromAddress, tx.FunctionSig, protocol, votingRound, tx.Timestamp, length, payload}
 
 		messages[protocol] = message
 

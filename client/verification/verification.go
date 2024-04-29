@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -12,17 +13,40 @@ type Request []byte
 
 type Response []byte
 
-func (r Request) GetMic() ([]byte, error) {
+func (r Request) GetAttestationType() ([]byte, error) {
+
 	if len(r) < 96 {
 		return []byte{}, errors.New("request is to short")
 	}
 
-	return r[64:96], nil
+	return r[:32], nil
 }
 
-func (r Response) ComputeMic() ([]byte, error) {
+func (r Request) GetSource() ([]byte, error) {
+
+	if len(r) < 96 {
+		return []byte{}, errors.New("request is to short")
+	}
+
+	return r[32:64], nil
+}
+
+func (r Request) GetMic() (common.Hash, error) {
+
+	if len(r) < 96 {
+		return common.Hash{}, errors.New("request is to short")
+	}
+
+	mic := common.Hash{}
+
+	mic.SetBytes(r[64:96])
+
+	return mic, nil
+}
+
+func (r Response) ComputeMic() (common.Hash, error) {
 	if len(r) < 128 {
-		return []byte{}, errors.New("response is to short")
+		return common.Hash{}, errors.New("response is to short")
 	}
 
 	d := make([]byte, 32)
@@ -33,7 +57,7 @@ func (r Response) ComputeMic() ([]byte, error) {
 
 	slices.Replace(r, 64, 96, zero32bytes...)
 
-	mic := crypto.Keccak256(r)
+	mic := crypto.Keccak256Hash(r)
 
 	defer slices.Replace(r, 64, 96, d...)
 
@@ -57,4 +81,14 @@ func (r Response) AddRound(roundId uint64) ([]byte, error) {
 
 	return r, nil
 
+}
+
+func (r Response) ComputeHash() (common.Hash, error) {
+	if len(r) < 128 {
+		return common.Hash{}, errors.New("response is to short")
+	}
+
+	hash := crypto.Keccak256Hash(r)
+
+	return hash, nil
 }

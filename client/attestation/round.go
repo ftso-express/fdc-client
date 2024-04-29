@@ -1,6 +1,12 @@
 package attestation
 
-import "errors"
+import (
+	"errors"
+	"flare-common/merkle"
+	"sort"
+
+	"github.com/ethereum/go-ethereum/common"
+)
 
 type RoundStatus int
 
@@ -20,6 +26,7 @@ type Round struct {
 	bitVotes         []WeightedBitVote
 	ConsensusBitVote BitVote
 	totalWeight      uint64
+	merkletree       merkle.Tree
 }
 
 func Create(roundId, totalWeight uint64) *Round {
@@ -64,11 +71,73 @@ func (r *Round) GetBitVoteHex() (string, error) {
 
 func (r *Round) GetMerkleRoot() {}
 
-func (r *Round) GetMerkleTree() {
-
-}
-
 func (r *Round) GetConsensusBitVote() BitVote {
 
 	return r.ConsensusBitVote
+}
+
+func (r *Round) SetConsensusStatus() error {
+
+	// handle no bitVote or chosen request that is not registered
+
+	for i := range r.attestations {
+		r.attestations[i].Consensus = r.ConsensusBitVote.BitVector.Bit(int(r.attestations[i].Index)) == 1
+	}
+
+	return nil
+
+}
+
+func (r *Round) GetMerkleTree() (merkle.Tree, error) {
+
+	hashes := []common.Hash{}
+
+	for i := range r.attestations {
+		if r.ConsensusBitVote.BitVector.Bit(int(r.attestations[i].Index)) == 1 {
+			if r.attestations[i].Status != Success {
+				return merkle.Tree{}, errors.New("cannot build merkle tree")
+			}
+			hashes = append(hashes, r.attestations[i].Hash)
+		}
+	}
+
+	sort.Slice(hashes, func(i, j int) bool { return compareHash(hashes[i], hashes[j]) })
+
+	merkleTree := merkle.Build(hashes, false)
+
+	r.merkletree = merkleTree
+
+	return merkleTree, nil
+
+}
+
+func compareHash(a, b common.Hash) bool {
+
+	for i := range a {
+		if a[i] < b[i] {
+			return true
+		}
+	}
+	return false
+}
+func (r *Round) GetMerkleTreeCached() (merkle.Tree, error) {
+
+	if len(r.merkletree) != 0 {
+		return r.merkletree, nil
+	}
+
+	return r.GetMerkleTree()
+
+}
+
+func (r *Round) GetMerkleRootCached() (common.Hash, error) {
+
+	tree, err := r.GetMerkleTreeCached()
+
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	return tree.Root()
+
 }
