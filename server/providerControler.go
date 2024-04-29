@@ -69,6 +69,8 @@ func (controller *FDCProtocolProviderController) Submit2(
 }
 
 func RegisterFDCProviderRoutes(router restServer.Router, ctx context.Context) {
+	// Prepare service controller
+
 	ctrl := NewFDCProtocolProviderController(ctx)
 	paramMap := map[string]string{"votingRoundId": "Voting round ID", "submitAddress": "Submit address"}
 	submit1Handler := restServer.GeneralRouteHandler(ctrl.Submit1, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{})
