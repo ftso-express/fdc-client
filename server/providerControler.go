@@ -1,16 +1,10 @@
 package server
 
 import (
-	"context"
 	"flare-common/restServer"
 	"fmt"
-	"net/http"
 	"strconv"
 )
-
-type FDCProtocolProviderController struct {
-	someValue string
-}
 
 type submitXParams struct {
 	votingRoundId uint64
@@ -35,11 +29,7 @@ func validateSubmitXParams(params map[string]string) (submitXParams, error) {
 	return submitXParams{votingRoundId: votingRoundId, submitAddress: submitAddress}, nil
 }
 
-func NewFDCProtocolProviderController(ctx context.Context) *FDCProtocolProviderController {
-	return &FDCProtocolProviderController{someValue: "initial value"}
-}
-
-func (controller *FDCProtocolProviderController) Submit1(
+func (controller *FDCProtocolProviderController) Submit1Controller(
 	params map[string]string,
 	queryParams interface{},
 	body interface{}) (PDPResponse, *restServer.ErrorHandler) {
@@ -47,13 +37,17 @@ func (controller *FDCProtocolProviderController) Submit1(
 	if err != nil {
 		return PDPResponse{}, restServer.BadParamsErrorHandler(err)
 	}
-	rsp := submit1Handler(pathParams.votingRoundId, pathParams.submitAddress)
+	rsp, err := controller.submit1Service(pathParams.votingRoundId, pathParams.submitAddress)
+	if err != nil {
+		return PDPResponse{}, restServer.InternalServerErrorHandler(err)
+	}
+	response := PDPResponse{Data: rsp, Status: OK}
 	fmt.Printf("previous value: %s\n", controller.someValue)
 	controller.someValue = "Submit1"
-	return rsp, nil
+	return response, nil
 }
 
-func (controller *FDCProtocolProviderController) Submit2(
+func (controller *FDCProtocolProviderController) submit2Controller(
 	params map[string]string,
 	queryParams interface{},
 	body interface{}) (PDPResponse, *restServer.ErrorHandler) {
@@ -61,20 +55,30 @@ func (controller *FDCProtocolProviderController) Submit2(
 	if err != nil {
 		return PDPResponse{}, restServer.BadParamsErrorHandler(err)
 	}
-	// TODO: update this method call
-	rsp := submit1Handler(pathParams.votingRoundId, pathParams.submitAddress)
+	rsp, err := controller.submit2Service(pathParams.votingRoundId, pathParams.submitAddress)
+	if err != nil {
+		return PDPResponse{}, restServer.InternalServerErrorHandler(err)
+	}
+	response := PDPResponse{Data: rsp, Status: OK}
 	fmt.Printf("previous value: %s\n", controller.someValue)
 	controller.someValue = "Submit2"
-	return rsp, nil
+	return response, nil
 }
 
-func RegisterFDCProviderRoutes(router restServer.Router, ctx context.Context) {
-	// Prepare service controller
-
-	ctrl := NewFDCProtocolProviderController(ctx)
-	paramMap := map[string]string{"votingRoundId": "Voting round ID", "submitAddress": "Submit address"}
-	submit1Handler := restServer.GeneralRouteHandler(ctrl.Submit1, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{})
-	router.AddRoute("/submit1/{votingRoundId}/{submitAddress}", submit1Handler, "Submit1")
-	submit2Handler := restServer.GeneralRouteHandler(ctrl.Submit2, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{})
-	router.AddRoute("/submit2/{votingRoundId}/{submitAddress}", submit2Handler, "Submit2")
+func (controller *FDCProtocolProviderController) submitSignaturesController(
+	params map[string]string,
+	queryParams interface{},
+	body interface{}) (PDPResponse, *restServer.ErrorHandler) {
+	pathParams, err := validateSubmitXParams(params)
+	if err != nil {
+		return PDPResponse{}, restServer.BadParamsErrorHandler(err)
+	}
+	rsp, err := controller.submitSignaturesService(pathParams.votingRoundId, pathParams.submitAddress)
+	if err != nil {
+		return PDPResponse{}, restServer.InternalServerErrorHandler(err)
+	}
+	response := PDPResponse{Data: rsp.data, AdditionalData: rsp.additional, Status: OK}
+	fmt.Printf("previous value: %s\n", controller.someValue)
+	controller.someValue = "SubmitSignatures"
+	return response, nil
 }

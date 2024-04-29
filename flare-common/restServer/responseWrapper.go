@@ -130,3 +130,11 @@ func BadParamsErrorHandler(err error) *ErrorHandler {
 		},
 	}
 }
+
+func InternalServerErrorHandler(err error) *ErrorHandler {
+	return &ErrorHandler{
+		Handler: func(w http.ResponseWriter) {
+			WriteApiResponseError(w, "internal server error", err.Error())
+		},
+	}
+}
