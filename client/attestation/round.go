@@ -22,7 +22,7 @@ const (
 type Round struct {
 	roundId          uint64
 	status           RoundStatus
-	attestations     []*Attestation
+	Attestations     []*Attestation
 	bitVotes         []WeightedBitVote
 	ConsensusBitVote BitVote
 	epoch            epoch.Epoch
@@ -41,12 +41,12 @@ func CreateRound(r *Round, roundId uint64, epoch epoch.Epoch, status RoundStatus
 }
 
 func (r *Round) GetBitVote() (BitVote, error) {
-	return BitVoteFromAttestations(r.attestations)
+	return BitVoteFromAttestations(r.Attestations)
 }
 
 func (r *Round) ComputeConsensusBitVote() error {
 
-	consensus, err := ConsensusBitVote(r.roundId, r.bitVotes, r.epoch.TotalWeight, r.attestations)
+	consensus, err := ConsensusBitVote(r.roundId, r.bitVotes, r.epoch.TotalWeight, r.Attestations)
 
 	if err != nil {
 		return err
@@ -59,7 +59,7 @@ func (r *Round) ComputeConsensusBitVote() error {
 
 func (r *Round) GetBitVoteHex() (string, error) {
 
-	bitVote, err := BitVoteFromAttestations(r.attestations)
+	bitVote, err := BitVoteFromAttestations(r.Attestations)
 
 	if err != nil {
 		return "", errors.New("cannot get bitvote")
@@ -79,8 +79,8 @@ func (r *Round) SetConsensusStatus() error {
 
 	// handle no bitVote or chosen request that is not registered
 
-	for i := range r.attestations {
-		r.attestations[i].Consensus = r.ConsensusBitVote.BitVector.Bit(int(r.attestations[i].Index)) == 1
+	for i := range r.Attestations {
+		r.Attestations[i].Consensus = r.ConsensusBitVote.BitVector.Bit(int(r.Attestations[i].Index)) == 1
 	}
 
 	return nil
@@ -91,12 +91,12 @@ func (r *Round) GetMerkleTree() (merkle.Tree, error) {
 
 	hashes := []common.Hash{}
 
-	for i := range r.attestations {
-		if r.ConsensusBitVote.BitVector.Bit(int(r.attestations[i].Index)) == 1 {
-			if r.attestations[i].Status != Success {
+	for i := range r.Attestations {
+		if r.ConsensusBitVote.BitVector.Bit(int(r.Attestations[i].Index)) == 1 {
+			if r.Attestations[i].Status != Success {
 				return merkle.Tree{}, errors.New("cannot build merkle tree")
 			}
-			hashes = append(hashes, r.attestations[i].Hash)
+			hashes = append(hashes, r.Attestations[i].Hash)
 		}
 	}
 

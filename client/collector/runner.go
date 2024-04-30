@@ -41,9 +41,9 @@ func (r *Runner) Run() {
 
 		r.roundManager.Timestamps <- state.BlockTimestamp
 
-		requestEvents, _ := database.FetchLogsByAddressAndTopic0BlockNumber(r.DB, r.FdcContractAddress, r.RequestEventSig, int64(latestBlock), int64(state.Index))
+		// requestEvents, _ := database.FetchLogsByAddressAndTopic0BlockNumber(r.DB, r.FdcContractAddress, r.RequestEventSig, int64(latestBlock), int64(state.Index))
 
-		processRequests(requestEvents)
+		// processRequests(requestEvents)
 
 		submit1Txs, _ := database.FetchTransactionsByAddressAndSelectorBlockNumber(r.DB, r.SubmitContractAddress, r.submit1Sig, int64(latestBlock), int64(state.Index))
 

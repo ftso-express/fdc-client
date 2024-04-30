@@ -2,7 +2,10 @@ package attestation
 
 import (
 	"errors"
+	"flare-common/database"
+	"flare-common/events"
 	"local/fdc/client/verification"
+	hub "local/fdc/contracts/FDC"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -69,4 +72,12 @@ func (a *Attestation) VerifyResponse(r verification.Response) error {
 	a.Status = Success
 
 	return nil
+}
+
+func ParseAttestationRequestLog(hub *hub.Hub, dbLog database.Log) (*hub.HubAttestationRequest, error) {
+	contractLog, err := events.ConvertDatabaseLogToChainLog(dbLog)
+	if err != nil {
+		return nil, err
+	}
+	return hub.HubFilterer.ParseAttestationRequest(*contractLog)
 }

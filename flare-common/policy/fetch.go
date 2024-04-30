@@ -30,6 +30,23 @@ type relayContractClient struct {
 	topic0PMR string // for ProtocolMessageRelayed event
 }
 
+func (r *relayContractClient) FetchSigningPolicies(db *gorm.DB, from, to int64) ([]signingPolicyListenerResponse, error) {
+	logs, err := database.FetchLogsByAddressAndTopic0Timestamp(db, r.address.String(), r.topic0SPI, from, to)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]signingPolicyListenerResponse, 0, len(logs))
+	for _, log := range logs {
+		policyData, err := events.ParseSigningPolicyInitializedEvent(r.relay, log)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, signingPolicyListenerResponse{policyData, int64(log.Timestamp)})
+	}
+	return result, nil
+}
+
 func (r *relayContractClient) SigningPolicyInitializedListener(db *gorm.DB, startTime time.Time) <-chan signingPolicyListenerResponse {
 	out := make(chan signingPolicyListenerResponse, listenerBufferSize)
 	go func() {

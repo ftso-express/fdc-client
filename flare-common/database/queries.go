@@ -24,20 +24,20 @@ func FetchLogsByAddressAndTopic0Timestamp(db *gorm.DB, address string, topic0 st
 }
 
 // Fetch all logs matching address and topic0 from block range (from, to], order by timestamp
-func FetchLogsByAddressAndTopic0BlockNumber(db *gorm.DB, address string, topic0 string,
-	from int64, to int64) ([]Log, error) {
-	var logs []Log
-	err := db.Where(
-		"address = ? AND topic0 = ? AND block_number > ? AND block_number <= ?",
-		strings.ToLower(strings.TrimPrefix(address, "0x")),
-		strings.ToLower(strings.TrimPrefix(topic0, "0x")),
-		from, to,
-	).Order("timestamp").Find(&logs).Error
-	if err != nil {
-		return nil, err
-	}
-	return logs, nil
-}
+// func FetchLogsByAddressAndTopic0BlockNumber(db *gorm.DB, address string, topic0 string,
+// 	from int64, to int64) ([]Log, error) {
+// 	var logs []Log
+// 	err := db.Where(
+// 		"address = ? AND topic0 = ? AND block_number > ? AND block_number <= ?",
+// 		strings.ToLower(strings.TrimPrefix(address, "0x")),
+// 		strings.ToLower(strings.TrimPrefix(topic0, "0x")),
+// 		from, to,
+// 	).Order("timestamp").Find(&logs).Error
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return logs, nil
+// }
 
 // Fetch all transactions matching toAddress and functionSig from timestamp range (from, to], order by timestamp
 func FetchTransactionsByAddressAndSelectorTimestamp(db *gorm.DB, toAddress string, functionSig string,
