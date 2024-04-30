@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flare-common/database"
 	"strconv"
+	"strings"
 )
 
 type Message struct {
@@ -50,4 +51,44 @@ func ExtractPayloads(tx database.Transaction) (map[uint64]Message, error) {
 	}
 
 	return messages, nil
+}
+
+func prependZerosToLength(hexString string, finalLength int) (string, error) {
+	p := len(hexString) - finalLength
+
+	if p < 0 {
+		return hexString, errors.New("string too long")
+	}
+
+	prefix := strings.Repeat("0", p)
+
+	return prefix + hexString, nil
+
+}
+
+func BuildMessage(protocol, votingRound uint64, payload string) (string, error) {
+
+	if len(payload)%2 != 0 {
+		return "", errors.New("uneven payload")
+	}
+
+	protocolStr, err := prependZerosToLength(strconv.FormatUint(protocol, 16), 2)
+
+	if err != nil {
+		return "", errors.New("invalid protocol")
+	}
+
+	votingRoundStr, err := prependZerosToLength(strconv.FormatUint(votingRound, 16), 8)
+
+	if err != nil {
+		return "", errors.New("invalid voting round")
+	}
+
+	lenStr, err := prependZerosToLength(strconv.FormatInt(int64(len(payload)), 16), 4)
+
+	if err != nil {
+		return "", errors.New("invalid payload length")
+	}
+
+	return protocolStr + votingRoundStr + lenStr + payload, nil
 }

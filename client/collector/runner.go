@@ -3,8 +3,8 @@ package collector
 import (
 	"flare-common/database"
 	"flare-common/payload"
-	"local/fdc/client-old/timing"
 	"local/fdc/client/attestation"
+	"local/fdc/client/timing"
 
 	"gorm.io/gorm"
 )
@@ -12,8 +12,10 @@ import (
 type Runner struct {
 	Protocol              uint64
 	SubmitContractAddress string
-	FdcContractAddress    string
 	RequestEventSig       string
+	FdcContractAddress    string
+	RelayContractAddress  string
+	SigningPolicyEventSig string
 	DB                    *gorm.DB
 	submit1Sig            string
 	roundManager          *attestation.Manager
@@ -28,7 +30,7 @@ func (r *Runner) Run() {
 	latestTimestamp := int64(state.BlockTimestamp)
 	latestBlock := state.Index
 
-	r.roundManager.BlockTimestamp = state.BlockTimestamp
+	r.roundManager.Timestamps <- state.BlockTimestamp
 
 	requestEvents, _ := database.FetchLogsByAddressAndTopic0Timestamp(r.DB, r.FdcContractAddress, r.RequestEventSig, initialStart-1, latestTimestamp)
 
@@ -49,15 +51,14 @@ func (r *Runner) Run() {
 			payloads, _ := payload.ExtractPayloads(tx)
 			bitvote := payloads[r.Protocol]
 
-			processBitvote(bitvote)
+			r.roundManager.BitVotes <- bitvote
 		}
 
-		latestTimestamp = int64(state.BlockTimestamp)
+		//latestTimestamp = int64(state.BlockTimestamp)
 		latestBlock = state.Index
 	}
 
 }
 
-func processRequests([]database.Log) {}
-
-func processBitvote(payload.Message) {}
+func processRequests(logs []database.Log) {
+}

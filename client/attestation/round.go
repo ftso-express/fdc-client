@@ -3,7 +3,7 @@ package attestation
 import (
 	"errors"
 	"flare-common/merkle"
-	"sort"
+	"local/fdc/client/epoch"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -25,20 +25,19 @@ type Round struct {
 	attestations     []*Attestation
 	bitVotes         []WeightedBitVote
 	ConsensusBitVote BitVote
-	totalWeight      uint64
+	epoch            epoch.Epoch
 	merkletree       merkle.Tree
 }
 
-func Create(roundId, totalWeight uint64) *Round {
-	var r Round
+func CreateRound(r *Round, roundId uint64, epoch epoch.Epoch, status RoundStatus) *Round {
 
 	r.roundId = roundId
 
-	r.status = Collecting
+	r.status = status
 
-	r.totalWeight = totalWeight
+	r.epoch = epoch
 
-	return &r
+	return r
 }
 
 func (r *Round) GetBitVote() (BitVote, error) {
@@ -47,7 +46,7 @@ func (r *Round) GetBitVote() (BitVote, error) {
 
 func (r *Round) ComputeConsensusBitVote() error {
 
-	consensus, err := ConsensusBitVote(r.roundId, r.bitVotes, r.totalWeight, r.attestations)
+	consensus, err := ConsensusBitVote(r.roundId, r.bitVotes, r.epoch.TotalWeight, r.attestations)
 
 	if err != nil {
 		return err
@@ -66,7 +65,7 @@ func (r *Round) GetBitVoteHex() (string, error) {
 		return "", errors.New("cannot get bitvote")
 	}
 
-	return bitVote.EncodeHex(r.roundId), nil
+	return bitVote.EncodeBitVoteHex(r.roundId), nil
 }
 
 func (r *Round) GetMerkleRoot() {}
@@ -101,7 +100,7 @@ func (r *Round) GetMerkleTree() (merkle.Tree, error) {
 		}
 	}
 
-	sort.Slice(hashes, func(i, j int) bool { return compareHash(hashes[i], hashes[j]) })
+	// sort.Slice(hashes, func(i, j int) bool { return compareHash(hashes[i], hashes[j]) })
 
 	merkleTree := merkle.Build(hashes, false)
 
@@ -111,15 +110,16 @@ func (r *Round) GetMerkleTree() (merkle.Tree, error) {
 
 }
 
-func compareHash(a, b common.Hash) bool {
+// func compareHash(a, b common.Hash) bool {
 
-	for i := range a {
-		if a[i] < b[i] {
-			return true
-		}
-	}
-	return false
-}
+//		for i := range a {
+//			if a[i] < b[i] {
+//				return true
+//			}
+//		}
+//		return false
+//	}
+
 func (r *Round) GetMerkleTreeCached() (merkle.Tree, error) {
 
 	if len(r.merkletree) != 0 {

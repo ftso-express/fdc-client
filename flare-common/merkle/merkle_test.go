@@ -12,11 +12,11 @@ import (
 )
 
 func TestEmptyTree(t *testing.T) {
-	tree := merkle.New(nil)
+	tree := merkle.Tree{}
 	_, err := tree.Root()
 	assert.Equal(t, err, merkle.ErrEmptyTree)
 
-	treeSlice := tree.Tree()
+	treeSlice := tree
 	assert.Len(t, treeSlice, 0)
 
 	numLeaves := tree.HashCount()
@@ -37,13 +37,13 @@ func TestEmptyTree(t *testing.T) {
 
 func TestSingleLeafTree(t *testing.T) {
 	val := common.HexToHash("0x01")
-	tree := merkle.New([]common.Hash{val})
+	tree := merkle.Tree{val}
 
 	root, err := tree.Root()
 	require.NoError(t, err)
 	assert.Equal(t, root, val)
 
-	treeSlice := tree.Tree()
+	treeSlice := tree
 	assert.Len(t, treeSlice, 1)
 	assert.Equal(t, treeSlice[0], val)
 
@@ -85,7 +85,7 @@ func TestMultiLeafTree(t *testing.T) {
 	cupaloy.SnapshotT(t, root.Hex())
 
 	t.Run("TreeSlice", func(t *testing.T) {
-		treeSlice := tree.Tree()
+		treeSlice := tree
 		assert.Len(t, treeSlice, 9)
 		cupaloy.SnapshotT(t, treeSlice)
 	})

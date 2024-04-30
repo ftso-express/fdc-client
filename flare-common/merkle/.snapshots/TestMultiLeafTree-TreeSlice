@@ -1,4 +1,4 @@
-([]common.Hash) (len=9) {
+(merkle.Tree) (len=9) {
   (common.Hash) (len=32) 0xc9f523a58f30cdf128d0c9b9b5c47307fffd7d0edcdadf7c623c2b01b48cdf82,
   (common.Hash) (len=32) 0x6e106312c68ae7878ba9ba4885ad84fb8f8e153350600d368cedee43b5ce1903,
   (common.Hash) (len=32) 0xa95fdf6e1d2ef63e224adadbf70e466c4ac233aaa7fda9afb4862e884c8185f2,

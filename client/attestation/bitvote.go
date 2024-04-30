@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
+	"flare-common/payload"
+	"local/fdc/client/epoch"
 	"local/fdc/client/shuffle"
 	"math/big"
 )
@@ -18,8 +20,8 @@ type BitVote struct {
 }
 
 type WeightedBitVote struct {
-	weight  uint64
-	bitVote BitVote
+	Weight  uint64
+	BitVote BitVote
 }
 
 type bitVoteWithValue struct {
@@ -71,7 +73,7 @@ func (bv BitVote) fees(attestations []*Attestation) (*big.Int, error) {
 // Returns the BitVote that is the result of the bitwise and, and supportingWeight.
 func bitVoteForSet(weightedBitVotes []WeightedBitVote, totalWeight uint64, shuffled []uint64) (BitVote, uint64) {
 
-	bitVote := (weightedBitVotes)[shuffled[0]].bitVote
+	bitVote := (weightedBitVotes)[shuffled[0]].BitVote
 
 	halfWeight := (totalWeight + 1) / 2
 
@@ -79,10 +81,10 @@ func bitVoteForSet(weightedBitVotes []WeightedBitVote, totalWeight uint64, shuff
 
 	for _, v := range shuffled {
 		if supportingWeight < halfWeight {
-			bitVote = andBitwise(bitVote, weightedBitVotes[v].bitVote)
-			supportingWeight += weightedBitVotes[v].weight
-		} else if andBitwise(bitVote, weightedBitVotes[v].bitVote).BitVector == weightedBitVotes[v].bitVote.BitVector {
-			supportingWeight += weightedBitVotes[v].weight
+			bitVote = andBitwise(bitVote, weightedBitVotes[v].BitVote)
+			supportingWeight += weightedBitVotes[v].Weight
+		} else if andBitwise(bitVote, weightedBitVotes[v].BitVote).BitVector == weightedBitVotes[v].BitVote.BitVector {
+			supportingWeight += weightedBitVotes[v].Weight
 		}
 
 	}
@@ -172,8 +174,8 @@ func SetBitVoteStatus(attestations []*Attestation, bitVote BitVote) error {
 
 }
 
-// EncodeHEx encodes BitVote with roundCheck to be published on chain
-func (b BitVote) EncodeHex(roundId uint64) string {
+// EncodeBitVoteHex encodes BitVote with roundCheck to be published on chain
+func (b BitVote) EncodeBitVoteHex(roundId uint64) string {
 
 	var encoding []byte
 	roundCheck := byte(roundId % 256)
@@ -191,8 +193,8 @@ func (b BitVote) EncodeHex(roundId uint64) string {
 
 }
 
-// DecodeHex decodes hex encoded BitVote and returns roundCheck
-func DecodeHex(bitVoteHex string) (BitVote, uint8, error) {
+// DecodeBitVoteHex decodes hex encoded BitVote and returns roundCheck
+func DecodeBitVoteHex(bitVoteHex string) (BitVote, uint8, error) {
 
 	roundCheckStr := bitVoteHex[:2]
 	lengthStr := bitVoteHex[2:6]
@@ -229,4 +231,25 @@ func DecodeHex(bitVoteHex string) (BitVote, uint8, error) {
 
 	return BitVote{length, bitVector}, roundCheck, nil
 
+}
+
+func ProcessBitVote(message payload.Message, epoch epoch.Epoch) (WeightedBitVote, error) {
+
+	bitVote, roundCheck, err := DecodeBitVoteHex(message.Payload)
+
+	if err != nil {
+		return WeightedBitVote{}, err
+	}
+
+	if roundCheck != uint8(message.VotingRound%256) {
+		return WeightedBitVote{}, errors.New("wrong round check")
+	}
+
+	weight := epoch.Weights[message.From]
+
+	if weight <= 0 {
+		return WeightedBitVote{}, errors.New("zero weight")
+	}
+
+	return WeightedBitVote{weight, bitVote}, nil
 }
