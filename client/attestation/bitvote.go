@@ -5,9 +5,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"flare-common/payload"
-	"local/fdc/client/epoch"
 	"local/fdc/client/shuffle"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -20,7 +21,8 @@ type BitVote struct {
 }
 
 type WeightedBitVote struct {
-	Weight  uint64
+	Index   int
+	Weight  uint16
 	BitVote BitVote
 }
 
@@ -67,17 +69,17 @@ func (bv BitVote) fees(attestations []*Attestation) (*big.Int, error) {
 	return fees, nil
 }
 
-// BitVoteForSet calculates bitwise and of the WeightedBitVote in the order defined by shuffled
+// bitVoteForSet calculates bitwise and of the WeightedBitVote in the order defined by shuffled
 // until the added weight does not exceed 50% of the total weight.
 // Then it adds the weight of the rest of WeightedBitVote that support the calculated BitVote.
 // Returns the BitVote that is the result of the bitwise and, and supportingWeight.
-func bitVoteForSet(weightedBitVotes []WeightedBitVote, totalWeight uint64, shuffled []uint64) (BitVote, uint64) {
+func bitVoteForSet(weightedBitVotes []*WeightedBitVote, totalWeight uint16, shuffled []uint64) (BitVote, uint16) {
 
 	bitVote := (weightedBitVotes)[shuffled[0]].BitVote
 
 	halfWeight := (totalWeight + 1) / 2
 
-	supportingWeight := uint64(0)
+	supportingWeight := uint16(0)
 
 	for _, v := range shuffled {
 		if supportingWeight < halfWeight {
@@ -108,7 +110,7 @@ func andBitwise(a, b BitVote) BitVote {
 }
 
 // Value calculates the value of the BitVote, which is the product of the fees and supportingWeight.
-func value(bitVote BitVote, supportingWeight uint64, attestations []*Attestation) (*big.Int, error) {
+func value(bitVote BitVote, supportingWeight uint16, attestations []*Attestation) (*big.Int, error) {
 	fees, err := bitVote.fees(attestations)
 
 	if err != nil {
@@ -119,7 +121,7 @@ func value(bitVote BitVote, supportingWeight uint64, attestations []*Attestation
 }
 
 // ConsensusBitVote calculates the ConsensusBitVote for roundId given the weightedBitVotes.
-func ConsensusBitVote(roundId uint64, weightedBitVotes []WeightedBitVote, totalWeight uint64, attestations []*Attestation) (BitVote, error) {
+func ConsensusBitVote(roundId uint64, weightedBitVotes []*WeightedBitVote, totalWeight uint16, attestations []*Attestation) (BitVote, error) {
 
 	var bitVote BitVote
 	maxValue := big.NewInt(0)
@@ -167,7 +169,7 @@ func SetBitVoteStatus(attestations []*Attestation, bitVote BitVote) error {
 	}
 
 	for i := range attestations {
-		attestations[i].Consensus = bitVote.BitVector.Bit(int(attestations[i].Index)) == 1
+		attestations[i].Consensus = bitVote.BitVector.Bit(i) == 1
 	}
 
 	return nil
@@ -233,23 +235,44 @@ func DecodeBitVoteHex(bitVoteHex string) (BitVote, uint8, error) {
 
 }
 
-func ProcessBitVote(message payload.Message, epoch epoch.Epoch) (WeightedBitVote, error) {
+// ProcessBitVote decodes bitVote message, checks roundCheck, adds voter weight and index, and stores bitVote to the round.
+// If the voter is invalid, or has zero weight, the bitVote is ignored.
+// If a voter already submitted a valid bitVote for the round, the bitVote is overwritten.
+func (r *Round) ProcessBitVote(message payload.Message) error {
 
 	bitVote, roundCheck, err := DecodeBitVoteHex(message.Payload)
 
 	if err != nil {
-		return WeightedBitVote{}, err
+		return err
 	}
 
 	if roundCheck != uint8(message.VotingRound%256) {
-		return WeightedBitVote{}, errors.New("wrong round check")
+		return errors.New("wrong round check")
 	}
 
-	weight := epoch.Weights[message.From]
+	voter, success := r.voterSet.VoterDataMap[common.HexToAddress(message.From)]
+
+	if !success {
+		return errors.New("invalid voter")
+	}
+
+	weight := voter.Weight
 
 	if weight <= 0 {
-		return WeightedBitVote{}, errors.New("zero weight")
+		return errors.New("zero weight")
 	}
 
-	return WeightedBitVote{weight, bitVote}, nil
+	weightedBitVote, ok := r.bitVoteCheckList[message.From]
+
+	if !ok {
+		weightedBitVote = &WeightedBitVote{}
+		r.bitVotes = append(r.bitVotes, weightedBitVote)
+	}
+
+	// TODO: make sure that the bitVote is overwritten only if the new weightedBitVote is later that the already stored
+	weightedBitVote.BitVote = bitVote
+	weightedBitVote.Weight = weight
+	weightedBitVote.Index = voter.Index
+
+	return nil
 }

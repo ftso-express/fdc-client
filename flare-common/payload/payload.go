@@ -7,6 +7,11 @@ import (
 	"strings"
 )
 
+type Round struct {
+	Messages []Message
+	ID       uint64
+}
+
 type Message struct {
 	From        string
 	Signature   string

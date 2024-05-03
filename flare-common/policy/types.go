@@ -9,17 +9,17 @@ import (
 )
 
 type VoterData struct {
-	index  int
-	weight uint16
+	Index  int
+	Weight uint16
 }
 
 type VoterSet struct {
 	voters      []common.Address
 	weights     []uint16
-	totalWeight uint16
+	TotalWeight uint16
 	thresholds  []uint16
 
-	voterDataMap map[common.Address]VoterData
+	VoterDataMap map[common.Address]VoterData
 }
 
 func NewVoterSet(voters []common.Address, weights []uint16) *VoterSet {
@@ -30,20 +30,20 @@ func NewVoterSet(voters []common.Address, weights []uint16) *VoterSet {
 	}
 	// sum does not exceed uint16, guaranteed by the smart contract
 	for i, w := range weights {
-		vs.thresholds[i] = vs.totalWeight
-		vs.totalWeight += w
+		vs.thresholds[i] = vs.TotalWeight
+		vs.TotalWeight += w
 	}
 
 	vMap := make(map[common.Address]VoterData)
 	for i, voter := range vs.voters {
 		if _, ok := vMap[voter]; !ok {
 			vMap[voter] = VoterData{
-				index:  i,
-				weight: vs.weights[i],
+				Index:  i,
+				Weight: vs.weights[i],
 			}
 		}
 	}
-	vs.voterDataMap = vMap
+	vs.VoterDataMap = vMap
 	return &vs
 }
 
@@ -55,8 +55,8 @@ type signingPolicy struct {
 	rawBytes           []byte
 	blockTimestamp     uint64
 
-	// The set of all voters and their weights
-	voters *VoterSet
+	// The set of all Voters and their weights
+	Voters *VoterSet
 }
 
 func newSigningPolicy(r *relayContract.RelaySigningPolicyInitialized) *signingPolicy {
@@ -68,11 +68,11 @@ func newSigningPolicy(r *relayContract.RelaySigningPolicyInitialized) *signingPo
 		rawBytes:           r.SigningPolicyBytes,
 		blockTimestamp:     r.Timestamp,
 
-		voters: NewVoterSet(r.Voters, r.Weights),
+		Voters: NewVoterSet(r.Voters, r.Weights),
 	}
 }
 
-type signingPolicyStorage struct {
+type SigningPolicyStorage struct {
 
 	// sorted list of signing policies, sorted by rewardEpochId (and also by startVotingRoundId)
 	spList []*signingPolicy
@@ -81,8 +81,8 @@ type signingPolicyStorage struct {
 	sync.Mutex
 }
 
-func newSigningPolicyStorage() *signingPolicyStorage {
-	return &signingPolicyStorage{
+func newSigningPolicyStorage() *SigningPolicyStorage {
+	return &SigningPolicyStorage{
 		spList: make([]*signingPolicy, 0, 10),
 	}
 }

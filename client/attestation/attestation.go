@@ -25,8 +25,25 @@ const (
 	ProcessError
 )
 
+type Index struct {
+	BlockNumber uint64
+	LogIndex    uint64
+}
+
+func Less(a, b Index) bool {
+	if a.BlockNumber < b.BlockNumber {
+		return true
+	}
+	if a.BlockNumber == b.BlockNumber && a.LogIndex < b.LogIndex {
+		return true
+	}
+
+	return false
+
+}
+
 type Attestation struct {
-	Index     uint64
+	Index     Index
 	RoundID   uint64
 	Request   verification.Request
 	Response  verification.Response
