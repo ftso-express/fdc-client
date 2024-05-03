@@ -14,15 +14,15 @@ import (
 type Status int
 
 const (
-	Unprocessed Status = iota
-	UnsupportedPair
-	Waiting
-	Processing
-	Success
-	WrongMIC
-	WrongLUT
-	Retrying
-	ProcessError
+	Unprocessed     Status = iota
+	UnsupportedPair Status = 2
+	Waiting         Status = 3
+	Processing      Status = 4
+	Success         Status = 5
+	WrongMIC        Status = 6
+	WrongLUT        Status = 7
+	Retrying        Status = 8
+	ProcessError    Status = 9
 )
 
 type Index struct {
