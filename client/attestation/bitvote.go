@@ -20,8 +20,26 @@ type BitVote struct {
 	BitVector *big.Int
 }
 
+type IndexTx struct {
+	BlockNumber      uint64
+	TransactionIndex uint64
+}
+
+func LessTx(a, b IndexTx) bool {
+	if a.BlockNumber < b.BlockNumber {
+		return true
+	}
+	if a.BlockNumber == b.BlockNumber && a.TransactionIndex < b.TransactionIndex {
+		return true
+	}
+
+	return false
+
+}
+
 type WeightedBitVote struct {
 	Index   int
+	indexTx IndexTx
 	Weight  uint16
 	BitVote BitVote
 }
@@ -267,12 +285,21 @@ func (r *Round) ProcessBitVote(message payload.Message) error {
 	if !ok {
 		weightedBitVote = &WeightedBitVote{}
 		r.bitVotes = append(r.bitVotes, weightedBitVote)
+
+		weightedBitVote.BitVote = bitVote
+		weightedBitVote.Weight = weight
+		weightedBitVote.Index = voter.Index
+		weightedBitVote.indexTx = IndexTx{message.BlockNumber, message.TransactionIndex}
 	}
 
-	// TODO: make sure that the bitVote is overwritten only if the new weightedBitVote is later that the already stored
-	weightedBitVote.BitVote = bitVote
-	weightedBitVote.Weight = weight
-	weightedBitVote.Index = voter.Index
+	if ok && LessTx(weightedBitVote.indexTx, IndexTx{message.BlockNumber, message.TransactionIndex}) {
+
+		weightedBitVote.BitVote = bitVote
+		weightedBitVote.Weight = weight
+		weightedBitVote.Index = voter.Index
+		weightedBitVote.indexTx = IndexTx{message.BlockNumber, message.TransactionIndex}
+
+	}
 
 	return nil
 }

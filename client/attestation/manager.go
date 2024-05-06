@@ -130,7 +130,12 @@ func (m *Manager) OnRequest(request database.Log) error {
 
 		err = ResolveAttestationRequest(&attestation, url, key)
 
-		(&attestation).VerifyResponse()
+		if err != nil {
+			attestation.Status = ProcessError
+		} else {
+
+			attestation.VerifyResponse()
+		}
 	}()
 
 	return nil

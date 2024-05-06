@@ -13,13 +13,15 @@ type Round struct {
 }
 
 type Message struct {
-	From        string
-	Signature   string
-	Protocol    uint64
-	VotingRound uint64
-	Timestamp   uint64
-	Length      uint64
-	Payload     string
+	From             string
+	Signature        string
+	Protocol         uint64
+	VotingRound      uint64
+	Timestamp        uint64
+	BlockNumber      uint64
+	TransactionIndex uint64
+	Length           uint64
+	Payload          string
 }
 
 func ExtractPayloads(tx database.Transaction) (map[uint64]Message, error) {
@@ -47,7 +49,7 @@ func ExtractPayloads(tx database.Transaction) (map[uint64]Message, error) {
 		end := 14 + 2*length
 		payload := data[14:end]
 
-		message := Message{tx.FromAddress, tx.FunctionSig, protocol, votingRound, tx.Timestamp, length, payload}
+		message := Message{tx.FromAddress, tx.FunctionSig, protocol, votingRound, tx.Timestamp, tx.BlockNumber, tx.TransactionIndex, length, payload}
 
 		messages[protocol] = message
 

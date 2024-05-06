@@ -91,7 +91,9 @@ func BitVoteInitializedListener(db *gorm.DB, submitContractAddress, funcSig stri
 
 			}
 
-			out <- payload.Round{Messages: bitVotes, ID: roundID}
+			if len(bitVotes) > 0 {
+				out <- payload.Round{Messages: bitVotes, ID: roundID}
+			}
 		}
 
 	}()
@@ -116,7 +118,10 @@ func RequestsInitializedListener(db *gorm.DB, fdcContractAddress, requestEventSi
 
 		logs, _ := database.FetchLogsByAddressAndTopic0TimestampToBlockNumber(db, fdcContractAddress, requestEventSig, int64(startTimestamp), int64(state.Index))
 
-		out <- logs
+		if len(logs) > 0 {
+
+			out <- logs
+		}
 
 		for {
 			<-trigger.C
@@ -127,7 +132,10 @@ func RequestsInitializedListener(db *gorm.DB, fdcContractAddress, requestEventSi
 
 			lastQueriedBlock = state.Index
 
-			out <- logs
+			if len(logs) > 0 {
+
+				out <- logs
+			}
 
 		}
 
