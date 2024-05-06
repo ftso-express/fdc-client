@@ -53,18 +53,16 @@ type Attestation struct {
 	Hash      common.Hash
 }
 
-func (a *Attestation) VerifyResponse(r verification.Response) error {
+func (a *Attestation) VerifyResponse() error {
 
-	a.Response = r
-
-	micReq, err := a.Request.GetMic()
+	micReq, err := a.Request.Mic()
 
 	if err != nil {
 		a.Status = ProcessError
 
 		return errors.New("no mic in request")
 	}
-	micRes, err := r.ComputeMic()
+	micRes, err := a.Response.ComputeMic()
 
 	if err != nil {
 		a.Status = ProcessError
@@ -76,9 +74,9 @@ func (a *Attestation) VerifyResponse(r verification.Response) error {
 		a.Status = WrongMIC
 	}
 
-	r.AddRound(a.RoundID)
+	a.Response.AddRound(a.RoundID)
 
-	a.Hash, err = r.ComputeHash()
+	a.Hash, err = a.Response.ComputeHash()
 
 	if err != nil {
 		a.Status = ProcessError

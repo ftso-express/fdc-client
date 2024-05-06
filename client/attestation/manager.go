@@ -111,7 +111,7 @@ func (m *Manager) OnRequest(request database.Log) error {
 
 	attestation.Status = Waiting
 
-	attestation.Index.BlockNumber = request.Transaction.TransactionIndex
+	attestation.Index.BlockNumber = request.BlockNumber
 	attestation.Index.LogIndex = request.LogIndex
 
 	round, err := m.GetOrCreateRound(roundID, Collecting)
@@ -122,10 +122,23 @@ func (m *Manager) OnRequest(request database.Log) error {
 
 	round.Attestations = append(round.Attestations, &attestation)
 
-	//TODO: start verification
+	go func() {
+		source, _ := attestation.Request.Source()
+		attType, _ := attestation.Request.AttestationType()
+
+		url, key := VerifierServer(attType, source)
+
+		err = ResolveAttestationRequest(&attestation, url, key)
+
+		(&attestation).VerifyResponse()
+	}()
 
 	return nil
 
 }
 
 func (m *Manager) OnSigningPolicy() {}
+
+func VerifierServer(attType, source []byte) (string, string) {
+	return "url", "key"
+}

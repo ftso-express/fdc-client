@@ -13,7 +13,7 @@ type Request []byte
 
 type Response []byte
 
-func (r Request) GetAttestationType() ([]byte, error) {
+func (r Request) AttestationType() ([]byte, error) {
 
 	if len(r) < 96 {
 		return []byte{}, errors.New("request is to short")
@@ -22,7 +22,7 @@ func (r Request) GetAttestationType() ([]byte, error) {
 	return r[:32], nil
 }
 
-func (r Request) GetSource() ([]byte, error) {
+func (r Request) Source() ([]byte, error) {
 
 	if len(r) < 96 {
 		return []byte{}, errors.New("request is to short")
@@ -31,7 +31,7 @@ func (r Request) GetSource() ([]byte, error) {
 	return r[32:64], nil
 }
 
-func (r Request) GetMic() (common.Hash, error) {
+func (r Request) Mic() (common.Hash, error) {
 
 	if len(r) < 96 {
 		return common.Hash{}, errors.New("request is to short")
