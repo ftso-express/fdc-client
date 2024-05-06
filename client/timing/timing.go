@@ -10,27 +10,27 @@ const (
 	t0          = 1704250616
 )
 
-func GetRoundIDForTimestamp(t uint64) uint64 {
+func RoundIDForTimestamp(t uint64) uint64 {
 
 	roundID := uint64((t - t0 + 30) / 90)
 
 	return roundID
 }
 
-func GetRoundStartTime(n int) time.Time {
+func RoundStartTime(n int) time.Time {
 	return time.Unix(t0, 0).Add(collectTime*time.Duration(n) - offset)
 }
 
-func GetRoundStartTimestamp(n int) uint64 {
-	return uint64(GetRoundStartTime(n).Unix())
+func RoundStartTimestamp(n int) uint64 {
+	return uint64(RoundStartTime(n).Unix())
 }
 
-func GetChooseStartTimestamp(n int) uint64 {
-	return uint64(GetRoundStartTime(n).Add(collectTime).Unix())
+func ChooseStartTimestamp(n int) uint64 {
+	return uint64(RoundStartTime(n).Add(collectTime).Unix())
 }
 
-func GetChooseEndTimestamp(n int) uint64 {
-	return uint64(GetRoundStartTime(n).Add(collectTime + chooseTime).Unix())
+func ChooseEndTimestamp(n int) uint64 {
+	return uint64(RoundStartTime(n).Add(collectTime + chooseTime).Unix())
 }
 
 func NextChoosePhaseEnd(t uint64) (*int, *uint64) {
@@ -38,4 +38,12 @@ func NextChoosePhaseEnd(t uint64) (*int, *uint64) {
 	endTimestamp := uint64(t0 + (roundID+1)*90)
 
 	return &roundID, &endTimestamp
+}
+
+func LastCollectPhaseStart(t uint64) (int, uint64) {
+	roundID := RoundIDForTimestamp(t)
+
+	startTimestamp := t0 + roundID*90 - 30
+
+	return int(roundID), startTimestamp
 }

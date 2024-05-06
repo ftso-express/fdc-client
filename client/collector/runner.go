@@ -13,6 +13,8 @@ import (
 const (
 	bitVoteBufferSize             = 10
 	bitVoteOffChainTriggerSeconds = 15
+	requestsBufferSize            = 10
+	requestListenerInterval       = 2 * time.Second
 )
 
 type Runner struct {
@@ -32,6 +34,8 @@ func (r *Runner) Run() {
 	chooseTrigger := make(chan uint64)
 
 	r.roundManager.BitVotes = BitVoteInitializedListener(r.DB, r.FdcContractAddress, r.submit1Sig, r.Protocol, bitVoteBufferSize, chooseTrigger)
+
+	r.roundManager.Requests = RequestsInitializedListener(r.DB, r.FdcContractAddress, r.RequestEventSig, requestsBufferSize, requestListenerInterval)
 
 	state, _ := database.FetchState(r.DB)
 	nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp := timing.NextChoosePhaseEnd(state.BlockTimestamp)
@@ -75,21 +79,59 @@ func BitVoteInitializedListener(db *gorm.DB, submitContractAddress, funcSig stri
 		for {
 			roundID := <-trigger
 
-			txs, _ := database.FetchTransactionsByAddressAndSelectorTimestamp(db, submitContractAddress, funcSig, int64(timing.GetChooseStartTimestamp(int(roundID))), int64(timing.GetChooseEndTimestamp(int(roundID))))
+			txs, _ := database.FetchTransactionsByAddressAndSelectorTimestamp(db, submitContractAddress, funcSig, int64(timing.ChooseStartTimestamp(int(roundID))), int64(timing.ChooseEndTimestamp(int(roundID))))
 
 			bitVotes := []payload.Message{}
 			for _, tx := range txs {
 				payloads, _ := payload.ExtractPayloads(tx)
-				bitVote := payloads[protocol]
-				bitVotes = append(bitVotes, bitVote)
+				bitVote, ok := payloads[protocol]
+				if ok {
+					bitVotes = append(bitVotes, bitVote)
+				}
 
 			}
 
-			out <- payload.Round{bitVotes, roundID}
+			out <- payload.Round{Messages: bitVotes, ID: roundID}
 		}
 
 	}()
 
 	return out
 
+}
+
+func RequestsInitializedListener(db *gorm.DB, fdcContractAddress, requestEventSig string, bufferSize int, ListenerInterval time.Duration) <-chan []database.Log {
+
+	out := make(chan []database.Log, bufferSize)
+
+	go func() {
+
+		trigger := time.NewTicker(ListenerInterval)
+
+		_, startTimestamp := timing.LastCollectPhaseStart(uint64(time.Now().Unix()))
+
+		state, _ := database.FetchState(db)
+
+		lastQueriedBlock := state.Index
+
+		logs, _ := database.FetchLogsByAddressAndTopic0TimestampToBlockNumber(db, fdcContractAddress, requestEventSig, int64(startTimestamp), int64(state.Index))
+
+		out <- logs
+
+		for {
+			<-trigger.C
+
+			state, _ = database.FetchState(db)
+
+			logs, _ := database.FetchLogsByAddressAndTopic0BlockNumber(db, fdcContractAddress, requestEventSig, int64(lastQueriedBlock), int64(state.Index))
+
+			lastQueriedBlock = state.Index
+
+			out <- logs
+
+		}
+
+	}()
+
+	return out
 }

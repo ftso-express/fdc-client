@@ -37,15 +37,16 @@ type Transaction struct {
 // Should be synchronized with the flare-ftso-indexer project
 type Log struct {
 	BaseEntity
-	TransactionID   uint64      `gorm:"default:null"`
-	Transaction     Transaction `gorm:"foreignKey:TransactionID;references:ID;constraint:OnUpdate:CASCADE"`
-	Address         string      `gorm:"type:varchar(40);index"`
-	Data            string      `gorm:"type:string"`
-	Topic0          string      `gorm:"type:varchar(64);index"`
-	Topic1          string      `gorm:"type:varchar(64);index"`
-	Topic2          string      `gorm:"type:varchar(64);index"`
-	Topic3          string      `gorm:"type:varchar(64);index"`
-	TransactionHash string      `gorm:"type:varchar(64);uniqueIndex:hash_index_unique"`
-	LogIndex        uint64      `gorm:"uniqueIndex:hash_index_unique"`
-	Timestamp       uint64      `gorm:"index"`
+	TransactionID   uint64       `gorm:"default:null"`
+	Transaction     *Transaction `gorm:"foreignKey:TransactionID;references:ID;constraint:OnUpdate:CASCADE"`
+	Address         string       `gorm:"type:varchar(40);index"`
+	Data            string       `gorm:"type:string"`
+	Topic0          string       `gorm:"type:varchar(64);index"`
+	Topic1          string       `gorm:"type:varchar(64);index"`
+	Topic2          string       `gorm:"type:varchar(64);index"`
+	Topic3          string       `gorm:"type:varchar(64);index"`
+	TransactionHash string       `gorm:"type:varchar(64);uniqueIndex:hash_index_unique"`
+	LogIndex        uint64       `gorm:"uniqueIndex:hash_index_unique"`
+	Timestamp       uint64       `gorm:"index"`
+	BlockNumber     uint64       `gorm:"index"`
 }

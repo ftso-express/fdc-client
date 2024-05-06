@@ -12,7 +12,7 @@ import (
 type Manager struct {
 	Rounds               map[uint64]*Round
 	Timestamps           chan uint64
-	Requests             chan []database.Log
+	Requests             <-chan []database.Log
 	BitVotes             <-chan payload.Round
 	RoundInCollect       uint64
 	signingPolicyStorage policy.SigningPolicyStorage
@@ -32,6 +32,14 @@ func (m *Manager) Run() {
 			}
 
 			m.Rounds[round.ID].ComputeConsensusBitVote()
+
+		case requests := <-m.Requests:
+
+			for i := range requests {
+
+				m.OnRequest(requests[i])
+
+			}
 
 		}
 	}
@@ -60,11 +68,11 @@ func (m *Manager) GetOrCreateRound(roundId uint64, status RoundStatus) (*Round, 
 // OnBitVote process message that is assumed to be a bitVote
 func (m *Manager) OnBitVote(message payload.Message) error {
 
-	if message.Timestamp < timing.GetChooseStartTimestamp(int(message.VotingRound)) {
+	if message.Timestamp < timing.ChooseStartTimestamp(int(message.VotingRound)) {
 		return errors.New("bitvote too soon")
 	}
 
-	if message.Timestamp > timing.GetChooseEndTimestamp(int(message.VotingRound)) {
+	if message.Timestamp > timing.ChooseEndTimestamp(int(message.VotingRound)) {
 		return errors.New("bitvote too late")
 	}
 
@@ -85,7 +93,7 @@ func (m *Manager) OnBitVote(message payload.Message) error {
 
 func (m *Manager) OnRequest(request database.Log) error {
 
-	roundID := timing.GetRoundIDForTimestamp(request.Timestamp)
+	roundID := timing.RoundIDForTimestamp(request.Timestamp)
 
 	attestation := Attestation{}
 
@@ -113,6 +121,8 @@ func (m *Manager) OnRequest(request database.Log) error {
 	}
 
 	round.Attestations = append(round.Attestations, &attestation)
+
+	//TODO: start verification
 
 	return nil
 

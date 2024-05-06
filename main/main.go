@@ -42,7 +42,7 @@ func main() {
 	request := verification.Request(req)
 
 	attestation := attestation.Attestation{
-		Index:     1,
+		Index:     attestation.Index{BlockNumber: 1, LogIndex: 1},
 		RoundID:   1,
 		Request:   request,
 		Response:  nil,
