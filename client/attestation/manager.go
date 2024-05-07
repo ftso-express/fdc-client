@@ -2,21 +2,41 @@ package attestation
 
 import (
 	"errors"
+	"flare-common/contacts/relay"
 	"flare-common/database"
 	"flare-common/payload"
 	"flare-common/policy"
 	"local/fdc/client/timing"
 	hub "local/fdc/contracts/FDC"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
+// capacity of rounds cache
+const roundBuffer uint64 = 256
+
+// hubFilterer is only used for Attestation Requests logs parsing. Set in init().
+var hubFilterer *hub.HubFilterer
+
+// relayFilterer is only used for SigningPolicyInitialized logs parsing. Set in init()
+var relayFilterer *relay.RelayFilterer
+
+// init sets the hubFilterer and relayFilterer.
+func init() {
+
+	hubFilterer, _ = hub.NewHubFilterer(common.Address{}, nil)
+
+	relayFilterer, _ = relay.NewRelayFilterer(common.Address{}, nil)
+}
+
 type Manager struct {
-	Rounds               map[uint64]*Round
+	rounds               map[uint64]*Round //cyclically cached rounds with buffer roundBuffer.
 	Timestamps           chan uint64
 	Requests             <-chan []database.Log
 	BitVotes             <-chan payload.Round
+	SigningPolicies      <-chan []database.Log
 	RoundInCollect       uint64
 	signingPolicyStorage policy.SigningPolicyStorage
-	hub                  *hub.Hub
 }
 
 func (m *Manager) Run() {
@@ -31,7 +51,12 @@ func (m *Manager) Run() {
 				m.OnBitVote(round.Messages[i])
 			}
 
-			m.Rounds[round.ID].ComputeConsensusBitVote()
+			r, ok := m.Round(round.ID)
+
+			if !ok {
+				break
+			}
+			r.ComputeConsensusBitVote()
 
 		case requests := <-m.Requests:
 
@@ -41,16 +66,23 @@ func (m *Manager) Run() {
 
 			}
 
+		case signingPolicies := <-m.SigningPolicies:
+
+			for i := range signingPolicies {
+
+				m.OnSigningPolicy(signingPolicies[i])
+
+			}
 		}
 	}
 }
 
-func (m *Manager) GetOrCreateRound(roundId uint64, status RoundStatus) (*Round, error) {
+// GetOrCreateRound returns a round for roundId either from manager if a round is already stored or creates a new one and stores it.
+func (m *Manager) GetOrCreateRound(roundId uint64) (*Round, error) {
 
-	round, ok := m.Rounds[roundId]
+	round, ok := m.Round(roundId)
 
 	if ok && round.roundId == roundId {
-		round.status = status
 		return round, nil
 	}
 
@@ -59,13 +91,35 @@ func (m *Manager) GetOrCreateRound(roundId uint64, status RoundStatus) (*Round, 
 	if policy == nil {
 		return nil, errors.New("no signing policy")
 	}
-	round = CreateRound(roundId, policy.Voters, status)
+	round = CreateRound(roundId, policy.Voters)
 
-	m.Rounds[roundId] = round
+	m.Store(round)
 	return round, nil
 }
 
-// OnBitVote process message that is assumed to be a bitVote
+// Round returns a round for roundId stored by the Manager. If round is not stored, false is returned.
+func (m *Manager) Round(roundId uint64) (*Round, bool) {
+
+	roundReminder := roundId / roundBuffer
+
+	round, ok := m.rounds[roundReminder]
+
+	if ok && round.roundId == roundId {
+		return round, true
+	}
+
+	return nil, false
+}
+
+// Store stores round in to the cyclic cache
+func (m *Manager) Store(round *Round) {
+
+	roundReminder := round.roundId / roundBuffer
+
+	m.rounds[roundReminder] = round
+}
+
+// OnBitVote process payload message that is assumed to be a bitVote and adds it to the correct round.
 func (m *Manager) OnBitVote(message payload.Message) error {
 
 	if message.Timestamp < timing.ChooseStartTimestamp(int(message.VotingRound)) {
@@ -76,7 +130,7 @@ func (m *Manager) OnBitVote(message payload.Message) error {
 		return errors.New("bitvote too late")
 	}
 
-	round, err := m.GetOrCreateRound(message.VotingRound, Choosing)
+	round, err := m.GetOrCreateRound(message.VotingRound)
 
 	if err != nil {
 		return err
@@ -91,6 +145,9 @@ func (m *Manager) OnBitVote(message payload.Message) error {
 	return nil
 }
 
+// OnRequest process the attestation request.
+// The request parsed into an Attestation that is assigned to an attestation round according to the timestamp.
+// The request is sent to verifier server and the verifier's response is validated.
 func (m *Manager) OnRequest(request database.Log) error {
 
 	roundID := timing.RoundIDForTimestamp(request.Timestamp)
@@ -99,7 +156,7 @@ func (m *Manager) OnRequest(request database.Log) error {
 
 	attestation.RoundID = roundID
 
-	data, err := ParseAttestationRequestLog(m.hub, request)
+	data, err := ParseAttestationRequestLog(request)
 
 	if err != nil {
 		return err
@@ -114,7 +171,7 @@ func (m *Manager) OnRequest(request database.Log) error {
 	attestation.Index.BlockNumber = request.BlockNumber
 	attestation.Index.LogIndex = request.LogIndex
 
-	round, err := m.GetOrCreateRound(roundID, Collecting)
+	round, err := m.GetOrCreateRound(roundID)
 
 	if err != nil {
 		return err
@@ -128,13 +185,15 @@ func (m *Manager) OnRequest(request database.Log) error {
 
 		url, key := VerifierServer(attType, source)
 
+		attestation.Status = Processing
+
 		err = ResolveAttestationRequest(&attestation, url, key)
 
 		if err != nil {
 			attestation.Status = ProcessError
 		} else {
 
-			attestation.VerifyResponse()
+			attestation.validateResponse()
 		}
 	}()
 
@@ -142,8 +201,24 @@ func (m *Manager) OnRequest(request database.Log) error {
 
 }
 
-func (m *Manager) OnSigningPolicy() {}
+// OnSigningPolicy parsed SigningPolicyInitialized log and stores it into the signingPolicyStorage.
+func (m *Manager) OnSigningPolicy(initializedPolicy database.Log) error {
 
+	data, err := ParseSigningPolicyInitializedLog(initializedPolicy)
+
+	if err != nil {
+		return err
+	}
+
+	parsedPolicy := policy.NewSigningPolicy(data)
+
+	err = m.signingPolicyStorage.Add(parsedPolicy)
+
+	return err
+
+}
+
+// VerifierServer retrieves url and credentials for the verifier's server for the pair of attType and source.
 func VerifierServer(attType, source []byte) (string, string) {
 	return "url", "key"
 }

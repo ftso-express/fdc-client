@@ -47,7 +47,7 @@ func NewVoterSet(voters []common.Address, weights []uint16) *VoterSet {
 	return &vs
 }
 
-type signingPolicy struct {
+type SigningPolicy struct {
 	rewardEpochId      int64
 	startVotingRoundId uint32
 	threshold          uint16
@@ -59,8 +59,8 @@ type signingPolicy struct {
 	Voters *VoterSet
 }
 
-func newSigningPolicy(r *relayContract.RelaySigningPolicyInitialized) *signingPolicy {
-	return &signingPolicy{
+func NewSigningPolicy(r *relayContract.RelaySigningPolicyInitialized) *SigningPolicy {
+	return &SigningPolicy{
 		rewardEpochId:      r.RewardEpochId.Int64(),
 		startVotingRoundId: r.StartVotingRoundId,
 		threshold:          r.Threshold,
@@ -75,14 +75,14 @@ func newSigningPolicy(r *relayContract.RelaySigningPolicyInitialized) *signingPo
 type SigningPolicyStorage struct {
 
 	// sorted list of signing policies, sorted by rewardEpochId (and also by startVotingRoundId)
-	spList []*signingPolicy
+	spList []*SigningPolicy
 
 	// mutex
 	sync.Mutex
 }
 
-func newSigningPolicyStorage() *SigningPolicyStorage {
+func NewSigningPolicyStorage() *SigningPolicyStorage {
 	return &SigningPolicyStorage{
-		spList: make([]*signingPolicy, 0, 10),
+		spList: make([]*SigningPolicy, 0, 10),
 	}
 }

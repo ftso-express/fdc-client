@@ -31,42 +31,59 @@ type Round struct {
 	merkletree       merkle.Tree
 }
 
-func CreateRound(roundId uint64, voterSet *policy.VoterSet, status RoundStatus) *Round {
+// CreateRound returns a pointer to a new round with roundId and voterSet.
+func CreateRound(roundId uint64, voterSet *policy.VoterSet) *Round {
 
 	r := &Round{}
 
 	r.roundId = roundId
-
-	r.status = status
 
 	r.voterSet = voterSet
 
 	return r
 }
 
-func (r *Round) SortAttestations() {
+// sortAttestations sorts round's attestations according to their IndexLog.
+func (r *Round) sortAttestations() {
 
 	sort.Slice(r.Attestations, func(i, j int) bool {
-		return LessLog(r.Attestations[i].Index, r.Attestations[j].Index)
+		return lessLog(r.Attestations[i].Index, r.Attestations[j].Index)
 	})
 }
 
-func (r *Round) SortBitVotes() {
+// sortBitVotes sorts rounds' bitVotes according to the signingPolicy Index of their providers.
+func (r *Round) sortBitVotes() {
 
 	sort.Slice(r.bitVotes, func(i, j int) bool {
 		return r.bitVotes[i].Index < r.bitVotes[j].Index
 	})
 }
 
-func (r *Round) GetBitVote() (BitVote, error) {
+// BitVote returns the BitVote for the round according to the current status of Attestations.
+func (r *Round) BitVote() (BitVote, error) {
 
-	r.SortAttestations()
+	r.sortAttestations()
 	return BitVoteFromAttestations(r.Attestations)
 }
 
+// BitVoteHex returns the hex string encoded BitVote for the round according to the current status of Attestations.
+func (r *Round) BitVoteHex() (string, error) {
+
+	r.sortAttestations()
+
+	bitVote, err := BitVoteFromAttestations(r.Attestations)
+
+	if err != nil {
+		return "", errors.New("cannot get bitvote")
+	}
+
+	return bitVote.EncodeBitVoteHex(r.roundId), nil
+}
+
+// ComputeConsensusBitVote computes the consensus BitVote according to the collected bitVotes.
 func (r *Round) ComputeConsensusBitVote() error {
 
-	r.SortBitVotes()
+	r.sortBitVotes()
 
 	consensus, err := ConsensusBitVote(r.roundId, r.bitVotes, r.voterSet.TotalWeight, r.Attestations)
 
@@ -79,21 +96,6 @@ func (r *Round) ComputeConsensusBitVote() error {
 	return nil
 }
 
-func (r *Round) GetBitVoteHex() (string, error) {
-
-	r.SortAttestations()
-
-	bitVote, err := BitVoteFromAttestations(r.Attestations)
-
-	if err != nil {
-		return "", errors.New("cannot get bitvote")
-	}
-
-	return bitVote.EncodeBitVoteHex(r.roundId), nil
-}
-
-func (r *Round) GetMerkleRoot() {}
-
 func (r *Round) GetConsensusBitVote() BitVote {
 
 	return r.ConsensusBitVote
@@ -101,7 +103,7 @@ func (r *Round) GetConsensusBitVote() BitVote {
 
 func (r *Round) SetConsensusStatus() error {
 
-	r.SortAttestations()
+	r.sortAttestations()
 
 	// handle no bitVote or chosen request that is not registered
 
@@ -115,7 +117,7 @@ func (r *Round) SetConsensusStatus() error {
 
 func (r *Round) GetMerkleTree() (merkle.Tree, error) {
 
-	r.SortAttestations()
+	r.sortAttestations()
 
 	hashes := []common.Hash{}
 

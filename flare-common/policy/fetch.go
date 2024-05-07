@@ -16,7 +16,7 @@ const (
 	ListenerInterval   time.Duration = 2 * time.Second
 )
 
-type signingPolicyListenerResponse struct {
+type SigningPolicyListenerResponse struct {
 	policyData *relay.RelaySigningPolicyInitialized
 	timestamp  int64
 }
@@ -30,25 +30,25 @@ type relayContractClient struct {
 	topic0PMR string // for ProtocolMessageRelayed event
 }
 
-func (r *relayContractClient) FetchSigningPolicies(db *gorm.DB, from, to int64) ([]signingPolicyListenerResponse, error) {
+func (r *relayContractClient) FetchSigningPolicies(db *gorm.DB, from, to int64) ([]SigningPolicyListenerResponse, error) {
 	logs, err := database.FetchLogsByAddressAndTopic0Timestamp(db, r.address.String(), r.topic0SPI, from, to)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make([]signingPolicyListenerResponse, 0, len(logs))
+	result := make([]SigningPolicyListenerResponse, 0, len(logs))
 	for _, log := range logs {
 		policyData, err := events.ParseSigningPolicyInitializedEvent(r.relay, log)
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, signingPolicyListenerResponse{policyData, int64(log.Timestamp)})
+		result = append(result, SigningPolicyListenerResponse{policyData, int64(log.Timestamp)})
 	}
 	return result, nil
 }
 
-func (r *relayContractClient) SigningPolicyInitializedListener(db *gorm.DB, startTime time.Time) <-chan signingPolicyListenerResponse {
-	out := make(chan signingPolicyListenerResponse, listenerBufferSize)
+func (r *relayContractClient) SigningPolicyInitializedListener(db *gorm.DB, startTime time.Time) <-chan SigningPolicyListenerResponse {
+	out := make(chan SigningPolicyListenerResponse, listenerBufferSize)
 	go func() {
 		ticker := time.NewTicker(ListenerInterval)
 		eventRangeStart := startTime.Unix()
@@ -64,7 +64,7 @@ func (r *relayContractClient) SigningPolicyInitializedListener(db *gorm.DB, star
 				if err != nil {
 					break
 				}
-				out <- signingPolicyListenerResponse{policyData, int64(log.Timestamp)}
+				out <- SigningPolicyListenerResponse{policyData, int64(log.Timestamp)}
 				// continue with timestamps > log.Timestamp,
 				// there should be only one such log per timestamp
 				eventRangeStart = int64(log.Timestamp)

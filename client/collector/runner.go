@@ -15,6 +15,7 @@ const (
 	bitVoteOffChainTriggerSeconds = 15
 	requestsBufferSize            = 10
 	requestListenerInterval       = 2 * time.Second
+	signingPolicyBufferSize       = 3
 )
 
 type Runner struct {
@@ -36,6 +37,8 @@ func (r *Runner) Run() {
 	r.roundManager.BitVotes = BitVoteInitializedListener(r.DB, r.FdcContractAddress, r.submit1Sig, r.Protocol, bitVoteBufferSize, chooseTrigger)
 
 	r.roundManager.Requests = RequestsInitializedListener(r.DB, r.FdcContractAddress, r.RequestEventSig, requestsBufferSize, requestListenerInterval)
+
+	r.roundManager.SigningPolicies = SigningPolicyInitializedListener(r.DB, r.RelayContractAddress, r.SigningPolicyEventSig, 3)
 
 	state, _ := database.FetchState(r.DB)
 	nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp := timing.NextChoosePhaseEnd(state.BlockTimestamp)
@@ -142,4 +145,39 @@ func RequestsInitializedListener(db *gorm.DB, fdcContractAddress, requestEventSi
 	}()
 
 	return out
+}
+
+func SigningPolicyInitializedListener(db *gorm.DB, relayContractAddress, signingPolicyInitializedEventSig string, bufferSize int) <-chan []database.Log {
+	out := make(chan []database.Log, bufferSize)
+
+	go func() {
+
+		latestQuery := time.Now()
+		twoWeeksBefore := latestQuery.Add(-2 * 7 * 24 * time.Hour)
+
+		logs, _ := database.FetchLogsByAddressAndTopic0Timestamp(db, relayContractAddress, signingPolicyInitializedEventSig, twoWeeksBefore.Unix(), latestQuery.Unix())
+
+		out <- logs
+
+		ticker := time.NewTicker(80 * time.Second) //TODO: optimize to reduce number of queries
+
+		for {
+			<-ticker.C
+
+			now := time.Now()
+
+			logs, _ := database.FetchLogsByAddressAndTopic0Timestamp(db, relayContractAddress, signingPolicyInitializedEventSig, latestQuery.Unix(), now.Unix())
+
+			latestQuery = now
+
+			if len(logs) > 0 {
+				out <- logs
+			}
+
+		}
+
+	}()
+
+	return out
+
 }

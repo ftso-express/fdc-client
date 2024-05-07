@@ -8,7 +8,7 @@ import (
 
 // Does not lock the structure, should be called from a function that does lock.
 // We assume that the list is sorted by rewardEpochId and also by startVotingRoundId.
-func (s *SigningPolicyStorage) findByVotingRoundId(votingRoundId uint32) *signingPolicy {
+func (s *SigningPolicyStorage) findByVotingRoundId(votingRoundId uint32) *SigningPolicy {
 	i, found := sort.Find(len(s.spList), func(i int) int {
 		return cmp.Compare(votingRoundId, s.spList[i].startVotingRoundId)
 	})
@@ -21,7 +21,7 @@ func (s *SigningPolicyStorage) findByVotingRoundId(votingRoundId uint32) *signin
 	return s.spList[i-1]
 }
 
-func (s *SigningPolicyStorage) Add(sp *signingPolicy) error {
+func (s *SigningPolicyStorage) Add(sp *SigningPolicy) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -43,7 +43,7 @@ func (s *SigningPolicyStorage) Add(sp *signingPolicy) error {
 
 // Return the signing policy for the voting round, or nil if not found.
 // Also returns true if the policy is the last one or false otherwise.
-func (s *SigningPolicyStorage) GetForVotingRound(votingRoundId uint32) (*signingPolicy, bool) {
+func (s *SigningPolicyStorage) GetForVotingRound(votingRoundId uint32) (*SigningPolicy, bool) {
 	s.Lock()
 	defer s.Unlock()
 

@@ -2,6 +2,7 @@ package attestation
 
 import (
 	"errors"
+	"flare-common/contacts/relay"
 	"flare-common/database"
 	"flare-common/events"
 	"local/fdc/client/verification"
@@ -30,7 +31,8 @@ type IndexLog struct {
 	LogIndex    uint64
 }
 
-func LessLog(a, b IndexLog) bool {
+// lessLog returns true if a has lower blockNumber as b or the same blockNumber and lower LogIndex. Otherwise, it returns false.
+func lessLog(a, b IndexLog) bool {
 	if a.BlockNumber < b.BlockNumber {
 		return true
 	}
@@ -53,7 +55,8 @@ type Attestation struct {
 	Hash      common.Hash
 }
 
-func (a *Attestation) VerifyResponse() error {
+// validateResponse check the MIC of the response against the MIC of the request. If the check is successful, attestation status is set to success and attestation hash is computed and set.
+func (a *Attestation) validateResponse() error {
 
 	micReq, err := a.Request.Mic()
 
@@ -89,10 +92,20 @@ func (a *Attestation) VerifyResponse() error {
 	return nil
 }
 
-func ParseAttestationRequestLog(hub *hub.Hub, dbLog database.Log) (*hub.HubAttestationRequest, error) {
+// ParseAttestationRequestLog tries to parse AttestationRequest log as stored in the database.
+func ParseAttestationRequestLog(dbLog database.Log) (*hub.HubAttestationRequest, error) {
 	contractLog, err := events.ConvertDatabaseLogToChainLog(dbLog)
 	if err != nil {
 		return nil, err
 	}
-	return hub.HubFilterer.ParseAttestationRequest(*contractLog)
+	return hubFilterer.ParseAttestationRequest(*contractLog)
+}
+
+// ParseSigningPolicyInitializedLog tries to parse SigningPolicyInitialized log as stored in the database.
+func ParseSigningPolicyInitializedLog(dbLog database.Log) (*relay.RelaySigningPolicyInitialized, error) {
+	contractLog, err := events.ConvertDatabaseLogToChainLog(dbLog)
+	if err != nil {
+		return nil, err
+	}
+	return relayFilterer.ParseSigningPolicyInitialized(*contractLog)
 }
