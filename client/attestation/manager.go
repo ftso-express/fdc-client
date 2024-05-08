@@ -37,6 +37,10 @@ type Manager struct {
 	signingPolicyStorage policy.SigningPolicyStorage
 }
 
+func NewManager() *Manager {
+	return &Manager{}
+}
+
 func (m *Manager) Run() {
 
 	for {

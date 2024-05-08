@@ -30,6 +30,15 @@ type Runner struct {
 	roundManager          *attestation.Manager
 }
 
+func New() *Runner {
+
+	runner := Runner{}
+
+	runner.roundManager = attestation.NewManager()
+
+	return &runner
+}
+
 func (r *Runner) Run() {
 
 	chooseTrigger := make(chan uint64)
