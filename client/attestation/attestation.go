@@ -79,7 +79,7 @@ func (a *Attestation) validateResponse() error {
 
 	a.Response.AddRound(a.RoundID)
 
-	a.Hash, err = a.Response.ComputeHash()
+	a.Hash, err = a.Response.Hash()
 
 	if err != nil {
 		a.Status = ProcessError

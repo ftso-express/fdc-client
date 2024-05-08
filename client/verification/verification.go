@@ -13,6 +13,7 @@ type Request []byte
 
 type Response []byte
 
+// AttestationType returns the attestation type of the request (the first 32 bytes).
 func (r Request) AttestationType() ([]byte, error) {
 
 	if len(r) < 96 {
@@ -22,6 +23,7 @@ func (r Request) AttestationType() ([]byte, error) {
 	return r[:32], nil
 }
 
+// Source returns the source of the request (the second 32 bytes).
 func (r Request) Source() ([]byte, error) {
 
 	if len(r) < 96 {
@@ -31,6 +33,7 @@ func (r Request) Source() ([]byte, error) {
 	return r[32:64], nil
 }
 
+// Mic returns Message Integrity code of the request (the third 32 bytes).
 func (r Request) Mic() (common.Hash, error) {
 
 	if len(r) < 96 {
@@ -44,6 +47,8 @@ func (r Request) Mic() (common.Hash, error) {
 	return mic, nil
 }
 
+// ComputeMic computes Mic from the response.
+// Mic is the hash of the response with roundID set to 0, salted with the string "Flare".
 func (r Response) ComputeMic() (common.Hash, error) {
 	if len(r) < 128 {
 		return common.Hash{}, errors.New("response is to short")
@@ -65,6 +70,7 @@ func (r Response) ComputeMic() (common.Hash, error) {
 
 }
 
+// AddRound sets the roundId in the response (third 32 bytes).
 func (r Response) AddRound(roundId uint64) ([]byte, error) {
 	if len(r) < 128 {
 		return []byte{}, errors.New("response is to short")
@@ -83,7 +89,8 @@ func (r Response) AddRound(roundId uint64) ([]byte, error) {
 
 }
 
-func (r Response) ComputeHash() (common.Hash, error) {
+// Hash computes hash of the response.
+func (r Response) Hash() (common.Hash, error) {
 	if len(r) < 128 {
 		return common.Hash{}, errors.New("response is to short")
 	}

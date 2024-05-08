@@ -115,6 +115,9 @@ func (r *Round) SetConsensusStatus() error {
 
 }
 
+// GetMerkleTree computes Merkle tree from sorted hashes of attestations chosen by the consensus bitVote.
+// The computed tree is stored in the round.
+// If any of the hash of the chosen attestations is missing, the tree is not computed.
 func (r *Round) GetMerkleTree() (merkle.Tree, error) {
 
 	r.sortAttestations()

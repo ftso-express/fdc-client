@@ -31,11 +31,9 @@ func init() {
 
 type Manager struct {
 	rounds               map[uint64]*Round //cyclically cached rounds with buffer roundBuffer.
-	Timestamps           chan uint64
 	Requests             <-chan []database.Log
 	BitVotes             <-chan payload.Round
 	SigningPolicies      <-chan []database.Log
-	RoundInCollect       uint64
 	signingPolicyStorage policy.SigningPolicyStorage
 }
 
