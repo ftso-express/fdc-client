@@ -7,7 +7,8 @@ const (
 	chooseTime  = 30 * time.Second
 	commitTime  = 20 * time.Second
 	offset      = 30 * time.Second
-	t0          = 1704250616
+	// TODO: Luka - get this from the config
+	t0 = 1658429955
 )
 
 func RoundIDForTimestamp(t uint64) uint64 {

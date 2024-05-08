@@ -8,6 +8,7 @@ import (
 	"flare-common/policy"
 	"local/fdc/client/timing"
 	hub "local/fdc/contracts/FDC"
+	"log"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -34,11 +35,13 @@ type Manager struct {
 	Requests             <-chan []database.Log
 	BitVotes             <-chan payload.Round
 	SigningPolicies      <-chan []database.Log
-	signingPolicyStorage policy.SigningPolicyStorage
+	signingPolicyStorage *policy.SigningPolicyStorage
 }
 
 func NewManager() *Manager {
-	return &Manager{}
+	rounds := make(map[uint64]*Round)
+	signingPolicyStorage := policy.NewSigningPolicyStorage()
+	return &Manager{rounds: rounds, signingPolicyStorage: signingPolicyStorage}
 }
 
 func (m *Manager) Run() {
@@ -46,36 +49,55 @@ func (m *Manager) Run() {
 	for {
 
 		select {
-		case round := <-m.BitVotes:
-
-			for i := range round.Messages {
-
-				m.OnBitVote(round.Messages[i])
-			}
-
-			r, ok := m.Round(round.ID)
-
-			if !ok {
-				break
-			}
-			r.ComputeConsensusBitVote()
-
-		case requests := <-m.Requests:
-
-			for i := range requests {
-
-				m.OnRequest(requests[i])
-
-			}
-
 		case signingPolicies := <-m.SigningPolicies:
+
+			log.Println("Got signign policies")
 
 			for i := range signingPolicies {
 
 				m.OnSigningPolicy(signingPolicies[i])
 
 			}
+
+		default:
+			{
+				select {
+				case signingPolicies := <-m.SigningPolicies:
+
+					log.Println("Got signign policies")
+
+					for i := range signingPolicies {
+
+						m.OnSigningPolicy(signingPolicies[i])
+
+					}
+				case round := <-m.BitVotes:
+
+					for i := range round.Messages {
+
+						m.OnBitVote(round.Messages[i])
+					}
+
+					r, ok := m.Round(round.ID)
+
+					if !ok {
+						break
+					}
+					r.ComputeConsensusBitVote()
+
+				case requests := <-m.Requests:
+
+					for i := range requests {
+
+						log.Println("Processing request: ", i)
+
+						m.OnRequest(requests[i])
+
+					}
+				}
+			}
 		}
+
 	}
 }
 
@@ -91,6 +113,7 @@ func (m *Manager) GetOrCreateRound(roundId uint64) (*Round, error) {
 	policy, _ := m.signingPolicyStorage.GetForVotingRound(uint32(roundId))
 
 	if policy == nil {
+		log.Println("No signing policy")
 		return nil, errors.New("no signing policy")
 	}
 	round = CreateRound(roundId, policy.Voters)
@@ -152,6 +175,9 @@ func (m *Manager) OnBitVote(message payload.Message) error {
 // The request is sent to verifier server and the verifier's response is validated.
 func (m *Manager) OnRequest(request database.Log) error {
 
+	log.Println("Processing request")
+	// log.Println(request)
+
 	roundID := timing.RoundIDForTimestamp(request.Timestamp)
 
 	attestation := Attestation{}
@@ -161,6 +187,7 @@ func (m *Manager) OnRequest(request database.Log) error {
 	data, err := ParseAttestationRequestLog(request)
 
 	if err != nil {
+		log.Println("Error parsing attestation request")
 		return err
 	}
 
@@ -176,6 +203,7 @@ func (m *Manager) OnRequest(request database.Log) error {
 	round, err := m.GetOrCreateRound(roundID)
 
 	if err != nil {
+		log.Println("Error getting or creating round")
 		return err
 	}
 
@@ -192,10 +220,12 @@ func (m *Manager) OnRequest(request database.Log) error {
 		err = ResolveAttestationRequest(&attestation, url, key)
 
 		if err != nil {
+			log.Println("Error resolving attestation request")
 			attestation.Status = ProcessError
 		} else {
-
+			log.Println("Response received, validating...")
 			attestation.validateResponse()
+			log.Println(attestation.Status, attestation.RoundID)
 		}
 	}()
 
@@ -205,10 +235,12 @@ func (m *Manager) OnRequest(request database.Log) error {
 
 // OnSigningPolicy parsed SigningPolicyInitialized log and stores it into the signingPolicyStorage.
 func (m *Manager) OnSigningPolicy(initializedPolicy database.Log) error {
+	log.Println("Processing signing policy")
 
 	data, err := ParseSigningPolicyInitializedLog(initializedPolicy)
 
 	if err != nil {
+		log.Println("Error parsing signing policy")
 		return err
 	}
 
@@ -222,5 +254,7 @@ func (m *Manager) OnSigningPolicy(initializedPolicy database.Log) error {
 
 // VerifierServer retrieves url and credentials for the verifier's server for the pair of attType and source.
 func VerifierServer(attType, source []byte) (string, string) {
-	return "url", "key"
+	url := "http://localhost:4500/eth/EVMTransaction/verifyFDC"
+	key := "12345"
+	return url, key
 }

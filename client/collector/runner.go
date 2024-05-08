@@ -5,6 +5,7 @@ import (
 	"flare-common/payload"
 	"local/fdc/client/attestation"
 	"local/fdc/client/timing"
+	"log"
 	"time"
 
 	"gorm.io/gorm"
@@ -27,14 +28,46 @@ type Runner struct {
 	SigningPolicyEventSig string
 	DB                    *gorm.DB
 	submit1Sig            string
-	roundManager          *attestation.Manager
+	RoundManager          *attestation.Manager
 }
 
 func New() *Runner {
+	// TODO: Luka - get these from config
+	// CONSTANTS
+	requestEventSignature := "251377668af6553101c9bb094ba89c0c536783e005e203625e6cd57345918cc9"
+	signingPolicySignature := "91d0280e969157fc6c5b8f952f237b03d934b18534dafcac839075bbc33522f8"
+	submissionAddress := "2cA6571Daa15ce734Bbd0Bf27D5C9D16787fc33f"
+	fdcContractAddress := "Cf6798810Bc8C0B803121405Fee2A5a9cc0CA5E5"
+	relayAddress := "32D46A1260BB2D8C9d5Ab1C9bBd7FF7D7CfaabCC"
+	submit1FuncSig := "6c532fae"
 
-	runner := Runner{}
+	roundManager := attestation.NewManager()
 
-	runner.roundManager = attestation.NewManager()
+	config := database.DBConfig{
+		Host:       "localhost",
+		Port:       3306,
+		Database:   "flare_ftso_indexer",
+		Username:   "root",
+		Password:   "root",
+		LogQueries: false,
+	}
+	db, err := database.Connect(&config)
+	if err != nil {
+		log.Println("Could not connect to database")
+		panic(err)
+	}
+
+	runner := Runner{
+		Protocol:              200,
+		SubmitContractAddress: submissionAddress,
+		RequestEventSig:       requestEventSignature,
+		FdcContractAddress:    fdcContractAddress,
+		RelayContractAddress:  relayAddress,
+		SigningPolicyEventSig: signingPolicySignature,
+		DB:                    db,
+		submit1Sig:            submit1FuncSig,
+		RoundManager:          roundManager,
+	}
 
 	return &runner
 }
@@ -43,14 +76,16 @@ func (r *Runner) Run() {
 
 	chooseTrigger := make(chan uint64)
 
-	r.roundManager.BitVotes = BitVoteInitializedListener(r.DB, r.FdcContractAddress, r.submit1Sig, r.Protocol, bitVoteBufferSize, chooseTrigger)
+	r.RoundManager.SigningPolicies = SigningPolicyInitializedListener(r.DB, r.RelayContractAddress, r.SigningPolicyEventSig, 3)
 
-	r.roundManager.Requests = RequestsInitializedListener(r.DB, r.FdcContractAddress, r.RequestEventSig, requestsBufferSize, requestListenerInterval)
+	r.RoundManager.BitVotes = BitVoteInitializedListener(r.DB, r.FdcContractAddress, r.submit1Sig, r.Protocol, bitVoteBufferSize, chooseTrigger)
 
-	r.roundManager.SigningPolicies = SigningPolicyInitializedListener(r.DB, r.RelayContractAddress, r.SigningPolicyEventSig, 3)
+	r.RoundManager.Requests = RequestsInitializedListener(r.DB, r.FdcContractAddress, r.RequestEventSig, requestsBufferSize, requestListenerInterval)
 
 	state, _ := database.FetchState(r.DB)
 	nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp := timing.NextChoosePhaseEnd(state.BlockTimestamp)
+
+	go r.RoundManager.Run()
 
 	for {
 		state, _ := database.FetchState(r.DB)
@@ -145,7 +180,8 @@ func RequestsInitializedListener(db *gorm.DB, fdcContractAddress, requestEventSi
 			lastQueriedBlock = state.Index
 
 			if len(logs) > 0 {
-
+				log.Println("Added request to channel")
+				log.Println(len(logs))
 				out <- logs
 			}
 
@@ -166,6 +202,8 @@ func SigningPolicyInitializedListener(db *gorm.DB, relayContractAddress, signing
 
 		logs, _ := database.FetchLogsByAddressAndTopic0Timestamp(db, relayContractAddress, signingPolicyInitializedEventSig, twoWeeksBefore.Unix(), latestQuery.Unix())
 
+		log.Println("Logs length ", len(logs))
+
 		out <- logs
 
 		ticker := time.NewTicker(80 * time.Second) //TODO: optimize to reduce number of queries
@@ -180,6 +218,7 @@ func SigningPolicyInitializedListener(db *gorm.DB, relayContractAddress, signing
 			latestQuery = now
 
 			if len(logs) > 0 {
+				log.Println("Added signing policy to channel")
 				out <- logs
 			}
 

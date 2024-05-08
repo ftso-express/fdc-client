@@ -1,8 +1,8 @@
 package server
 
 import (
-	"context"
 	"flare-common/restServer"
+	"local/fdc/client/attestation"
 	"net/http"
 )
 
@@ -12,18 +12,19 @@ type merkleRootStorageObject struct {
 }
 
 type FDCProtocolProviderController struct {
+	manager   *attestation.Manager
 	someValue string
 	// Mapper from submit address to voting round ID to merkle root storage object
 	// Submit address -> Voting round ID -> Merkle root storage object
 	rootStorage map[string]map[uint64]merkleRootStorageObject
 }
 
-func newFDCProtocolProviderController(ctx context.Context) *FDCProtocolProviderController {
-	return &FDCProtocolProviderController{someValue: "initial value"}
+func newFDCProtocolProviderController(ctx AttestationServerContext) *FDCProtocolProviderController {
+	return &FDCProtocolProviderController{manager: ctx.Manager, someValue: "initial value"}
 }
 
 // Registration of routes for the FDC protocol provider
-func RegisterFDCProviderRoutes(router restServer.Router, ctx context.Context) {
+func RegisterFDCProviderRoutes(router restServer.Router, ctx AttestationServerContext) {
 	// Prepare service controller
 
 	ctrl := newFDCProtocolProviderController(ctx)

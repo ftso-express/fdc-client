@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/hex"
+	"errors"
 	"flare-common/restServer"
 	"fmt"
 	"math/rand"
@@ -32,10 +33,15 @@ func (controller *FDCProtocolProviderController) saveRoot(address string, round 
 }
 
 func (controller *FDCProtocolProviderController) submit1Service(round uint64, address string) (string, error) {
-	fmt.Println("Submit1Handler")
-	fmt.Printf("round: %s\n", fmt.Sprint(round))
-	fmt.Printf("address: %s\n", address)
-	return fmt.Sprint(round) + address, nil
+	votingRound, exists := controller.manager.Round(round)
+	if !exists {
+		return "", errors.New("round does not exist")
+	}
+	bitVoteString, err := votingRound.BitVoteHex()
+	if err != nil {
+		return "", err
+	}
+	return bitVoteString, nil
 }
 
 func (controller *FDCProtocolProviderController) submit2Service(round uint64, address string) (string, error) {

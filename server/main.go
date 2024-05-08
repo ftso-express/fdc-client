@@ -4,13 +4,19 @@ import (
 	"context"
 	"flare-common/restServer"
 	"fmt"
+	"local/fdc/client/attestation"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 )
 
-func RunProviderServer(ctx context.Context) {
+type AttestationServerContext struct {
+	Manager *attestation.Manager
+	context.Context
+}
+
+func RunProviderServer(ctx AttestationServerContext) {
 
 	fmt.Println("In development")
 
