@@ -36,14 +36,18 @@ type Manager struct {
 	BitVotes             <-chan payload.Round
 	SigningPolicies      <-chan []database.Log
 	signingPolicyStorage *policy.SigningPolicyStorage
+	verifierServers      map[[32]byte]verifierCredentials // the keys are crypto.Keccak256Hash(AttestationTypeAndSource)
 }
 
+// NewManager initializes attestation round manager
 func NewManager() *Manager {
 	rounds := make(map[uint64]*Round)
 	signingPolicyStorage := policy.NewSigningPolicyStorage()
 	return &Manager{rounds: rounds, signingPolicyStorage: signingPolicyStorage}
 }
 
+// Run starts processing data received through the manager's channels.
+// SigningPolicies channel is prioritized.
 func (m *Manager) Run() {
 
 	for {
@@ -51,7 +55,7 @@ func (m *Manager) Run() {
 		select {
 		case signingPolicies := <-m.SigningPolicies:
 
-			log.Println("Got signign policies")
+			log.Println("New signing policy received.")
 
 			for i := range signingPolicies {
 
@@ -64,7 +68,7 @@ func (m *Manager) Run() {
 				select {
 				case signingPolicies := <-m.SigningPolicies:
 
-					log.Println("Got signign policies")
+					log.Println("New signing policy received.")
 
 					for i := range signingPolicies {
 
@@ -72,6 +76,8 @@ func (m *Manager) Run() {
 
 					}
 				case round := <-m.BitVotes:
+
+					log.Printf("Received %d bitVotes for round %d.", len(round.Messages), round.ID)
 
 					for i := range round.Messages {
 
@@ -83,13 +89,19 @@ func (m *Manager) Run() {
 					if !ok {
 						break
 					}
-					r.ComputeConsensusBitVote()
+					err := r.ComputeConsensusBitVote()
+
+					if err != nil {
+						log.Printf("Failed bitVote for round %d", round.ID)
+					} else {
+						log.Printf("Consensus bitVote for round %d computed.", round.ID)
+					}
 
 				case requests := <-m.Requests:
 
-					for i := range requests {
+					log.Printf("Received %d requests.", len(requests))
 
-						log.Println("Processing request: ", i)
+					for i := range requests {
 
 						m.OnRequest(requests[i])
 
@@ -113,10 +125,12 @@ func (m *Manager) GetOrCreateRound(roundId uint64) (*Round, error) {
 	policy, _ := m.signingPolicyStorage.GetForVotingRound(uint32(roundId))
 
 	if policy == nil {
-		log.Println("No signing policy")
+		log.Printf("No signing policy for round %d.", roundId)
 		return nil, errors.New("no signing policy")
 	}
+
 	round = CreateRound(roundId, policy.Voters)
+	log.Printf("Round %d created.", roundId)
 
 	m.Store(round)
 	return round, nil
@@ -209,24 +223,40 @@ func (m *Manager) OnRequest(request database.Log) error {
 
 	round.Attestations = append(round.Attestations, &attestation)
 
-	go func() {
-		source, _ := attestation.Request.Source()
-		attType, _ := attestation.Request.AttestationType()
+	go func() error {
+		attTypeAndSource, err := attestation.Request.AttestationTypeAndSource()
 
-		url, key := VerifierServer(attType, source)
+		if err != nil {
+
+			attestation.Status = ProcessError
+			return err
+
+		}
+
+		verifier, ok := m.VerifierServer(attTypeAndSource)
+
+		if !ok {
+			attestation.Status = UnsupportedPair
+			return errors.New("unsupported pair")
+
+		}
 
 		attestation.Status = Processing
 
-		err = ResolveAttestationRequest(&attestation, url, key)
+		err = ResolveAttestationRequest(&attestation, verifier)
 
 		if err != nil {
 			log.Println("Error resolving attestation request")
 			attestation.Status = ProcessError
+
+			return err
 		} else {
 			log.Println("Response received, validating...")
-			attestation.validateResponse()
+			err := attestation.validateResponse()
 			log.Println(attestation.Status, attestation.RoundID)
+			return err
 		}
+
 	}()
 
 	return nil
@@ -250,11 +280,4 @@ func (m *Manager) OnSigningPolicy(initializedPolicy database.Log) error {
 
 	return err
 
-}
-
-// VerifierServer retrieves url and credentials for the verifier's server for the pair of attType and source.
-func VerifierServer(attType, source []byte) (string, string) {
-	url := "http://localhost:4500/eth/EVMTransaction/verifyFDC"
-	key := "12345"
-	return url, key
 }

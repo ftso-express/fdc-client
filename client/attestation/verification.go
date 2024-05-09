@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // Function used to resolve attestation requests
@@ -20,7 +22,29 @@ type AbiEncodedResponseBody struct {
 	AbiEncodedResponse string `json:"abiEncodedResponse"`
 }
 
-func ResolveAttestationRequest(att *Attestation, url string, apiKey string) error {
+type verifierCredentials struct {
+	url    string
+	apiKey string
+}
+
+// VerifierServer retrieves url and credentials for the verifier's server for the pair of attType and source.
+func (m *Manager) VerifierServer(attTypeAndSource []byte) (verifierCredentials, bool) {
+	if true {
+		url := "http://localhost:4500/eth/EVMTransaction/verifyFDC"
+		key := "12345"
+		return verifierCredentials{url, key}, true
+	} else {
+
+		storedHash := crypto.Keccak256Hash(attTypeAndSource)
+
+		cred, ok := m.verifierServers[storedHash]
+
+		return cred, ok
+
+	}
+}
+
+func ResolveAttestationRequest(att *Attestation, verifierCred verifierCredentials) error {
 	client := &http.Client{}
 	requestBytes := att.Request
 	encoded := hex.EncodeToString(requestBytes)
@@ -32,14 +56,14 @@ func ResolveAttestationRequest(att *Attestation, url string, apiKey string) erro
 		return err
 	}
 
-	request, err := http.NewRequest("POST", url, bytes.NewBuffer(encodedBody))
+	request, err := http.NewRequest("POST", verifierCred.url, bytes.NewBuffer(encodedBody))
 	if err != nil {
 		fmt.Println("Error creating request")
 		return err
 	}
 
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("X-API-KEY", apiKey)
+	request.Header.Set("X-API-KEY", verifierCred.apiKey)
 	resp, err := client.Do(request)
 
 	if err != nil {

@@ -33,6 +33,16 @@ func (r Request) Source() ([]byte, error) {
 	return r[32:64], nil
 }
 
+// AttestationTypeAndSource returns byte encoded AttestationType and Source (the first 64 bytes).
+func (r Request) AttestationTypeAndSource() ([]byte, error) {
+
+	if len(r) < 96 {
+		return []byte{}, errors.New("request is to short")
+	}
+
+	return r[:64], nil
+}
+
 // Mic returns Message Integrity code of the request (the third 32 bytes).
 func (r Request) Mic() (common.Hash, error) {
 
@@ -48,7 +58,7 @@ func (r Request) Mic() (common.Hash, error) {
 }
 
 // ComputeMic computes Mic from the response.
-// Mic is the hash of the response with roundID set to 0, salted with the string "Flare".
+// Mic is the hash of the response with roundID set to 0.
 func (r Response) ComputeMic() (common.Hash, error) {
 	if len(r) < 128 {
 		return common.Hash{}, errors.New("response is to short")

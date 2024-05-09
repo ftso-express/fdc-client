@@ -93,6 +93,8 @@ func (r *Round) ComputeConsensusBitVote() error {
 	}
 	r.ConsensusBitVote = consensus
 
+	SetBitVoteStatus(r.Attestations, consensus)
+
 	return nil
 }
 

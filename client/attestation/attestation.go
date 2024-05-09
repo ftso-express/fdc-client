@@ -75,6 +75,7 @@ func (a *Attestation) validateResponse() error {
 
 	if micReq != micRes {
 		a.Status = WrongMIC
+		return nil
 	}
 
 	a.Response.AddRound(a.RoundID)

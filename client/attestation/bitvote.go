@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flare-common/payload"
 	"local/fdc/client/shuffle"
+	"log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -91,6 +92,8 @@ func (bv BitVote) fees(attestations []*Attestation) (*big.Int, error) {
 // until the added weight does not exceed 50% of the total weight.
 // Then it adds the weight of the rest of WeightedBitVote that support the calculated BitVote.
 // Returns the BitVote that is the result of the bitwise and, and supportingWeight.
+//
+// We assume that the sum of the weights of the WeightedBitVotes is more than 50% of th totalWeight.
 func bitVoteForSet(weightedBitVotes []*WeightedBitVote, totalWeight uint16, shuffled []uint64) (BitVote, uint16) {
 
 	bitVote := (weightedBitVotes)[shuffled[0]].BitVote
@@ -141,9 +144,23 @@ func value(bitVote BitVote, supportingWeight uint16, attestations []*Attestation
 // ConsensusBitVote calculates the ConsensusBitVote for roundId given the weightedBitVotes.
 func ConsensusBitVote(roundId uint64, weightedBitVotes []*WeightedBitVote, totalWeight uint16, attestations []*Attestation) (BitVote, error) {
 
+	noOfVoters := len(weightedBitVotes)
+
+	weightVoted := uint16(0)
+	for j := range weightedBitVotes {
+		weightVoted += weightedBitVotes[j].Weight
+	}
+
+	if (totalWeight+1)/2 > weightVoted {
+
+		percentage := (weightVoted * 100) / totalWeight
+		log.Printf("Only %d%% voted in round %d.", roundId, percentage)
+		return BitVote{}, errors.New("not enough weight bitVoted to get a consensus")
+	}
+
 	var bitVote BitVote
 	maxValue := big.NewInt(0)
-	noOfVoters := len(weightedBitVotes)
+
 	index := int64(0)
 
 	ch := make(chan bitVoteWithValue)
@@ -163,6 +180,8 @@ func ConsensusBitVote(roundId uint64, weightedBitVotes []*WeightedBitVote, total
 		result := <-ch
 
 		if result.err != nil {
+			log.Printf("Cannot compute consensus bitVote round %d because of a missing attestation.", roundId)
+
 			return BitVote{}, errors.New("missing attestations. cannot compute consensus bitvote")
 		}
 
