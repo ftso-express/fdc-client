@@ -88,47 +88,38 @@ func (r Response) ComputeMic() (common.Hash, error) {
 		return common.Hash{}, err
 	}
 
-	if static {
+	// roundId is encoded in the third 32bytes slot
+	roundIdStartByte := 64
+	roundIdEndByte := 96
+	commonFieldsLength := 128
 
-		if len(r) < 128 {
-			return common.Hash{}, errors.New("response is to short")
-		}
-
-		d := make([]byte, 32)
-
-		slices.Replace(d, 0, 32, r[64:96]...)
-
-		zero32bytes := make([]byte, 32)
-
-		slices.Replace(r, 64, 96, zero32bytes...)
-
-		mic := crypto.Keccak256Hash(r)
-
-		defer slices.Replace(r, 64, 96, d...)
-
-		return mic, nil
-
-	} else {
-
-		if len(r) < 160 {
-			return common.Hash{}, errors.New("response is to short")
-		}
-
-		d := make([]byte, 32)
-
-		slices.Replace(d, 0, 32, r[96:128]...)
-
-		zero32bytes := make([]byte, 32)
-
-		slices.Replace(r, 96, 128, zero32bytes...)
-
-		mic := crypto.Keccak256Hash(r)
-
-		defer slices.Replace(r, 96, 128, d...)
-
-		return mic, nil
-
+	// if Response is encoded dynamic struct the first 32 bytes are bytes32(32)
+	if !static {
+		roundIdStartByte += 32
+		roundIdEndByte += 32
+		commonFieldsLength += 32
 	}
+
+	if len(r) < commonFieldsLength {
+		return common.Hash{}, errors.New("response is to short")
+	}
+
+	d := make([]byte, 32)
+
+	// store roundId
+	slices.Replace(d, 0, 32, r[64:96]...)
+
+	// restore roundId at the end
+	defer slices.Replace(r, roundIdStartByte, roundIdEndByte, d...)
+
+	zero32bytes := make([]byte, 32)
+
+	// set roundId to zero
+	slices.Replace(r, roundIdStartByte, roundIdEndByte, zero32bytes...)
+
+	mic := crypto.Keccak256Hash(r)
+
+	return mic, nil
 
 }
 
@@ -141,33 +132,31 @@ func (r Response) AddRound(roundId uint64) (Response, error) {
 		return Response{}, err
 	}
 
-	if static {
-		if len(r) < 128 {
-			return []byte{}, errors.New("response is to short")
-		}
+	// roundId is encoded in the third slot
+	roundIdStartByte := 64
+	roundIdEndByte := 96
+	commonFieldsLength := 128
 
-		end := make([]byte, 32)
-		buf := make([]byte, 8)
-
-		binary.BigEndian.PutUint64(buf, roundId)
-
-		slices.Replace(end, 24, 32, buf...)
-
-		slices.Replace(r, 64, 96, end...)
-
-		return r, nil
-	} else if len(r) < 160 {
-		return []byte{}, errors.New("response is to short")
+	// if Response is encoded dynamic struct the first 32 bytes are bytes32(32)
+	if !static {
+		roundIdStartByte += 32
+		roundIdEndByte += 32
+		commonFieldsLength += 32
 	}
 
-	end := make([]byte, 32)
-	buf := make([]byte, 8)
+	if len(r) < commonFieldsLength {
+		return Response{}, errors.New("response is to short")
+	}
 
-	binary.BigEndian.PutUint64(buf, roundId)
+	roundIdEncoded := make([]byte, 0)
 
-	slices.Replace(end, 24, 32, buf...)
+	binary.BigEndian.AppendUint64(roundIdEncoded, roundId)
 
-	slices.Replace(r, 96, 128, end...)
+	roundIdSlot := make([]byte, 32-len(roundIdEncoded))
+
+	roundIdSlot = append(roundIdSlot, roundIdEncoded...)
+
+	slices.Replace(r, roundIdStartByte, roundIdEndByte, roundIdSlot...)
 
 	return r, nil
 
