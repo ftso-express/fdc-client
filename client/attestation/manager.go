@@ -59,7 +59,9 @@ func (m *Manager) Run() {
 
 			for i := range signingPolicies {
 
-				m.OnSigningPolicy(signingPolicies[i])
+				if err := m.OnSigningPolicy(signingPolicies[i]); err != nil {
+					log.Println("signing policy error:", err)
+				}
 
 			}
 
@@ -72,7 +74,9 @@ func (m *Manager) Run() {
 
 					for i := range signingPolicies {
 
-						m.OnSigningPolicy(signingPolicies[i])
+						if err := m.OnSigningPolicy(signingPolicies[i]); err != nil {
+							log.Println("signing policy error:", err)
+						}
 
 					}
 				case round := <-m.BitVotes:
@@ -81,7 +85,9 @@ func (m *Manager) Run() {
 
 					for i := range round.Messages {
 
-						m.OnBitVote(round.Messages[i])
+						if err := m.OnBitVote(round.Messages[i]); err != nil {
+							log.Println("bit vote error:", err)
+						}
 					}
 
 					r, ok := m.Round(round.ID)
@@ -103,7 +109,9 @@ func (m *Manager) Run() {
 
 					for i := range requests {
 
-						m.OnRequest(requests[i])
+						if err := m.OnRequest(requests[i]); err != nil {
+							log.Println("requests error:", err)
+						}
 
 					}
 				}
@@ -223,44 +231,50 @@ func (m *Manager) OnRequest(request database.Log) error {
 
 	round.Attestations = append(round.Attestations, &attestation)
 
-	go func() error {
-		attTypeAndSource, err := attestation.Request.AttestationTypeAndSource()
-
-		if err != nil {
-
-			attestation.Status = ProcessError
-			return err
-
+	go func() {
+		if err := m.handleAttestation(&attestation); err != nil {
+			log.Println("error handling attestation:", err)
 		}
-
-		verifier, ok := m.VerifierServer(attTypeAndSource)
-
-		if !ok {
-			attestation.Status = UnsupportedPair
-			return errors.New("unsupported pair")
-
-		}
-
-		attestation.Status = Processing
-
-		err = ResolveAttestationRequest(&attestation, verifier)
-
-		if err != nil {
-			log.Println("Error resolving attestation request")
-			attestation.Status = ProcessError
-
-			return err
-		} else {
-			log.Println("Response received, validating...")
-			err := attestation.validateResponse()
-			log.Println(attestation.Status, attestation.RoundID)
-			return err
-		}
-
 	}()
 
 	return nil
 
+}
+
+func (m *Manager) handleAttestation(attestation *Attestation) error {
+	attTypeAndSource, err := attestation.Request.AttestationTypeAndSource()
+
+	if err != nil {
+
+		attestation.Status = ProcessError
+		return err
+
+	}
+
+	verifier, ok := m.VerifierServer(attTypeAndSource)
+
+	if !ok {
+		attestation.Status = UnsupportedPair
+		return errors.New("unsupported pair")
+
+	}
+
+	attestation.Status = Processing
+
+	err = ResolveAttestationRequest(attestation, verifier)
+
+	if err != nil {
+		log.Println("Error resolving attestation request")
+		attestation.Status = ProcessError
+
+		return err
+	}
+
+	log.Println("Response received, validating...")
+	err = attestation.validateResponse()
+	log.Println(attestation.Status, attestation.RoundID)
+
+	return err
 }
 
 // OnSigningPolicy parsed SigningPolicyInitialized log and stores it into the signingPolicyStorage.

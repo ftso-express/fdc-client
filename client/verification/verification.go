@@ -107,7 +107,7 @@ func (r Response) ComputeMic() (common.Hash, error) {
 	d := make([]byte, 32)
 
 	// store roundId
-	slices.Replace(d, 0, 32, r[64:96]...)
+	d = slices.Replace(d, 0, 32, r[64:96]...)
 
 	// restore roundId at the end
 	defer slices.Replace(r, roundIdStartByte, roundIdEndByte, d...)
@@ -115,7 +115,7 @@ func (r Response) ComputeMic() (common.Hash, error) {
 	zero32bytes := make([]byte, 32)
 
 	// set roundId to zero
-	slices.Replace(r, roundIdStartByte, roundIdEndByte, zero32bytes...)
+	r = slices.Replace(r, roundIdStartByte, roundIdEndByte, zero32bytes...)
 
 	mic := crypto.Keccak256Hash(r)
 
@@ -156,7 +156,7 @@ func (r Response) AddRound(roundId uint64) (Response, error) {
 
 	roundIdSlot = append(roundIdSlot, roundIdEncoded...)
 
-	slices.Replace(r, roundIdStartByte, roundIdEndByte, roundIdSlot...)
+	r = slices.Replace(r, roundIdStartByte, roundIdEndByte, roundIdSlot...)
 
 	return r, nil
 

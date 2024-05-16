@@ -78,13 +78,15 @@ func (a *Attestation) validateResponse() error {
 		return nil
 	}
 
-	a.Response.AddRound(a.RoundID)
-
-	a.Hash, err = a.Response.Hash()
-
+	_, err = a.Response.AddRound(a.RoundID)
 	if err != nil {
 		a.Status = ProcessError
+		return errors.New("cannot compute hash")
+	}
 
+	a.Hash, err = a.Response.Hash()
+	if err != nil {
+		a.Status = ProcessError
 		return errors.New("cannot compute hash")
 	}
 

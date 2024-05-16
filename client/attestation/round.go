@@ -22,7 +22,6 @@ const (
 
 type Round struct {
 	roundId          uint64
-	status           RoundStatus
 	Attestations     []*Attestation
 	bitVotes         []*WeightedBitVote
 	bitVoteCheckList map[string]*WeightedBitVote
@@ -93,9 +92,7 @@ func (r *Round) ComputeConsensusBitVote() error {
 	}
 	r.ConsensusBitVote = consensus
 
-	SetBitVoteStatus(r.Attestations, consensus)
-
-	return nil
+	return SetBitVoteStatus(r.Attestations, consensus)
 }
 
 func (r *Round) GetConsensusBitVote() BitVote {
