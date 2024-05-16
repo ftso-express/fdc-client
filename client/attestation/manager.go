@@ -7,6 +7,7 @@ import (
 	"flare-common/payload"
 	"flare-common/policy"
 	"local/fdc/client/timing"
+	"local/fdc/config"
 	hub "local/fdc/contracts/FDC"
 	"log"
 
@@ -36,7 +37,7 @@ type Manager struct {
 	BitVotes             <-chan payload.Round
 	SigningPolicies      <-chan []database.Log
 	signingPolicyStorage *policy.SigningPolicyStorage
-	verifierServers      map[[32]byte]verifierCredentials // the keys are crypto.Keccak256Hash(AttestationTypeAndSource)
+	verifierServers      map[[64]byte]config.VerifierCredentials // the keys are crypto.Keccak256Hash(AttestationTypeAndSource)
 }
 
 // NewManager initializes attestation round manager

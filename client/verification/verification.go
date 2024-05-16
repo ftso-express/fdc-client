@@ -55,13 +55,17 @@ func (r Request) Source() ([]byte, error) {
 }
 
 // AttestationTypeAndSource returns byte encoded AttestationType and Source (the first 64 bytes).
-func (r Request) AttestationTypeAndSource() ([]byte, error) {
+func (r Request) AttestationTypeAndSource() ([64]byte, error) {
+
+	res := [64]byte{}
 
 	if len(r) < 96 {
-		return []byte{}, errors.New("request is to short")
+		return [64]byte{}, errors.New("request is to short")
 	}
 
-	return r[:64], nil
+	copy(res[:], r[0:64])
+
+	return res, nil
 }
 
 // Mic returns Message Integrity code of the request (the third 32 bytes).

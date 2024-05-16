@@ -88,6 +88,8 @@ func (r *Runner) Run() {
 	go r.RoundManager.Run()
 
 	for {
+
+		time.Sleep(2 * time.Second)
 		state, _ := database.FetchState(r.DB)
 		tryTriggerBitVote(nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp, state.BlockTimestamp, chooseTrigger)
 
@@ -104,7 +106,7 @@ func tryTriggerBitVote(nextChoosePhaseRoundIDEnd *int, nextChoosePhaseEndTimesta
 		nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp = timing.NextChoosePhaseEnd(currentBlockTime)
 	}
 
-	if (now - 15) > *nextChoosePhaseEndTimestamp {
+	if (now - bitVoteOffChainTriggerSeconds) > *nextChoosePhaseEndTimestamp {
 		c <- uint64(*nextChoosePhaseRoundIDEnd)
 		*nextChoosePhaseRoundIDEnd++
 		*nextChoosePhaseEndTimestamp = *nextChoosePhaseEndTimestamp + 90
