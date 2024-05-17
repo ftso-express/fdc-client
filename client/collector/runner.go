@@ -53,8 +53,7 @@ func New() *Runner {
 	}
 	db, err := database.Connect(&config)
 	if err != nil {
-		log.Println("Could not connect to database")
-		panic(err)
+		log.Fatal("Could not connect to database:", err)
 	}
 
 	runner := Runner{
@@ -72,6 +71,8 @@ func New() *Runner {
 	return &runner
 }
 
+const databasePollSeconds = 10
+
 func (r *Runner) Run() {
 
 	chooseTrigger := make(chan uint64)
@@ -82,15 +83,28 @@ func (r *Runner) Run() {
 
 	r.RoundManager.Requests = RequestsInitializedListener(r.DB, r.FdcContractAddress, r.RequestEventSig, requestsBufferSize, requestListenerInterval)
 
-	state, _ := database.FetchState(r.DB)
+	state, err := database.FetchState(r.DB)
+	if err != nil {
+		log.Fatal("database error:", err)
+	}
+
 	nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp := timing.NextChoosePhaseEnd(state.BlockTimestamp)
 
 	go r.RoundManager.Run()
 
-	for {
-		state, _ := database.FetchState(r.DB)
-		tryTriggerBitVote(nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp, state.BlockTimestamp, chooseTrigger)
+	ticker := time.NewTicker(databasePollSeconds * time.Second)
 
+	for {
+		state, err := database.FetchState(r.DB)
+		if err != nil {
+			log.Println("database error:", err)
+		} else {
+			tryTriggerBitVote(
+				nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp, state.BlockTimestamp, chooseTrigger,
+			)
+		}
+
+		<-ticker.C
 	}
 
 }
@@ -117,8 +131,6 @@ func tryTriggerBitVote(nextChoosePhaseRoundIDEnd *int, nextChoosePhaseEndTimesta
 // Payload for roundID is served whenever a trigger provides a roundID
 func BitVoteInitializedListener(db *gorm.DB, submitContractAddress, funcSig string, protocol uint64, bufferSize int, trigger <-chan uint64) <-chan payload.Round {
 
-	// TODO: handle errors
-
 	out := make(chan payload.Round, bufferSize)
 
 	go func() {
@@ -126,11 +138,28 @@ func BitVoteInitializedListener(db *gorm.DB, submitContractAddress, funcSig stri
 		for {
 			roundID := <-trigger
 
-			txs, _ := database.FetchTransactionsByAddressAndSelectorTimestamp(db, submitContractAddress, funcSig, int64(timing.ChooseStartTimestamp(int(roundID))), int64(timing.ChooseEndTimestamp(int(roundID))))
+			txs, err := database.FetchTransactionsByAddressAndSelectorTimestamp(
+				db,
+				submitContractAddress,
+				funcSig,
+				int64(timing.ChooseStartTimestamp(int(roundID))),
+				int64(timing.ChooseEndTimestamp(int(roundID))),
+			)
+			if err != nil {
+				// TODO implement backoff/retry
+				log.Println("fetch txs error:", err)
+				continue
+			}
 
 			bitVotes := []payload.Message{}
-			for _, tx := range txs {
-				payloads, _ := payload.ExtractPayloads(tx)
+			for i := range txs {
+				tx := &txs[i]
+				payloads, err := payload.ExtractPayloads(tx)
+				if err != nil {
+					log.Println("extract payload error:", err)
+					continue
+				}
+
 				bitVote, ok := payloads[protocol]
 				if ok {
 					bitVotes = append(bitVotes, bitVote)
@@ -149,7 +178,9 @@ func BitVoteInitializedListener(db *gorm.DB, submitContractAddress, funcSig stri
 
 }
 
-func RequestsInitializedListener(db *gorm.DB, fdcContractAddress, requestEventSig string, bufferSize int, ListenerInterval time.Duration) <-chan []database.Log {
+func RequestsInitializedListener(
+	db *gorm.DB, fdcContractAddress, requestEventSig string, bufferSize int, ListenerInterval time.Duration,
+) <-chan []database.Log {
 
 	out := make(chan []database.Log, bufferSize)
 
@@ -159,23 +190,41 @@ func RequestsInitializedListener(db *gorm.DB, fdcContractAddress, requestEventSi
 
 		_, startTimestamp := timing.LastCollectPhaseStart(uint64(time.Now().Unix()))
 
-		state, _ := database.FetchState(db)
+		state, err := database.FetchState(db)
+		if err != nil {
+			log.Fatal("fetch initial state error:", err)
+		}
 
 		lastQueriedBlock := state.Index
 
-		logs, _ := database.FetchLogsByAddressAndTopic0TimestampToBlockNumber(db, fdcContractAddress, requestEventSig, int64(startTimestamp), int64(state.Index))
+		logs, err := database.FetchLogsByAddressAndTopic0TimestampToBlockNumber(
+			db, fdcContractAddress, requestEventSig, int64(startTimestamp), int64(state.Index),
+		)
+		if err != nil {
+			log.Fatal("fetch initial logs error")
+		}
 
 		if len(logs) > 0 {
-
 			out <- logs
 		}
 
 		for {
 			<-trigger.C
 
-			state, _ = database.FetchState(db)
+			state, err = database.FetchState(db)
+			if err != nil {
+				// TODO implement backoff/retry
+				log.Print("fetch state error:", err)
+				continue
+			}
 
-			logs, _ := database.FetchLogsByAddressAndTopic0BlockNumber(db, fdcContractAddress, requestEventSig, int64(lastQueriedBlock), int64(state.Index))
+			logs, err := database.FetchLogsByAddressAndTopic0BlockNumber(
+				db, fdcContractAddress, requestEventSig, int64(lastQueriedBlock), int64(state.Index),
+			)
+			if err != nil {
+				log.Print("fetch logs error:", err)
+				continue
+			}
 
 			lastQueriedBlock = state.Index
 
@@ -200,7 +249,9 @@ func SigningPolicyInitializedListener(db *gorm.DB, relayContractAddress, signing
 		latestQuery := time.Now()
 		twoWeeksBefore := latestQuery.Add(-2 * 7 * 24 * time.Hour)
 
-		logs, _ := database.FetchLogsByAddressAndTopic0Timestamp(db, relayContractAddress, signingPolicyInitializedEventSig, twoWeeksBefore.Unix(), latestQuery.Unix())
+		logs, err := database.FetchLogsByAddressAndTopic0Timestamp(
+			db, relayContractAddress, signingPolicyInitializedEventSig, twoWeeksBefore.Unix(), latestQuery.Unix(),
+		)
 
 		log.Println("Logs length ", len(logs))
 
@@ -213,7 +264,13 @@ func SigningPolicyInitializedListener(db *gorm.DB, relayContractAddress, signing
 
 			now := time.Now()
 
-			logs, _ := database.FetchLogsByAddressAndTopic0Timestamp(db, relayContractAddress, signingPolicyInitializedEventSig, latestQuery.Unix(), now.Unix())
+			logs, err := database.FetchLogsByAddressAndTopic0Timestamp(
+				db, relayContractAddress, signingPolicyInitializedEventSig, latestQuery.Unix(), now.Unix(),
+			)
+			if err != nil {
+				log.Println("fetch logs error:", err)
+				continue
+			}
 
 			latestQuery = now
 

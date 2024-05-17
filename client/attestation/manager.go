@@ -49,9 +49,18 @@ func NewManager() *Manager {
 // Run starts processing data received through the manager's channels.
 // SigningPolicies channel is prioritized.
 func (m *Manager) Run() {
+	// Get signing policy first as we cannot process any other message types
+	// without a signing policy.
+	signingPolicies := <-m.SigningPolicies
+	log.Println("Initial signing policy received.")
+
+	for i := range signingPolicies {
+		if err := m.OnSigningPolicy(signingPolicies[i]); err != nil {
+			log.Fatal("signing policy error:", err)
+		}
+	}
 
 	for {
-
 		select {
 		case signingPolicies := <-m.SigningPolicies:
 
@@ -64,60 +73,42 @@ func (m *Manager) Run() {
 				}
 
 			}
+		case round := <-m.BitVotes:
 
-		default:
-			{
-				select {
-				case signingPolicies := <-m.SigningPolicies:
+			log.Printf("Received %d bitVotes for round %d.", len(round.Messages), round.ID)
 
-					log.Println("New signing policy received.")
+			for i := range round.Messages {
 
-					for i := range signingPolicies {
-
-						if err := m.OnSigningPolicy(signingPolicies[i]); err != nil {
-							log.Println("signing policy error:", err)
-						}
-
-					}
-				case round := <-m.BitVotes:
-
-					log.Printf("Received %d bitVotes for round %d.", len(round.Messages), round.ID)
-
-					for i := range round.Messages {
-
-						if err := m.OnBitVote(round.Messages[i]); err != nil {
-							log.Println("bit vote error:", err)
-						}
-					}
-
-					r, ok := m.Round(round.ID)
-
-					if !ok {
-						break
-					}
-					err := r.ComputeConsensusBitVote()
-
-					if err != nil {
-						log.Printf("Failed bitVote for round %d", round.ID)
-					} else {
-						log.Printf("Consensus bitVote for round %d computed.", round.ID)
-					}
-
-				case requests := <-m.Requests:
-
-					log.Printf("Received %d requests.", len(requests))
-
-					for i := range requests {
-
-						if err := m.OnRequest(requests[i]); err != nil {
-							log.Println("requests error:", err)
-						}
-
-					}
+				if err := m.OnBitVote(round.Messages[i]); err != nil {
+					log.Println("bit vote error:", err)
 				}
 			}
-		}
 
+			r, ok := m.Round(round.ID)
+			if !ok {
+				break
+			}
+
+			err := r.ComputeConsensusBitVote()
+
+			if err != nil {
+				log.Printf("Failed bitVote for round %d", round.ID)
+			} else {
+				log.Printf("Consensus bitVote for round %d computed.", round.ID)
+			}
+
+		case requests := <-m.Requests:
+
+			log.Printf("Received %d requests.", len(requests))
+
+			for i := range requests {
+
+				if err := m.OnRequest(requests[i]); err != nil {
+					log.Println("requests error:", err)
+				}
+
+			}
+		}
 	}
 }
 
