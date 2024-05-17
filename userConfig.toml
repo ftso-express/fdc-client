@@ -77,3 +77,13 @@ api_key = "key"
 [verifiers.XRP.EVMTransaction]
 url = "url"
 api_key = "key"
+
+
+#ABIs
+[abis]
+Payment = ""
+BalanceDecreasingTransaction = ""
+ConfirmedBlockHeightExists = ""
+ReferencedPaymentNonexistence = ""
+AddressValidity = ""
+EVMTransaction = ""

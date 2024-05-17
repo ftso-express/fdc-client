@@ -1,13 +1,7 @@
 package config
 
 import (
-	"errors"
 	"flare-common/database"
-	"fmt"
-	"os"
-	"strings"
-	"time"
-	"unicode"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 )
@@ -23,14 +17,16 @@ type UserConfigRaw struct {
 	DB        database.DBConfig      `toml:"db"`
 }
 
-type FDCConfig struct {
-	Logger   LoggerConfig
-	Timing   TimingConfig
-	Listener ListenersConfig
+type SystemConfig struct {
+	Logger   LoggerConfig    `toml:"logger"`
+	Timing   TimingConfig    `toml:"timing"`
+	Listener ListenersConfig `toml:"listener"`
 }
 
 type LoggerConfig struct {
-	File string
+	File   string `toml:"file"`
+	Prefix string `toml:"prefix"`
+	Flag   int    `toml:"flag"`
 }
 
 type TimingConfig struct {
@@ -42,18 +38,18 @@ type TimingConfig struct {
 }
 
 type ListenersConfig struct {
-	Protocol uint64
+	Protocol uint64 `toml:"protocol"`
 
-	SubmitContractAddress       string
-	SubmitBuffer                int
-	OffChainTriggerDelaySeconds int
+	SubmitContractAddress       string `toml:"submit_contract_address"`
+	SubmitBuffer                int    `toml:"submit_buffer"`
+	OffChainTriggerDelaySeconds int    `toml:"off_chain_trigger_delay_seconds"`
 
-	RelayContractAddress string
-	RelayBuffer          int
+	RelayContractAddress string `toml:"relay_contract_address"`
+	RelayBuffer          int    `toml:"relay_buffer"`
 
-	FdcContractAddress string
-	RequestBuffer      int
-	RequestInterval    time.Duration
+	FdcContractAddress     string `toml:"fdc_contract_address"`
+	RequestBuffer          int    `toml:"request_buffer"`
+	RequestIntervalSeconds int    `toml:"request_interval_seconds"`
 }
 
 type AbiConfigUnparsed map[string]string // map from attestation type to abi of its Response struct
@@ -63,65 +59,11 @@ type AbiConfig struct {
 	ResponseAbisString map[[32]byte]string
 }
 
-func WhiteSpaceStrip(str string) string {
-	var b strings.Builder
-	b.Grow(len(str))
-	for _, ch := range str {
-		if !unicode.IsSpace(ch) {
-			b.WriteRune(ch)
-		}
-	}
-	return b.String()
-}
-
-func ParseAbiConfig(data AbiConfigUnparsed) (AbiConfig, error) {
-
-	arguments := make(map[[32]byte]abi.Arguments)
-	abis := make(map[[32]byte]string)
-
-	for k, v := range data {
-
-		if len(k) > 32 {
-			return AbiConfig{}, errors.New("attestation type name too long")
-		}
-
-		var nameBytes [32]byte
-
-		copy(nameBytes[:], []byte(k)[0:32])
-
-		var arg abi.Argument
-
-		file, err := os.ReadFile(v)
-
-		if err != nil {
-			return AbiConfig{}, fmt.Errorf("error reading file %s", v)
-		}
-
-		err = arg.UnmarshalJSON(file)
-
-		if err != nil {
-			return AbiConfig{}, errors.New("error parsing abi")
-		}
-
-		args := abi.Arguments{arg}
-
-		arguments[nameBytes] = args
-
-		abis[nameBytes] = WhiteSpaceStrip(string(file))
-
-	}
-
-	return AbiConfig{arguments, abis}, nil
-
-}
-
 type VerifierCredentials struct {
 	Url    string `toml:"url"`
 	ApiKey string `toml:"api_key"`
 }
 
-type VerifierConfigUnparsed map[string]map[string]VerifierCredentials // map from hash of attestation type and source Id to verifier credentials
+type VerifierConfigUnparsed map[string]map[string]VerifierCredentials // map from attestation type and source Id to verifier credentials
 
-type VerifierConfig struct {
-	VerifiersCredentials map[string]VerifierCredentials // map from hash of attestation type and source Id to verifier credentials
-}
+type VerifierConfig map[[64]byte]VerifierCredentials // map from attestation type and source Id to verifier credentials
