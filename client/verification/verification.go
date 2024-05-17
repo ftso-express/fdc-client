@@ -104,18 +104,17 @@ func (r Response) ComputeMic() (common.Hash, error) {
 		return common.Hash{}, errors.New("response is to short")
 	}
 
-	d := make([]byte, 32)
-
 	// store roundId
-	d = slices.Replace(d, 0, 32, r[64:96]...)
+	d := make([]byte, 32)
+	roundIdBytes := r[roundIdStartByte:roundIdEndByte]
+	copy(d, roundIdBytes)
 
 	// restore roundId at the end
-	defer slices.Replace(r, roundIdStartByte, roundIdEndByte, d...)
-
-	zero32bytes := make([]byte, 32)
+	defer copy(roundIdBytes, d)
 
 	// set roundId to zero
-	r = slices.Replace(r, roundIdStartByte, roundIdEndByte, zero32bytes...)
+	zero32bytes := make([]byte, 32)
+	copy(roundIdBytes, zero32bytes)
 
 	mic := crypto.Keccak256Hash(r)
 
