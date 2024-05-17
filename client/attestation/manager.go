@@ -38,6 +38,7 @@ type Manager struct {
 	SigningPolicies      <-chan []database.Log
 	signingPolicyStorage *policy.SigningPolicyStorage
 	verifierServers      map[[64]byte]config.VerifierCredentials // the keys are crypto.Keccak256Hash(AttestationTypeAndSource)
+	abiConfig            config.AbiConfig
 }
 
 // NewManager initializes attestation round manager
@@ -234,6 +235,17 @@ func (m *Manager) OnRequest(request database.Log) error {
 
 		}
 
+		attType, err := attestation.Request.AttestationType()
+
+		if err != nil {
+
+			attestation.Status = ProcessError
+			return err
+
+		}
+
+		attestation.abi = m.abiConfig.ResponseArguments[attType]
+
 		verifier, ok := m.VerifierServer(attTypeAndSource)
 
 		if !ok {
@@ -257,7 +269,6 @@ func (m *Manager) OnRequest(request database.Log) error {
 			log.Println(attestation.Status, attestation.RoundID)
 			return err
 		}
-
 	}()
 
 	return nil

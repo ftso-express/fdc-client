@@ -9,6 +9,7 @@ import (
 	hub "local/fdc/contracts/FDC"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -53,6 +54,7 @@ type Attestation struct {
 	Status    Status
 	Consensus bool
 	Hash      common.Hash
+	abi       abi.Arguments
 }
 
 // validateResponse check the MIC of the response against the MIC of the request. If the check is successful, attestation status is set to success and attestation hash is computed and set.
@@ -65,7 +67,8 @@ func (a *Attestation) validateResponse() error {
 
 		return errors.New("no mic in request")
 	}
-	micRes, err := a.Response.ComputeMic()
+
+	micRes, err := a.Response.ComputeMic(a.abi)
 
 	if err != nil {
 		a.Status = ProcessError
