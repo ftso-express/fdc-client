@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
@@ -34,34 +35,46 @@ func isStaticType(bytes []byte) (bool, error) {
 }
 
 // AttestationType returns the attestation type of the request (the first 32 bytes).
-func (r Request) AttestationType() ([]byte, error) {
+func (r Request) AttestationType() ([32]byte, error) {
+
+	res := [32]byte{}
 
 	if len(r) < 96 {
-		return []byte{}, errors.New("request is to short")
+		return res, errors.New("request is to short")
 	}
 
-	return r[:32], nil
+	copy(res[:], r[0:32])
+
+	return res, nil
 
 }
 
 // Source returns the source of the request (the second 32 bytes).
-func (r Request) Source() ([]byte, error) {
+func (r Request) Source() ([32]byte, error) {
+
+	res := [32]byte{}
 
 	if len(r) < 96 {
-		return []byte{}, errors.New("request is to short")
+		return res, errors.New("request is to short")
 	}
 
-	return r[32:64], nil
+	copy(res[:], r[32:64])
+
+	return res, nil
 }
 
 // AttestationTypeAndSource returns byte encoded AttestationType and Source (the first 64 bytes).
-func (r Request) AttestationTypeAndSource() ([]byte, error) {
+func (r Request) AttestationTypeAndSource() ([64]byte, error) {
+
+	res := [64]byte{}
 
 	if len(r) < 96 {
-		return []byte{}, errors.New("request is to short")
+		return [64]byte{}, errors.New("request is to short")
 	}
 
-	return r[:64], nil
+	copy(res[:], r[0:64])
+
+	return res, nil
 }
 
 // Mic returns Message Integrity code of the request (the third 32 bytes).
@@ -80,7 +93,7 @@ func (r Request) Mic() (common.Hash, error) {
 
 // ComputeMic computes Mic from the response.
 // Mic is the hash of the response with roundID set to 0.
-func (r Response) ComputeMic() (common.Hash, error) {
+func (r Response) ComputeMicMaybe() (common.Hash, error) {
 
 	static, err := isStaticType(r)
 
@@ -117,6 +130,39 @@ func (r Response) ComputeMic() (common.Hash, error) {
 	copy(roundIdBytes, zero32bytes)
 
 	mic := crypto.Keccak256Hash(r)
+
+	return mic, nil
+
+}
+
+func (r Response) ComputeMic(args abi.Arguments) (common.Hash, error) {
+
+	decoded, err := args.Unpack(r)
+
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	stringArgument := abi.Argument{}
+
+	stringArgument.Name = "string"
+	stringArgument.Indexed = false
+
+	stringArgument.Type, err = abi.NewType("string", "string", []abi.ArgumentMarshaling{})
+
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	args = append(args, stringArgument)
+
+	withSalt, err := args.Pack(decoded[0], "Flare")
+
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	mic := crypto.Keccak256Hash(withSalt)
 
 	return mic, nil
 

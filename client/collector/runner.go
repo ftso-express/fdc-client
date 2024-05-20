@@ -71,7 +71,7 @@ func New() *Runner {
 	return &runner
 }
 
-const databasePollSeconds = 10
+const databasePollSeconds = 2
 
 func (r *Runner) Run() {
 
@@ -118,7 +118,7 @@ func tryTriggerBitVote(nextChoosePhaseRoundIDEnd *int, nextChoosePhaseEndTimesta
 		nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp = timing.NextChoosePhaseEnd(currentBlockTime)
 	}
 
-	if (now - 15) > *nextChoosePhaseEndTimestamp {
+	if (now - bitVoteOffChainTriggerSeconds) > *nextChoosePhaseEndTimestamp {
 		c <- uint64(*nextChoosePhaseRoundIDEnd)
 		*nextChoosePhaseRoundIDEnd++
 		*nextChoosePhaseEndTimestamp = *nextChoosePhaseEndTimestamp + 90
@@ -252,6 +252,9 @@ func SigningPolicyInitializedListener(db *gorm.DB, relayContractAddress, signing
 		logs, err := database.FetchLogsByAddressAndTopic0Timestamp(
 			db, relayContractAddress, signingPolicyInitializedEventSig, twoWeeksBefore.Unix(), latestQuery.Unix(),
 		)
+		if err != nil {
+			log.Fatal("error fetching initial logs:", err)
+		}
 
 		log.Println("Logs length ", len(logs))
 

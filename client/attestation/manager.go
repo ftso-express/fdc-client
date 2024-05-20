@@ -7,6 +7,7 @@ import (
 	"flare-common/payload"
 	"flare-common/policy"
 	"local/fdc/client/timing"
+	"local/fdc/config"
 	hub "local/fdc/contracts/FDC"
 	"log"
 
@@ -36,7 +37,8 @@ type Manager struct {
 	BitVotes             <-chan payload.Round
 	SigningPolicies      <-chan []database.Log
 	signingPolicyStorage *policy.SigningPolicyStorage
-	verifierServers      map[[32]byte]verifierCredentials // the keys are crypto.Keccak256Hash(AttestationTypeAndSource)
+	verifierServers      map[[64]byte]config.VerifierCredentials // the keys are crypto.Keccak256Hash(AttestationTypeAndSource)
+	abiConfig            config.AbiConfig
 }
 
 // NewManager initializes attestation round manager
@@ -224,7 +226,7 @@ func (m *Manager) OnRequest(request database.Log) error {
 
 	go func() {
 		if err := m.handleAttestation(&attestation); err != nil {
-			log.Println("error handling attestation:", err)
+			log.Println("Error handling attestation:", err)
 		}
 	}()
 
@@ -234,13 +236,18 @@ func (m *Manager) OnRequest(request database.Log) error {
 
 func (m *Manager) handleAttestation(attestation *Attestation) error {
 	attTypeAndSource, err := attestation.Request.AttestationTypeAndSource()
-
 	if err != nil {
-
 		attestation.Status = ProcessError
 		return err
-
 	}
+
+	attType, err := attestation.Request.AttestationType()
+	if err != nil {
+		attestation.Status = ProcessError
+		return err
+	}
+
+	attestation.abi = m.abiConfig.ResponseArguments[attType]
 
 	verifier, ok := m.VerifierServer(attTypeAndSource)
 
@@ -259,13 +266,12 @@ func (m *Manager) handleAttestation(attestation *Attestation) error {
 		attestation.Status = ProcessError
 
 		return err
+	} else {
+		log.Println("Response received, validating...")
+		err := attestation.validateResponse()
+		log.Println(attestation.Status, attestation.RoundID)
+		return err
 	}
-
-	log.Println("Response received, validating...")
-	err = attestation.validateResponse()
-	log.Println(attestation.Status, attestation.RoundID)
-
-	return err
 }
 
 // OnSigningPolicy parsed SigningPolicyInitialized log and stores it into the signingPolicyStorage.

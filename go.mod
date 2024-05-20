@@ -4,6 +4,7 @@ go 1.21.5
 
 require (
 	flare-common v0.0.0-00010101000000-000000000000
+	github.com/BurntSushi/toml v1.3.2
 	github.com/ethereum/go-ethereum v1.13.15
 	github.com/gorilla/mux v1.8.1
 	github.com/rs/cors v1.7.0
