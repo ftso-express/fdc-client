@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"local/fdc/client/collector"
+	"local/fdc/client/config"
 	"local/fdc/server"
 	"log"
 	"os"
@@ -12,8 +13,20 @@ import (
 )
 
 func main() {
-	// Start attestation client collector
-	collector := collector.New()
+	// Start attestation client collector\
+
+	userConfigRaw, err := config.ReadUserRaw()
+	if err != nil {
+		log.Panicf("cannot read user config: %s", err)
+	}
+
+	systemConfig, err := config.ReadSystem()
+
+	if err != nil {
+		log.Panicf("cannot read system config: %s", err)
+	}
+
+	collector := collector.New(userConfigRaw, systemConfig)
 	go collector.Run()
 
 	// Prepare context

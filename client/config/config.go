@@ -7,14 +7,25 @@ import (
 )
 
 const (
-	USER_FILE   string = "userConfig.toml"
-	SYSTEM_FILE string = "systemConfig.toml"
+	USER_FILE   string = "configs/userConfig.toml"
+	SYSTEM_FILE string = "configs/systemConfig.toml"
 )
+
+type GlobalConfig struct {
+	User   UserConfig
+	System SystemConfig
+}
 
 type UserConfigRaw struct {
 	Abis      AbiConfigUnparsed      `toml:"abis"`
 	Verifiers VerifierConfigUnparsed `toml:"verifiers"`
 	DB        database.DBConfig      `toml:"db"`
+}
+
+type UserConfig struct {
+	Abis      AbiConfig
+	Verifiers VerifierConfig
+	DB        database.DBConfig
 }
 
 type SystemConfig struct {

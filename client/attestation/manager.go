@@ -6,8 +6,8 @@ import (
 	"flare-common/database"
 	"flare-common/payload"
 	"flare-common/policy"
+	"local/fdc/client/config"
 	"local/fdc/client/timing"
-	"local/fdc/config"
 	hub "local/fdc/contracts/FDC"
 	"log"
 
@@ -42,10 +42,25 @@ type Manager struct {
 }
 
 // NewManager initializes attestation round manager
-func NewManager() *Manager {
+func NewManager(configs config.UserConfigRaw) *Manager {
 	rounds := make(map[uint64]*Round)
 	signingPolicyStorage := policy.NewSigningPolicyStorage()
-	return &Manager{rounds: rounds, signingPolicyStorage: signingPolicyStorage}
+
+	abiConfig, err := config.ParseAbi(configs.Abis)
+
+	if err != nil {
+		log.Panicf("parsing abis: %s", err)
+
+	}
+
+	verifierServers, err := config.ParseVerifiers(configs.Verifiers)
+
+	if err != nil {
+		log.Panicf("parsing verifiers: %s", err)
+
+	}
+
+	return &Manager{rounds: rounds, signingPolicyStorage: signingPolicyStorage, abiConfig: abiConfig, verifierServers: verifierServers}
 }
 
 // Run starts processing data received through the manager's channels.
@@ -105,7 +120,11 @@ func (m *Manager) Run() {
 
 					for i := range requests {
 
-						m.OnRequest(requests[i])
+						err := m.OnRequest(requests[i])
+
+						if err != nil {
+							log.Printf("Error on request: %s", err)
+						}
 
 					}
 				}

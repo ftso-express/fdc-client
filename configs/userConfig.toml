@@ -1,0 +1,89 @@
+[db]
+host = "localhost"
+port = 3306
+database = "flare_ftso_indexer"
+username = "root"
+password = "root"
+log_queries = false
+
+
+# # Verifiers for BTC
+# [verifiers.BTC.Payment]
+# url = "url"
+# api_key = "key"
+
+# [verifiers.BTC.BalanceDecreasingTransaction]
+# url = "url"
+# api_key = "key"
+
+# [verifiers.BTC.ConfirmedBlockHeightExists]
+# url = "url"
+# api_key = "key"
+
+# [verifiers.BTC.ReferencedPaymentNonexistence]
+# url = "url"
+# api_key = "key"
+
+# [verifiers.BTC.AddressValidity]
+# url = "url"
+# api_key = "key"
+
+
+# # Verifiers for DOGE
+# [verifiers.DOGE.Payment]
+# url = "url"
+# api_key = "key"
+
+# [verifiers.DOGE.BalanceDecreasingTransaction]
+# url = "url"
+# api_key = "key"
+
+# [verifiers.DOGE.ConfirmedBlockHeightExists]
+# url = "url"
+# api_key = "key"
+
+# [verifiers.DOGE.ReferencedPaymentNonexistence]
+# url = "url"
+# api_key = "key"
+
+# [verifiers.DOGE.AddressValidity]
+# url = "url"
+# api_key = "key"
+
+
+# # Verifiers for XRP
+# [verifiers.XRP.Payment]
+# url = "url"
+# api_key = "key"
+
+# [verifiers.XRP.BalanceDecreasingTransaction]
+# url = "url"
+# api_key = "key"
+
+# [verifiers.XRP.ConfirmedBlockHeightExists]
+# url = "url"
+# api_key = "key"
+
+# [verifiers.XRP.ReferencedPaymentNonexistence]
+# url = "url"
+# api_key = "key"
+
+# [verifiers.XRP.AddressValidity]
+# url = "url"
+# api_key = "key"
+
+
+# Verifiers for ETH
+[verifiers.XRP.EVMTransaction]
+url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
+api_key = "12345"
+
+
+#ABIs
+[abis]
+# Payment = ""
+# BalanceDecreasingTransaction = ""
+# ConfirmedBlockHeightExists = ""
+# ReferencedPaymentNonexistence = ""
+# AddressValidity = ""
+EVMTransaction = "configs/abis/EVMTransaction.json"

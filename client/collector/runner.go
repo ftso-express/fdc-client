@@ -4,6 +4,7 @@ import (
 	"flare-common/database"
 	"flare-common/payload"
 	"local/fdc/client/attestation"
+	"local/fdc/client/config"
 	"local/fdc/client/timing"
 	"log"
 	"time"
@@ -31,38 +32,26 @@ type Runner struct {
 	RoundManager          *attestation.Manager
 }
 
-func New() *Runner {
+func New(user config.UserConfigRaw, system config.SystemConfig) *Runner {
 	// TODO: Luka - get these from config
 	// CONSTANTS
 	requestEventSignature := "251377668af6553101c9bb094ba89c0c536783e005e203625e6cd57345918cc9"
 	signingPolicySignature := "91d0280e969157fc6c5b8f952f237b03d934b18534dafcac839075bbc33522f8"
-	submissionAddress := "2cA6571Daa15ce734Bbd0Bf27D5C9D16787fc33f"
-	fdcContractAddress := "Cf6798810Bc8C0B803121405Fee2A5a9cc0CA5E5"
-	relayAddress := "32D46A1260BB2D8C9d5Ab1C9bBd7FF7D7CfaabCC"
 	submit1FuncSig := "6c532fae"
 
-	roundManager := attestation.NewManager()
+	roundManager := attestation.NewManager(user)
 
-	config := database.DBConfig{
-		Host:       "localhost",
-		Port:       3306,
-		Database:   "flare_ftso_indexer",
-		Username:   "root",
-		Password:   "root",
-		LogQueries: false,
-	}
-	db, err := database.Connect(&config)
+	db, err := database.Connect(&user.DB)
 	if err != nil {
-		log.Println("Could not connect to database")
-		panic(err)
+		log.Fatal("Could not connect to database:", err)
 	}
 
 	runner := Runner{
-		Protocol:              200,
-		SubmitContractAddress: submissionAddress,
+		Protocol:              system.Listener.Protocol,
+		SubmitContractAddress: system.Listener.SubmitContractAddress,
 		RequestEventSig:       requestEventSignature,
-		FdcContractAddress:    fdcContractAddress,
-		RelayContractAddress:  relayAddress,
+		FdcContractAddress:    system.Listener.FdcContractAddress,
+		RelayContractAddress:  system.Listener.RelayContractAddress,
 		SigningPolicyEventSig: signingPolicySignature,
 		DB:                    db,
 		submit1Sig:            submit1FuncSig,
@@ -82,7 +71,11 @@ func (r *Runner) Run() {
 
 	r.RoundManager.Requests = RequestsInitializedListener(r.DB, r.FdcContractAddress, r.RequestEventSig, requestsBufferSize, requestListenerInterval)
 
-	state, _ := database.FetchState(r.DB)
+	state, err := database.FetchState(r.DB)
+	if err != nil {
+		log.Fatal("database error:", err)
+	}
+
 	nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp := timing.NextChoosePhaseEnd(state.BlockTimestamp)
 
 	go r.RoundManager.Run()
@@ -90,9 +83,14 @@ func (r *Runner) Run() {
 	for {
 
 		time.Sleep(2 * time.Second)
-		state, _ := database.FetchState(r.DB)
-		tryTriggerBitVote(nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp, state.BlockTimestamp, chooseTrigger)
-
+		state, err := database.FetchState(r.DB)
+		if err != nil {
+			log.Println("database error:", err)
+		} else {
+			tryTriggerBitVote(
+				nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp, state.BlockTimestamp, chooseTrigger,
+			)
+		}
 	}
 
 }

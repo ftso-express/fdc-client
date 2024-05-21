@@ -81,7 +81,12 @@ func (a *Attestation) validateResponse() error {
 		return nil
 	}
 
-	a.Response.AddRound(a.RoundID)
+	_, err = a.Response.AddRound(a.RoundID)
+
+	if err != nil {
+		a.Status = ProcessError
+		return errors.New("cannot set round")
+	}
 
 	a.Hash, err = a.Response.Hash()
 

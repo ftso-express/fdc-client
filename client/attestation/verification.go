@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"local/fdc/config"
+	"local/fdc/client/config"
 	"net/http"
 	"strings"
 )
@@ -26,7 +26,7 @@ func (m *Manager) VerifierServer(attTypeAndSource [64]byte) (config.VerifierCred
 	if true {
 		url := "http://localhost:4500/eth/EVMTransaction/verifyFDC"
 		key := "12345"
-		return config.VerifierCredentials{url, key}, true
+		return config.VerifierCredentials{Url: url, ApiKey: key}, true
 	} else {
 
 		cred, ok := m.verifierServers[attTypeAndSource]
