@@ -24,7 +24,7 @@ type Message struct {
 	Payload          string
 }
 
-func ExtractPayloads(tx database.Transaction) (map[uint64]Message, error) {
+func ExtractPayloads(tx *database.Transaction) (map[uint64]Message, error) {
 
 	messages := make(map[uint64]Message)
 

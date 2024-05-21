@@ -92,7 +92,12 @@ func (a *Attestation) validateResponse() error {
 
 	if err != nil {
 		a.Status = ProcessError
+		return errors.New("cannot compute hash")
+	}
 
+	a.Hash, err = a.Response.Hash()
+	if err != nil {
+		a.Status = ProcessError
 		return errors.New("cannot compute hash")
 	}
 

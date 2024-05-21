@@ -66,9 +66,18 @@ func NewManager(configs config.UserConfigRaw) *Manager {
 // Run starts processing data received through the manager's channels.
 // SigningPolicies channel is prioritized.
 func (m *Manager) Run() {
+	// Get signing policy first as we cannot process any other message types
+	// without a signing policy.
+	signingPolicies := <-m.SigningPolicies
+	log.Println("Initial signing policy received.")
+
+	for i := range signingPolicies {
+		if err := m.OnSigningPolicy(signingPolicies[i]); err != nil {
+			log.Fatal("signing policy error:", err)
+		}
+	}
 
 	for {
-
 		select {
 		case signingPolicies := <-m.SigningPolicies:
 
@@ -76,61 +85,47 @@ func (m *Manager) Run() {
 
 			for i := range signingPolicies {
 
-				m.OnSigningPolicy(signingPolicies[i])
+				if err := m.OnSigningPolicy(signingPolicies[i]); err != nil {
+					log.Println("signing policy error:", err)
+				}
 
 			}
+		case round := <-m.BitVotes:
 
-		default:
-			{
-				select {
-				case signingPolicies := <-m.SigningPolicies:
+			log.Printf("Received %d bitVotes for round %d.", len(round.Messages), round.ID)
 
-					log.Println("New signing policy received.")
+			for i := range round.Messages {
 
-					for i := range signingPolicies {
-
-						m.OnSigningPolicy(signingPolicies[i])
-
-					}
-				case round := <-m.BitVotes:
-
-					log.Printf("Received %d bitVotes for round %d.", len(round.Messages), round.ID)
-
-					for i := range round.Messages {
-
-						m.OnBitVote(round.Messages[i])
-					}
-
-					r, ok := m.Round(round.ID)
-
-					if !ok {
-						break
-					}
-					err := r.ComputeConsensusBitVote()
-
-					if err != nil {
-						log.Printf("Failed bitVote for round %d", round.ID)
-					} else {
-						log.Printf("Consensus bitVote for round %d computed.", round.ID)
-					}
-
-				case requests := <-m.Requests:
-
-					log.Printf("Received %d requests.", len(requests))
-
-					for i := range requests {
-
-						err := m.OnRequest(requests[i])
-
-						if err != nil {
-							log.Printf("Error on request: %s", err)
-						}
-
-					}
+				if err := m.OnBitVote(round.Messages[i]); err != nil {
+					log.Println("bit vote error:", err)
 				}
 			}
-		}
 
+			r, ok := m.Round(round.ID)
+			if !ok {
+				break
+			}
+
+			err := r.ComputeConsensusBitVote()
+
+			if err != nil {
+				log.Printf("Failed bitVote for round %d", round.ID)
+			} else {
+				log.Printf("Consensus bitVote for round %d computed.", round.ID)
+			}
+
+		case requests := <-m.Requests:
+
+			log.Printf("Received %d requests.", len(requests))
+
+			for i := range requests {
+
+				if err := m.OnRequest(requests[i]); err != nil {
+					log.Println("requests error:", err)
+				}
+
+			}
+		}
 	}
 }
 
@@ -244,54 +239,54 @@ func (m *Manager) OnRequest(request database.Log) error {
 
 	round.Attestations = append(round.Attestations, &attestation)
 
-	go func() error {
-		attTypeAndSource, err := attestation.Request.AttestationTypeAndSource()
-
-		if err != nil {
-
-			attestation.Status = ProcessError
-			return err
-
-		}
-
-		attType, err := attestation.Request.AttestationType()
-
-		if err != nil {
-
-			attestation.Status = ProcessError
-			return err
-
-		}
-
-		attestation.abi = m.abiConfig.ResponseArguments[attType]
-
-		verifier, ok := m.VerifierServer(attTypeAndSource)
-
-		if !ok {
-			attestation.Status = UnsupportedPair
-			return errors.New("unsupported pair")
-
-		}
-
-		attestation.Status = Processing
-
-		err = ResolveAttestationRequest(&attestation, verifier)
-
-		if err != nil {
-			log.Println("Error resolving attestation request")
-			attestation.Status = ProcessError
-
-			return err
-		} else {
-			log.Println("Response received, validating...")
-			err := attestation.validateResponse()
-			log.Println(attestation.Status, attestation.RoundID)
-			return err
+	go func() {
+		if err := m.handleAttestation(&attestation); err != nil {
+			log.Println("Error handling attestation:", err)
 		}
 	}()
 
 	return nil
 
+}
+
+func (m *Manager) handleAttestation(attestation *Attestation) error {
+	attTypeAndSource, err := attestation.Request.AttestationTypeAndSource()
+	if err != nil {
+		attestation.Status = ProcessError
+		return err
+	}
+
+	attType, err := attestation.Request.AttestationType()
+	if err != nil {
+		attestation.Status = ProcessError
+		return err
+	}
+
+	attestation.abi = m.abiConfig.ResponseArguments[attType]
+
+	verifier, ok := m.VerifierServer(attTypeAndSource)
+
+	if !ok {
+		attestation.Status = UnsupportedPair
+		return errors.New("unsupported pair")
+
+	}
+
+	attestation.Status = Processing
+
+	err = ResolveAttestationRequest(attestation, verifier)
+
+	if err != nil {
+		log.Println("Error resolving attestation request")
+		attestation.Status = ProcessError
+
+		return err
+	} else {
+		log.Println("Response received, validating...")
+		err := attestation.validateResponse()
+		log.Println(attestation.Status, attestation.RoundID)
+		return err
+	}
 }
 
 // OnSigningPolicy parsed SigningPolicyInitialized log and stores it into the signingPolicyStorage.
