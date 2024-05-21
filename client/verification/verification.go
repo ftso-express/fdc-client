@@ -14,11 +14,11 @@ type Request []byte
 
 type Response []byte
 
-// isStaticType checks whether bytes that represent abi.encoded request or response that encodes an instance of static type.
+// IsStaticType checks whether bytes that represent abi.encoded response that encodes an instance of static type.
 // abi.encode(X) = enc((X)) of X of type T is encoding of tuple (X) of type (T). By specification, enc((X)) = head(X)tail(X).
 // If T is static, head(X) = enc(X) and tail(X) is empty. If T is dynamic, head(X) = bytes32(len(head(X))) = bytes32(32) and tail = enc(X).
 // See https://docs.soliditylang.org/en/latest/abi-spec.html for detailed specification.
-func isStaticType(bytes []byte) (bool, error) {
+func IsStaticType(bytes []byte) (bool, error) {
 
 	if len(bytes) < 96 {
 		return false, errors.New("bytes are to short")
@@ -95,7 +95,7 @@ func (r Request) Mic() (common.Hash, error) {
 // Mic is the hash of the response with roundID set to 0.
 func (r Response) ComputeMicMaybe() (common.Hash, error) {
 
-	static, err := isStaticType(r)
+	static, err := IsStaticType(r)
 
 	if err != nil {
 		return common.Hash{}, err
@@ -172,7 +172,7 @@ func (r Response) ComputeMic(args abi.Arguments) (common.Hash, error) {
 // AddRound sets the roundId in the response (third 32 bytes).
 func (r Response) AddRound(roundId uint64) (Response, error) {
 
-	static, err := isStaticType(r)
+	static, err := IsStaticType(r)
 
 	if err != nil {
 		return Response{}, err
@@ -196,13 +196,13 @@ func (r Response) AddRound(roundId uint64) (Response, error) {
 
 	roundIdEncoded := make([]byte, 0)
 
-	binary.BigEndian.AppendUint64(roundIdEncoded, roundId)
+	roundIdEncoded = binary.BigEndian.AppendUint64(roundIdEncoded, roundId)
 
 	roundIdSlot := make([]byte, 32-len(roundIdEncoded))
 
 	roundIdSlot = append(roundIdSlot, roundIdEncoded...)
 
-	slices.Replace(r, roundIdStartByte, roundIdEndByte, roundIdSlot...)
+	r = slices.Replace(r, roundIdStartByte, roundIdEndByte, roundIdSlot...)
 
 	return r, nil
 
