@@ -6,11 +6,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 )
 
-const (
-	USER_FILE   string = "configs/userConfig.toml"
-	SYSTEM_FILE string = "configs/systemConfig.toml"
-)
-
 type GlobalConfig struct {
 	User   UserConfig
 	System SystemConfig

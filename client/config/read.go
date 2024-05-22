@@ -7,15 +7,15 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-func ReadUserRaw() (UserConfigRaw, error) {
+func ReadUserRaw(filePath string) (UserConfigRaw, error) {
 
-	return readToml[UserConfigRaw](USER_FILE)
+	return readToml[UserConfigRaw](filePath)
 
 }
 
-func ReadSystem() (SystemConfig, error) {
+func ReadSystem(filePath string) (SystemConfig, error) {
 
-	return readToml[SystemConfig](SYSTEM_FILE)
+	return readToml[SystemConfig](filePath)
 
 }
 

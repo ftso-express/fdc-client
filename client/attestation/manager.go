@@ -32,13 +32,14 @@ func init() {
 }
 
 type Manager struct {
-	rounds               map[uint64]*Round //cyclically cached rounds with buffer roundBuffer.
+	rounds               map[uint64]*Round // cyclically cached rounds with buffer roundBuffer.
 	Requests             <-chan []database.Log
 	BitVotes             <-chan payload.Round
 	SigningPolicies      <-chan []database.Log
 	signingPolicyStorage *policy.SigningPolicyStorage
-	verifierServers      map[[64]byte]config.VerifierCredentials // the keys are crypto.Keccak256Hash(AttestationTypeAndSource)
+	verifierServers      map[[64]byte]config.VerifierCredentials // the keys are AttestationTypeAndSource
 	abiConfig            config.AbiConfig
+	luts                 map[[64]byte]uint64 // the keys are AttestationTypeAndSource
 }
 
 // NewManager initializes attestation round manager
@@ -169,7 +170,7 @@ func (m *Manager) Round(roundId uint64) (*Round, bool) {
 // Store stores round in to the cyclic cache
 func (m *Manager) Store(round *Round) {
 
-	roundReminder := round.roundId / roundBuffer
+	roundReminder := round.roundId % roundBuffer
 
 	m.rounds[roundReminder] = round
 }

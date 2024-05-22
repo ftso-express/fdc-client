@@ -12,15 +12,20 @@ import (
 	"syscall"
 )
 
+const (
+	USER_FILE   string = "../../configs/userConfig.toml"   //relative to main
+	SYSTEM_FILE string = "../../configs/systemConfig.toml" //relative to main
+)
+
 func main() {
 	// Start attestation client collector\
 
-	userConfigRaw, err := config.ReadUserRaw()
+	userConfigRaw, err := config.ReadUserRaw(USER_FILE)
 	if err != nil {
 		log.Panicf("cannot read user config: %s", err)
 	}
 
-	systemConfig, err := config.ReadSystem()
+	systemConfig, err := config.ReadSystem(SYSTEM_FILE)
 
 	if err != nil {
 		log.Panicf("cannot read system config: %s", err)

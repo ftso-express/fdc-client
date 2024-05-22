@@ -3,6 +3,7 @@ package attestation
 import (
 	"encoding/binary"
 	"errors"
+	"math/big"
 	"slices"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -171,6 +172,39 @@ func (r Response) ComputeMic(args abi.Arguments) (common.Hash, error) {
 
 }
 
+// LUT returns the fourth slot in response. Solidity type of Lut is uint64.
+func (r Response) LUT() (uint64, error) {
+
+	static, err := IsStaticType(r)
+
+	if err != nil {
+		return 0, err
+	}
+
+	// lut is encoded in the fourth sloth
+	lutStartByte := 32 * 3
+	lutIdEndByte := 32 * 4
+
+	// if Response is encoded dynamic struct the first 32 bytes are bytes32(32)
+	if !static {
+		lutStartByte += 32
+		lutIdEndByte += 32
+	}
+
+	lut := r[lutStartByte:lutIdEndByte]
+
+	safe := big.NewInt(0)
+
+	safe = safe.SetBytes(lut)
+
+	if safe.IsInt64() {
+		return safe.Uint64(), nil
+	} else {
+		return 0, errors.New("lut too big")
+	}
+
+}
+
 // AddRound sets the roundId in the response (third 32 bytes).
 func (r Response) AddRound(roundId uint64) (Response, error) {
 
@@ -181,9 +215,9 @@ func (r Response) AddRound(roundId uint64) (Response, error) {
 	}
 
 	// roundId is encoded in the third slot
-	roundIdStartByte := 64
-	roundIdEndByte := 96
-	commonFieldsLength := 128
+	roundIdStartByte := 32 * 2
+	roundIdEndByte := 32 * 3
+	commonFieldsLength := 32 * 4
 
 	// if Response is encoded dynamic struct the first 32 bytes are bytes32(32)
 	if !static {
