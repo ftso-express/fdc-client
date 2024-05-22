@@ -1,87 +1,219 @@
 package attestation
 
 import (
-	"bytes"
-	"encoding/hex"
-	"encoding/json"
-	"fmt"
-	"local/fdc/client/config"
-	"net/http"
-	"strings"
+	"encoding/binary"
+	"errors"
+	"slices"
+
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
-// Function used to resolve attestation requests
+type Request []byte
 
-type AbiEncodedRequestBody struct {
-	AbiEncodedRequest string `json:"abiEncodedRequest"`
+type Response []byte
+
+// IsStaticType checks whether bytes that represent abi.encoded response that encodes an instance of static type.
+// abi.encode(X) = enc((X)) of X of type T is encoding of tuple (X) of type (T). By specification, enc((X)) = head(X)tail(X).
+// If T is static, head(X) = enc(X) and tail(X) is empty. If T is dynamic, head(X) = bytes32(len(head(X))) = bytes32(32) and tail = enc(X).
+// See https://docs.soliditylang.org/en/latest/abi-spec.html for detailed specification.
+func IsStaticType(bytes []byte) (bool, error) {
+
+	if len(bytes) < 96 {
+		return false, errors.New("bytes are to short")
+	}
+
+	first32Bytes := [32]byte(bytes[:32])
+
+	d := [32]byte{}
+
+	d[31] = byte(32)
+
+	return d != first32Bytes, nil
+
 }
 
-type AbiEncodedResponseBody struct {
-	Status             string `json:"status"`
-	AbiEncodedResponse string `json:"abiEncodedResponse"`
+// AttestationType returns the attestation type of the request (the first 32 bytes).
+func (r Request) AttestationType() ([32]byte, error) {
+
+	res := [32]byte{}
+
+	if len(r) < 96 {
+		return res, errors.New("request is to short")
+	}
+
+	copy(res[:], r[0:32])
+
+	return res, nil
+
 }
 
-// VerifierServer retrieves url and credentials for the verifier's server for the pair of attType and source.
-func (m *Manager) VerifierServer(attTypeAndSource [64]byte) (config.VerifierCredentials, bool) {
-	if true {
-		url := "http://localhost:4500/eth/EVMTransaction/verifyFDC"
-		key := "12345"
-		return config.VerifierCredentials{Url: url, ApiKey: key}, true
-	} else {
+// Source returns the source of the request (the second 32 bytes).
+func (r Request) Source() ([32]byte, error) {
 
-		cred, ok := m.verifierServers[attTypeAndSource]
+	res := [32]byte{}
 
-		return cred, ok
-
+	if len(r) < 96 {
+		return res, errors.New("request is to short")
 	}
+
+	copy(res[:], r[32:64])
+
+	return res, nil
 }
 
-func ResolveAttestationRequest(att *Attestation, verifierCred config.VerifierCredentials) error {
-	client := &http.Client{}
-	requestBytes := att.Request
-	encoded := hex.EncodeToString(requestBytes)
-	payload := AbiEncodedRequestBody{AbiEncodedRequest: "0x" + encoded}
+// AttestationTypeAndSource returns byte encoded AttestationType and Source (the first 64 bytes).
+func (r Request) AttestationTypeAndSource() ([64]byte, error) {
 
-	encodedBody, err := json.Marshal(payload)
-	if err != nil {
-		fmt.Println("Error encoding request")
-		return err
+	res := [64]byte{}
+
+	if len(r) < 96 {
+		return [64]byte{}, errors.New("request is to short")
 	}
 
-	request, err := http.NewRequest("POST", verifierCred.Url, bytes.NewBuffer(encodedBody))
-	if err != nil {
-		fmt.Println("Error creating request")
-		return err
+	copy(res[:], r[0:64])
+
+	return res, nil
+}
+
+// Mic returns Message Integrity code of the request (the third 32 bytes).
+func (r Request) Mic() (common.Hash, error) {
+
+	if len(r) < 96 {
+		return common.Hash{}, errors.New("request is to short")
 	}
 
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("X-API-KEY", verifierCred.ApiKey)
-	resp, err := client.Do(request)
+	mic := common.Hash{}
+
+	mic.SetBytes(r[64:96])
+
+	return mic, nil
+}
+
+// ComputeMic computes Mic from the response.
+// Mic is the hash of the response with roundID set to 0.
+func (r Response) ComputeMicMaybe() (common.Hash, error) {
+
+	static, err := IsStaticType(r)
 
 	if err != nil {
-		fmt.Println("Error sending request")
-		return err
+		return common.Hash{}, err
 	}
 
-	// close response body after function ends
-	defer resp.Body.Close()
+	// roundId is encoded in the third 32bytes slot
+	roundIdStartByte := 64
+	roundIdEndByte := 96
+	commonFieldsLength := 128
 
-	var responseBody AbiEncodedResponseBody
-	err = json.NewDecoder(resp.Body).Decode(&responseBody)
+	// if Response is encoded dynamic struct the first 32 bytes are bytes32(32)
+	if !static {
+		roundIdStartByte += 32
+		roundIdEndByte += 32
+		commonFieldsLength += 32
+	}
+
+	if len(r) < commonFieldsLength {
+		return common.Hash{}, errors.New("response is to short")
+	}
+
+	// store roundId
+	d := make([]byte, 32)
+	roundIdBytes := r[roundIdStartByte:roundIdEndByte]
+	copy(d, roundIdBytes)
+
+	// restore roundId at the end
+	defer copy(roundIdBytes, d)
+
+	// set roundId to zero
+	zero32bytes := make([]byte, 32)
+	copy(roundIdBytes, zero32bytes)
+
+	mic := crypto.Keccak256Hash(r)
+
+	return mic, nil
+
+}
+
+func (r Response) ComputeMic(args abi.Arguments) (common.Hash, error) {
+
+	decoded, err := args.Unpack(r)
 
 	if err != nil {
-		fmt.Println("Error reading body")
-		return err
+		return common.Hash{}, err
 	}
 
-	fmt.Println(responseBody.Status)
+	stringArgument := abi.Argument{}
 
-	responseBytes, err := hex.DecodeString(strings.TrimPrefix(responseBody.AbiEncodedResponse, "0x"))
+	stringArgument.Name = "string"
+	stringArgument.Indexed = false
+
+	stringArgument.Type, err = abi.NewType("string", "string", []abi.ArgumentMarshaling{})
+
 	if err != nil {
-		fmt.Println("Error decoding response")
-		return err
+		return common.Hash{}, err
 	}
-	att.Response = responseBytes
 
-	return nil
+	args = append(args, stringArgument)
+
+	withSalt, err := args.Pack(decoded[0], "Flare")
+
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	mic := crypto.Keccak256Hash(withSalt)
+
+	return mic, nil
+
+}
+
+// AddRound sets the roundId in the response (third 32 bytes).
+func (r Response) AddRound(roundId uint64) (Response, error) {
+
+	static, err := IsStaticType(r)
+
+	if err != nil {
+		return Response{}, err
+	}
+
+	// roundId is encoded in the third slot
+	roundIdStartByte := 64
+	roundIdEndByte := 96
+	commonFieldsLength := 128
+
+	// if Response is encoded dynamic struct the first 32 bytes are bytes32(32)
+	if !static {
+		roundIdStartByte += 32
+		roundIdEndByte += 32
+		commonFieldsLength += 32
+	}
+
+	if len(r) < commonFieldsLength {
+		return Response{}, errors.New("response is to short")
+	}
+
+	roundIdEncoded := make([]byte, 0)
+
+	roundIdEncoded = binary.BigEndian.AppendUint64(roundIdEncoded, roundId)
+
+	roundIdSlot := make([]byte, 32-len(roundIdEncoded))
+
+	roundIdSlot = append(roundIdSlot, roundIdEncoded...)
+
+	r = slices.Replace(r, roundIdStartByte, roundIdEndByte, roundIdSlot...)
+
+	return r, nil
+
+}
+
+// Hash computes hash of the response.
+func (r Response) Hash() (common.Hash, error) {
+	if len(r) < 128 {
+		return common.Hash{}, errors.New("response is to short")
+	}
+
+	hash := crypto.Keccak256Hash(r)
+
+	return hash, nil
 }

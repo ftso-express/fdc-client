@@ -5,7 +5,6 @@ import (
 	"flare-common/contacts/relay"
 	"flare-common/database"
 	"flare-common/events"
-	"local/fdc/client/verification"
 	hub "local/fdc/contracts/FDC"
 	"math/big"
 
@@ -48,8 +47,8 @@ func lessLog(a, b IndexLog) bool {
 type Attestation struct {
 	Index     IndexLog
 	RoundID   uint64
-	Request   verification.Request
-	Response  verification.Response
+	Request   Request
+	Response  Response
 	Fee       *big.Int
 	Status    Status
 	Consensus bool
