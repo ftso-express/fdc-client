@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"flare-common/payload"
+	"fmt"
 	"local/fdc/client/shuffle"
 	"log"
 	"math/big"
@@ -26,6 +27,7 @@ type IndexTx struct {
 	TransactionIndex uint64
 }
 
+// LessTx compares IndexTxs a,b. Returns true if a has lower BlockNumber than b or has the same BlockNumber and lower TransactionIndex.
 func LessTx(a, b IndexTx) bool {
 	if a.BlockNumber < b.BlockNumber {
 		return true
@@ -48,7 +50,7 @@ type WeightedBitVote struct {
 type bitVoteWithValue struct {
 	index   int64
 	bitVote BitVote
-	value   *big.Int
+	value   *big.Int // support multiplied with fees
 	err     error
 }
 
@@ -74,7 +76,7 @@ func BitVoteFromAttestations(attestations []*Attestation) (BitVote, error) {
 func (bv BitVote) fees(attestations []*Attestation) (*big.Int, error) {
 
 	if bv.BitVector.BitLen() > len(attestations) {
-		return nil, errors.New("attestations do not hold a confirmed instance")
+		return nil, errors.New("a confirmed instance missing from attestations")
 	}
 
 	fees := big.NewInt(0)
@@ -135,7 +137,7 @@ func value(bitVote BitVote, supportingWeight uint16, attestations []*Attestation
 	fees, err := bitVote.fees(attestations)
 
 	if err != nil {
-		return nil, errors.New("cannot compute fees")
+		return nil, fmt.Errorf("cannot compute value : %s", err)
 	}
 
 	return fees.Mul(fees, big.NewInt(int64(supportingWeight))), nil
@@ -299,8 +301,10 @@ func (r *Round) ProcessBitVote(message payload.Message) error {
 		return errors.New("zero weight")
 	}
 
+	// check if a bitVote was already submitted by the sender
 	weightedBitVote, ok := r.bitVoteCheckList[message.From]
 
+	// first submission
 	if !ok {
 		weightedBitVote = &WeightedBitVote{}
 		r.bitVotes = append(r.bitVotes, weightedBitVote)
@@ -311,6 +315,7 @@ func (r *Round) ProcessBitVote(message payload.Message) error {
 		weightedBitVote.indexTx = IndexTx{message.BlockNumber, message.TransactionIndex}
 	}
 
+	// more than one submission. The later submission is considered to be valid.
 	if ok && LessTx(weightedBitVote.indexTx, IndexTx{message.BlockNumber, message.TransactionIndex}) {
 
 		weightedBitVote.BitVote = bitVote

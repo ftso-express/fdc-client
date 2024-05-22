@@ -45,7 +45,7 @@ func TestAddRound(t *testing.T) {
 		t.Error("fail")
 	}
 
-	resp, _ = resp.AddRound(257)
+	resp.AddRound(257)
 
 	if resp[95] != byte(1) || resp[94] != byte(1) {
 		t.Error("fail")
@@ -85,7 +85,7 @@ func TestHash(t *testing.T) {
 
 	resp, _ = hex.DecodeString(response)
 
-	hash, _ := resp.Hash()
+	hash, _ := resp.Hash(0)
 
 	if hash.String() != "0xf014a6220c448b59f8067a99397b4d3506d17a182df101f23c52825e6c5e1f17" {
 		t.Error("wrong hash")

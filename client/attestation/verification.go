@@ -135,6 +135,9 @@ func (r Response) ComputeMicMaybe() (common.Hash, error) {
 
 }
 
+// ComputeMic computes Mic from the response.
+// Mic is defined by solidity code abi.encode(response,"Flare") where response is a instance of a struct defined by the attestation type.
+// It is assumed that roundId in the response is set to 0.
 func (r Response) ComputeMic(args abi.Arguments) (common.Hash, error) {
 
 	decoded, err := args.Unpack(r)
@@ -208,9 +211,16 @@ func (r Response) AddRound(roundId uint64) (Response, error) {
 }
 
 // Hash computes hash of the response.
-func (r Response) Hash() (common.Hash, error) {
+// It is assumed that the roundId in the Response is set to the correct voting round.
+func (r Response) Hash(roundId uint64) (common.Hash, error) {
 	if len(r) < 128 {
 		return common.Hash{}, errors.New("response is to short")
+	}
+
+	_, err := r.AddRound(roundId)
+
+	if err != nil {
+		return common.Hash{}, err
 	}
 
 	hash := crypto.Keccak256Hash(r)

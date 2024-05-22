@@ -36,6 +36,7 @@ func (m *Manager) VerifierServer(attTypeAndSource [64]byte) (config.VerifierCred
 	}
 }
 
+// ResolveAttestationRequest sends the attestation request to the verifier server with verifierCred and stores the response.
 func ResolveAttestationRequest(att *Attestation, verifierCred config.VerifierCredentials) error {
 	client := &http.Client{}
 	requestBytes := att.Request

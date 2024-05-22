@@ -188,6 +188,7 @@ func (m *Manager) OnBitVote(message payload.Message) error {
 	round, err := m.GetOrCreateRound(message.VotingRound)
 
 	if err != nil {
+		log.Printf("could not get round %d: %s", message.VotingRound, err)
 		return err
 	}
 
@@ -212,7 +213,7 @@ func (m *Manager) OnRequest(request database.Log) error {
 
 	attestation := Attestation{}
 
-	attestation.RoundID = roundID
+	attestation.RoundId = roundID
 
 	data, err := ParseAttestationRequestLog(request)
 
@@ -284,7 +285,7 @@ func (m *Manager) handleAttestation(attestation *Attestation) error {
 	} else {
 		log.Println("Response received, validating...")
 		err := attestation.validateResponse()
-		log.Println(attestation.Status, attestation.RoundID)
+		log.Println(attestation.Status, attestation.RoundId)
 		return err
 	}
 }

@@ -46,7 +46,7 @@ func lessLog(a, b IndexLog) bool {
 
 type Attestation struct {
 	Index     IndexLog
-	RoundID   uint64
+	RoundId   uint64
 	Request   Request
 	Response  Response
 	Fee       *big.Int
@@ -80,21 +80,8 @@ func (a *Attestation) validateResponse() error {
 		return nil
 	}
 
-	_, err = a.Response.AddRound(a.RoundID)
+	a.Hash, err = a.Response.Hash(a.RoundId)
 
-	if err != nil {
-		a.Status = ProcessError
-		return errors.New("cannot set round")
-	}
-
-	a.Hash, err = a.Response.Hash()
-
-	if err != nil {
-		a.Status = ProcessError
-		return errors.New("cannot compute hash")
-	}
-
-	a.Hash, err = a.Response.Hash()
 	if err != nil {
 		a.Status = ProcessError
 		return errors.New("cannot compute hash")
