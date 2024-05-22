@@ -63,7 +63,7 @@ type ListenersConfig struct {
 	RequestIntervalSeconds int    `toml:"request_interval_seconds"`
 }
 
-type AbiConfigUnparsed map[string]string // map from attestation type to abi of its Response struct
+type AbiConfigUnparsed map[string]string // map from attestation type to location of abi of its Response struct
 
 type AbiConfig struct {
 	ResponseArguments  map[[32]byte]abi.Arguments // map from attestation type to abi of its Response struct
