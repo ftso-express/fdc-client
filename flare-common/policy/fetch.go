@@ -1,7 +1,7 @@
 package policy
 
 import (
-	"flare-common/contacts/relay"
+	"flare-common/contracts/relay"
 	"flare-common/database"
 	"flare-common/events"
 

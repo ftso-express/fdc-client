@@ -1,7 +1,7 @@
 package collector
 
 import (
-	"flare-common/contacts/relay"
+	"flare-common/contracts/relay"
 	"flare-common/database"
 	"flare-common/payload"
 	"local/fdc/client/attestation"

@@ -2,7 +2,7 @@ package attestation
 
 import (
 	"errors"
-	"flare-common/contacts/relay"
+	"flare-common/contracts/relay"
 	"flare-common/database"
 	"flare-common/events"
 	hub "local/fdc/contracts/FDC"
