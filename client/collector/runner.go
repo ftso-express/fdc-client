@@ -23,6 +23,7 @@ const (
 const (
 	roundLength      = 90 * time.Second
 	databasePollTime = 2 * time.Second
+	bitVoteHeadStart = 5 * time.Second
 )
 
 type Runner struct {
@@ -78,11 +79,12 @@ func (r *Runner) Run() {
 
 	go r.RoundManager.Run()
 
-	initializeChooseTrigger(chooseTrigger, r.DB)
+	prepareChooseTriggers(chooseTrigger, r.DB)
 
 }
 
-func initializeChooseTrigger(trigger chan uint64, DB *gorm.DB) {
+// prepareChooseTriggers tracks chain timestamps and makes sure that roundId of the round whose choose phase has just ended to the trigger chanel.
+func prepareChooseTriggers(trigger chan uint64, DB *gorm.DB) {
 
 	state, err := database.FetchState(DB)
 	if err != nil {
@@ -93,7 +95,7 @@ func initializeChooseTrigger(trigger chan uint64, DB *gorm.DB) {
 
 	bitVoteTicker := time.NewTicker(time.Hour) // timer will be reset to 90 seconds
 
-	go configureBitVoteTicker(bitVoteTicker, time.Unix(int64(*nextChoosePhaseEndTimestamp), 0), 5*time.Second)
+	go configureBitVoteTicker(bitVoteTicker, time.Unix(int64(*nextChoosePhaseEndTimestamp), 0), bitVoteHeadStart)
 
 	for {
 
@@ -123,6 +125,7 @@ func initializeChooseTrigger(trigger chan uint64, DB *gorm.DB) {
 
 }
 
+// configureBitVoteTicker resets the ticker at headStart before start to roundLength
 func configureBitVoteTicker(ticker *time.Ticker, start time.Time, headStart time.Duration) {
 
 	time.Sleep(time.Until(start) - headStart)
@@ -131,6 +134,8 @@ func configureBitVoteTicker(ticker *time.Ticker, start time.Time, headStart time
 
 }
 
+// tryTriggerBitVote checks whether the blockchain timestamp has surpassed end of choose phase or local time has surpassed it for more than bitVoteOffChainTriggerSeconds.
+// If conditions are met, roundId is passed to the chanel c.
 func tryTriggerBitVote(nextChoosePhaseRoundIDEnd *int, nextChoosePhaseEndTimestamp *uint64, currentBlockTime uint64, c chan uint64) bool {
 
 	now := uint64(time.Now().Unix())
