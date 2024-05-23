@@ -20,6 +20,11 @@ const (
 	signingPolicyBufferSize       = 3
 )
 
+const (
+	roundLength      = 90 * time.Second
+	databasePollTime = 2 * time.Second
+)
+
 type Runner struct {
 	Protocol              uint64
 	SubmitContractAddress string
@@ -61,8 +66,6 @@ func New(user config.UserConfigRaw, system config.SystemConfig) *Runner {
 	return &runner
 }
 
-const databasePollSeconds = 2
-
 func (r *Runner) Run() {
 
 	chooseTrigger := make(chan uint64)
@@ -73,39 +76,70 @@ func (r *Runner) Run() {
 
 	r.RoundManager.Requests = RequestsInitializedListener(r.DB, r.FdcContractAddress, r.RequestEventSig, requestsBufferSize, requestListenerInterval)
 
-	state, err := database.FetchState(r.DB)
+	go r.RoundManager.Run()
+
+	initializeChooseTrigger(chooseTrigger, r.DB)
+
+}
+
+func initializeChooseTrigger(trigger chan uint64, DB *gorm.DB) {
+
+	state, err := database.FetchState(DB)
 	if err != nil {
 		log.Fatal("database error:", err)
 	}
 
 	nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp := timing.NextChoosePhaseEnd(state.BlockTimestamp)
 
-	go r.RoundManager.Run()
+	bitVoteTicker := time.NewTicker(time.Hour) // timer will be reset to 90 seconds
 
-	ticker := time.NewTicker(databasePollSeconds * time.Second)
+	go configureBitVoteTicker(bitVoteTicker, time.Unix(int64(*nextChoosePhaseEndTimestamp), 0), 5*time.Second)
 
 	for {
-		state, err := database.FetchState(r.DB)
-		if err != nil {
-			log.Println("database error:", err)
-		} else {
-			tryTriggerBitVote(
-				nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp, state.BlockTimestamp, chooseTrigger,
-			)
+
+		ticker := time.NewTicker(databasePollTime)
+
+		for {
+
+			state, err := database.FetchState(DB)
+
+			if err != nil {
+				log.Println("database error:", err)
+			} else {
+				done := tryTriggerBitVote(
+					nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp, state.BlockTimestamp, trigger,
+				)
+
+				if done {
+					break
+				}
+			}
+			<-ticker.C
+
 		}
 
-		<-ticker.C
+		<-bitVoteTicker.C
 	}
 
 }
 
-func tryTriggerBitVote(nextChoosePhaseRoundIDEnd *int, nextChoosePhaseEndTimestamp *uint64, currentBlockTime uint64, c chan uint64) {
+func configureBitVoteTicker(ticker *time.Ticker, start time.Time, headStart time.Duration) {
+
+	time.Sleep(time.Until(start) - headStart)
+
+	ticker.Reset(roundLength) // get this from config or constant
+
+}
+
+func tryTriggerBitVote(nextChoosePhaseRoundIDEnd *int, nextChoosePhaseEndTimestamp *uint64, currentBlockTime uint64, c chan uint64) bool {
 
 	now := uint64(time.Now().Unix())
 
 	if currentBlockTime > *nextChoosePhaseEndTimestamp {
 		c <- uint64(*nextChoosePhaseRoundIDEnd)
 		nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp = timing.NextChoosePhaseEnd(currentBlockTime)
+
+		return true
 	}
 
 	if (now - bitVoteOffChainTriggerSeconds) > *nextChoosePhaseEndTimestamp {
@@ -113,8 +147,11 @@ func tryTriggerBitVote(nextChoosePhaseRoundIDEnd *int, nextChoosePhaseEndTimesta
 		*nextChoosePhaseRoundIDEnd++
 		*nextChoosePhaseEndTimestamp = *nextChoosePhaseEndTimestamp + 90
 
+		return true
+
 	}
 
+	return false
 }
 
 // BitVoteInitializedListener returns an initialized channel that servers payload data submitted do submitContractAddress to method with funcSig for protocol.
