@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
+	"flare-common/logger"
 	"fmt"
 	"local/fdc/client/collector"
 	"local/fdc/client/config"
 	"local/fdc/server"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,18 +17,20 @@ const (
 	SYSTEM_FILE string = "../../configs/systemConfig.toml" //relative to main
 )
 
+var log = logger.GetLogger()
+
 func main() {
 	// Start attestation client collector\
 
 	userConfigRaw, err := config.ReadUserRaw(USER_FILE)
 	if err != nil {
-		log.Panicf("cannot read user config: %s", err)
+		log.Panic("cannot read user config:", err)
 	}
 
 	systemConfig, err := config.ReadSystem(SYSTEM_FILE)
 
 	if err != nil {
-		log.Panicf("cannot read system config: %s", err)
+		log.Panic("cannot read system config:", err)
 	}
 
 	collector := collector.New(userConfigRaw, systemConfig)
@@ -43,7 +45,7 @@ func main() {
 	signal.Notify(cancelChan, os.Interrupt, syscall.SIGTERM)
 
 	// run server
-	log.Println("Running server")
+	log.Info("Running server")
 	go server.RunProviderServer(context)
 
 	<-cancelChan
