@@ -1,7 +1,7 @@
 package policy
 
 import (
-	relayContract "flare-common/contacts/relay"
+	relayContract "flare-common/contracts/relay"
 	"math/big"
 	"sync"
 

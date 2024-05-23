@@ -2,7 +2,7 @@ package events
 
 import (
 	"encoding/hex"
-	"flare-common/contacts/relay"
+	"flare-common/contracts/relay"
 	"flare-common/database"
 
 	"github.com/ethereum/go-ethereum/common"
