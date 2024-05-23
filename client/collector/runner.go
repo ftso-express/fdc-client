@@ -1,11 +1,13 @@
 package collector
 
 import (
+	"flare-common/contacts/relay"
 	"flare-common/database"
 	"flare-common/payload"
 	"local/fdc/client/attestation"
 	"local/fdc/client/config"
 	"local/fdc/client/timing"
+	hub "local/fdc/contracts/FDC"
 	"log"
 	"time"
 
@@ -26,6 +28,29 @@ const (
 	bitVoteHeadStart = 5 * time.Second
 )
 
+var signingPolicyEventSig string
+var requestEventSig string
+
+func init() {
+
+	relayAbi, err := relay.RelayMetaData.GetAbi()
+
+	if err != nil {
+		log.Panicf("cannot get relayAby: %s", err)
+	}
+
+	signingPolicyEventSig = relayAbi.Events["SigningPolicyInitialized"].ID.String()[2:] //remove 0x
+
+	fdcAbi, err := hub.HubMetaData.GetAbi()
+
+	if err != nil {
+		log.Panicf("cannot get fdcAbi: %s", err)
+	}
+
+	requestEventSig = fdcAbi.Events["AttestationRequest"].ID.String()[2:] //remove 0x
+
+}
+
 type Runner struct {
 	Protocol              uint64
 	SubmitContractAddress string
@@ -41,8 +66,8 @@ type Runner struct {
 func New(user config.UserConfigRaw, system config.SystemConfig) *Runner {
 	// TODO: Luka - get these from config
 	// CONSTANTS
-	requestEventSignature := "251377668af6553101c9bb094ba89c0c536783e005e203625e6cd57345918cc9"
-	signingPolicySignature := "91d0280e969157fc6c5b8f952f237b03d934b18534dafcac839075bbc33522f8"
+	// requestEventSignature := "251377668af6553101c9bb094ba89c0c536783e005e203625e6cd57345918cc9"
+	// signingPolicySignature := "91d0280e969157fc6c5b8f952f237b03d934b18534dafcac839075bbc33522f8"
 	submit1FuncSig := "6c532fae"
 
 	roundManager := attestation.NewManager(user)
@@ -55,10 +80,8 @@ func New(user config.UserConfigRaw, system config.SystemConfig) *Runner {
 	runner := Runner{
 		Protocol:              system.Listener.Protocol,
 		SubmitContractAddress: system.Listener.SubmitContractAddress,
-		RequestEventSig:       requestEventSignature,
 		FdcContractAddress:    system.Listener.FdcContractAddress,
 		RelayContractAddress:  system.Listener.RelayContractAddress,
-		SigningPolicyEventSig: signingPolicySignature,
 		DB:                    db,
 		submit1Sig:            submit1FuncSig,
 		RoundManager:          roundManager,
@@ -71,11 +94,11 @@ func (r *Runner) Run() {
 
 	chooseTrigger := make(chan uint64)
 
-	r.RoundManager.SigningPolicies = SigningPolicyInitializedListener(r.DB, r.RelayContractAddress, r.SigningPolicyEventSig, 3)
+	r.RoundManager.SigningPolicies = SigningPolicyInitializedListener(r.DB, r.RelayContractAddress, signingPolicyEventSig, 3)
 
 	r.RoundManager.BitVotes = BitVoteInitializedListener(r.DB, r.FdcContractAddress, r.submit1Sig, r.Protocol, bitVoteBufferSize, chooseTrigger)
 
-	r.RoundManager.Requests = RequestsInitializedListener(r.DB, r.FdcContractAddress, r.RequestEventSig, requestsBufferSize, requestListenerInterval)
+	r.RoundManager.Requests = RequestsInitializedListener(r.DB, r.FdcContractAddress, requestEventSig, requestsBufferSize, requestListenerInterval)
 
 	go r.RoundManager.Run()
 
