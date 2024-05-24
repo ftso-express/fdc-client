@@ -181,7 +181,7 @@ func (r Response) LUT() (uint64, error) {
 		return 0, err
 	}
 
-	// lut is encoded in the fourth sloth
+	// lut is encoded in the fourth slot
 	lutStartByte := 32 * 3
 	lutIdEndByte := 32 * 4
 

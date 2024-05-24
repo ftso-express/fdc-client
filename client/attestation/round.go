@@ -27,7 +27,7 @@ type Round struct {
 	bitVoteCheckList map[string]*WeightedBitVote
 	ConsensusBitVote BitVote
 	voterSet         *policy.VoterSet
-	merkletree       merkle.Tree
+	merkleTree       merkle.Tree
 }
 
 // CreateRound returns a pointer to a new round with roundId and voterSet.
@@ -95,19 +95,29 @@ func (r *Round) ComputeConsensusBitVote() error {
 	return SetBitVoteStatus(r.Attestations, consensus)
 }
 
-func (r *Round) GetConsensusBitVote() BitVote {
+func (r *Round) GetConsensusBitVote() (BitVote, error) {
 
-	return r.ConsensusBitVote
+	if r.ConsensusBitVote.BitVector == nil {
+		return BitVote{}, errors.New("no consensus bitVote")
+	}
+
+	return r.ConsensusBitVote, nil
 }
 
+// SetConsensusStatus sets consensus status of the attestations.
+// The scenario where a chosen attestation is missing is not possible as in such case, it is not possible to compute the consensus bitVote.
 func (r *Round) SetConsensusStatus() error {
+
+	consensusBitVote, err := r.GetConsensusBitVote()
+
+	if err != nil {
+		return err
+	}
 
 	r.sortAttestations()
 
-	// handle no bitVote or chosen request that is not registered
-
 	for i := range r.Attestations {
-		r.Attestations[i].Consensus = r.ConsensusBitVote.BitVector.Bit(i) == 1
+		r.Attestations[i].Consensus = consensusBitVote.BitVector.Bit(i) == 1
 	}
 
 	return nil
@@ -123,12 +133,19 @@ func (r *Round) GetMerkleTree() (merkle.Tree, error) {
 
 	hashes := []common.Hash{}
 
+	lastHash := common.Hash{}
+
 	for i := range r.Attestations {
-		if r.ConsensusBitVote.BitVector.Bit(i) == 1 {
+		if r.Attestations[i].Consensus {
 			if r.Attestations[i].Status != Success {
 				return merkle.Tree{}, errors.New("cannot build merkle tree")
 			}
-			hashes = append(hashes, r.Attestations[i].Hash)
+
+			// skip duplicates
+			if lastHash != r.Attestations[i].Hash {
+				hashes = append(hashes, r.Attestations[i].Hash)
+				lastHash = r.Attestations[i].Hash
+			}
 		}
 	}
 
@@ -136,7 +153,7 @@ func (r *Round) GetMerkleTree() (merkle.Tree, error) {
 
 	merkleTree := merkle.Build(hashes, false)
 
-	r.merkletree = merkleTree
+	r.merkleTree = merkleTree
 
 	return merkleTree, nil
 
@@ -154,8 +171,8 @@ func (r *Round) GetMerkleTree() (merkle.Tree, error) {
 
 func (r *Round) GetMerkleTreeCached() (merkle.Tree, error) {
 
-	if len(r.merkletree) != 0 {
-		return r.merkletree, nil
+	if len(r.merkleTree) != 0 {
+		return r.merkleTree, nil
 	}
 
 	return r.GetMerkleTree()
