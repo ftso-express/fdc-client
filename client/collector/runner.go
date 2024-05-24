@@ -377,6 +377,8 @@ func SigningPolicyInitializedListener(db *gorm.DB, relayContractAddress string, 
 					db, relayContractAddress, signingPolicyInitializedEventSig, latestQuery.Unix(), now.Unix(),
 				)
 
+				latestQuery = now
+
 				if err != nil {
 					log.Error("fetch logs error:", err)
 					continue
