@@ -71,12 +71,14 @@ log_queries = false
 # [verifiers.XRP.AddressValidity]
 # url = "url"
 # api_key = "key"
+# lut_limit = 0
 
 
 # Verifiers for ETH
 [verifiers.XRP.EVMTransaction]
 url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
 api_key = "12345"
+lut_limit = 18446744073709551615
 
 
 #ABIs

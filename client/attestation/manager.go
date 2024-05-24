@@ -41,7 +41,6 @@ type Manager struct {
 	signingPolicyStorage *policy.SigningPolicyStorage
 	verifierServers      map[[64]byte]config.VerifierCredentials // the keys are AttestationTypeAndSource
 	abiConfig            config.AbiConfig
-	luts                 map[[64]byte]uint64 // the keys are AttestationTypeAndSource
 }
 
 // NewManager initializes attestation round manager
@@ -265,7 +264,15 @@ func (m *Manager) handleAttestation(attestation *Attestation) error {
 		return err
 	}
 
-	attestation.abi = m.abiConfig.ResponseArguments[attType]
+	var ok bool
+
+	attestation.abi, ok = m.abiConfig.ResponseArguments[attType]
+
+	if !ok {
+		attestation.Status = UnsupportedPair
+		return errors.New("unsupported att type: no abi")
+
+	}
 
 	verifier, ok := m.VerifierServer(attTypeAndSource)
 
@@ -274,6 +281,8 @@ func (m *Manager) handleAttestation(attestation *Attestation) error {
 		return errors.New("unsupported pair")
 
 	}
+
+	attestation.lutLimit = verifier.LutLimit
 
 	attestation.Status = Processing
 

@@ -5,6 +5,7 @@ import (
 	"flare-common/contracts/relay"
 	"flare-common/database"
 	"flare-common/events"
+	"local/fdc/client/timing"
 	hub "local/fdc/contracts/FDC"
 	"math/big"
 
@@ -21,7 +22,7 @@ const (
 	Processing      Status = 4
 	Success         Status = 5
 	WrongMIC        Status = 6
-	WrongLUT        Status = 7
+	InvalidLUT      Status = 7
 	Retrying        Status = 8
 	ProcessError    Status = 9
 )
@@ -54,6 +55,7 @@ type Attestation struct {
 	Consensus bool
 	Hash      common.Hash
 	abi       abi.Arguments
+	lutLimit  uint64
 }
 
 // validateResponse check the MIC of the response against the MIC of the request. If the check is successful, attestation status is set to success and attestation hash is computed and set.
@@ -78,6 +80,21 @@ func (a *Attestation) validateResponse() error {
 	if micReq != micRes {
 		a.Status = WrongMIC
 		return nil
+	}
+
+	lut, err := a.Response.LUT()
+
+	if err != nil {
+		a.Status = ProcessError
+
+		return errors.New("cannot read lut")
+	}
+
+	roundStart := timing.ChooseStartTimestamp(int(a.RoundId))
+
+	if roundStart-lut > a.lutLimit {
+		a.Status = InvalidLUT
+		return errors.New("lut to old")
 	}
 
 	a.Hash, err = a.Response.Hash(a.RoundId)
