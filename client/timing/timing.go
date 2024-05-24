@@ -48,3 +48,7 @@ func LastCollectPhaseStart(t uint64) (int, uint64) {
 
 	return int(roundID), startTimestamp
 }
+
+func ExpectedRewardEpochStartTimestamp(rewardEpochId uint64) uint64 {
+	return t0 + 3360*90*rewardEpochId
+}

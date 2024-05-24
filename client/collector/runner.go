@@ -5,6 +5,7 @@ import (
 	"flare-common/database"
 	"flare-common/logger"
 	"flare-common/payload"
+	"fmt"
 	"local/fdc/client/attestation"
 	"local/fdc/client/config"
 	"local/fdc/client/timing"
@@ -104,11 +105,11 @@ func (r *Runner) Run() {
 
 	chooseTrigger := make(chan uint64)
 
-	r.RoundManager.SigningPolicies = SigningPolicyInitializedListener(r.DB, r.RelayContractAddress, signingPolicyInitializedEventSig, 3)
+	r.RoundManager.SigningPolicies = SigningPolicyInitializedListener(r.DB, r.RelayContractAddress, 3)
 
-	r.RoundManager.BitVotes = BitVoteInitializedListener(r.DB, r.FdcContractAddress, r.submit1Sig, r.Protocol, bitVoteBufferSize, chooseTrigger)
+	r.RoundManager.BitVotes = BitVoteListener(r.DB, r.FdcContractAddress, r.submit1Sig, r.Protocol, bitVoteBufferSize, chooseTrigger)
 
-	r.RoundManager.Requests = RequestsInitializedListener(r.DB, r.FdcContractAddress, attestationRequestEventSig, requestsBufferSize, requestListenerInterval)
+	r.RoundManager.Requests = AttestationRequestListener(r.DB, r.FdcContractAddress, requestsBufferSize, requestListenerInterval)
 
 	go r.RoundManager.Run()
 
@@ -192,9 +193,11 @@ func tryTriggerBitVote(nextChoosePhaseRoundIDEnd *int, nextChoosePhaseEndTimesta
 	return false
 }
 
-// BitVoteInitializedListener returns an initialized channel that servers payload data submitted do submitContractAddress to method with funcSig for protocol.
+// BitVoteListener returns an initialized channel that servers payload data submitted do submitContractAddress to method with funcSig for protocol.
 // Payload for roundID is served whenever a trigger provides a roundID
-func BitVoteInitializedListener(db *gorm.DB, submitContractAddress, funcSig string, protocol uint64, bufferSize int, trigger <-chan uint64) <-chan payload.Round {
+func BitVoteListener(
+	db *gorm.DB, submitContractAddress, funcSig string, protocol uint64, bufferSize int, trigger <-chan uint64,
+) <-chan payload.Round {
 
 	out := make(chan payload.Round, bufferSize)
 
@@ -243,8 +246,8 @@ func BitVoteInitializedListener(db *gorm.DB, submitContractAddress, funcSig stri
 
 }
 
-func RequestsInitializedListener(
-	db *gorm.DB, fdcContractAddress, requestEventSig string, bufferSize int, ListenerInterval time.Duration,
+func AttestationRequestListener(
+	db *gorm.DB, fdcContractAddress string, bufferSize int, ListenerInterval time.Duration,
 ) <-chan []database.Log {
 
 	out := make(chan []database.Log, bufferSize)
@@ -263,7 +266,7 @@ func RequestsInitializedListener(
 		lastQueriedBlock := state.Index
 
 		logs, err := database.FetchLogsByAddressAndTopic0TimestampToBlockNumber(
-			db, fdcContractAddress, requestEventSig, int64(startTimestamp), int64(state.Index),
+			db, fdcContractAddress, attestationRequestEventSig, int64(startTimestamp), int64(state.Index),
 		)
 		if err != nil {
 			log.Panic("fetch initial logs error")
@@ -284,7 +287,7 @@ func RequestsInitializedListener(
 			}
 
 			logs, err := database.FetchLogsByAddressAndTopic0BlockNumber(
-				db, fdcContractAddress, requestEventSig, int64(lastQueriedBlock), int64(state.Index),
+				db, fdcContractAddress, attestationRequestEventSig, int64(lastQueriedBlock), int64(state.Index),
 			)
 			if err != nil {
 				log.Error("fetch logs error:", err)
@@ -305,45 +308,93 @@ func RequestsInitializedListener(
 	return out
 }
 
-func SigningPolicyInitializedListener(db *gorm.DB, relayContractAddress, signingPolicyInitializedEventSig string, bufferSize int) <-chan []database.Log {
+func fetchLastSigningPolicyInitializedEvents(db *gorm.DB, relayContractAddress string, number int) ([]database.Log, error) {
+
+	var logs []database.Log
+
+	// fetch last 3 signingPolicyInitialized events
+	err := db.Where("address = ? AND topic0 = ?",
+		strings.ToLower(strings.TrimPrefix(relayContractAddress, "0x")),
+		strings.ToLower(strings.TrimPrefix(signingPolicyInitializedEventSig, "0x")),
+	).Order("timestamp DESC").Limit(number).Find(&logs).Error
+
+	if err != nil {
+		return logs, fmt.Errorf("error fetching last sig policy logs: %s", err)
+	}
+
+	return logs, nil
+
+}
+
+func SigningPolicyInitializedListener(db *gorm.DB, relayContractAddress string, bufferSize int) <-chan []database.Log {
 	out := make(chan []database.Log, bufferSize)
 
 	go func() {
 
-		latestQuery := time.Now()
-		twoWeeksBefore := latestQuery.Add(-2 * 7 * 24 * time.Hour)
+		logs, err := fetchLastSigningPolicyInitializedEvents(db, relayContractAddress, 3)
 
-		logs, err := database.FetchLogsByAddressAndTopic0Timestamp(
-			db, relayContractAddress, signingPolicyInitializedEventSig, twoWeeksBefore.Unix(), latestQuery.Unix(),
-		)
+		latestQuery := time.Now()
+
 		if err != nil {
 			log.Panic("error fetching initial logs:", err)
 		}
 
 		log.Debug("Logs length:", len(logs))
 
+		if len(logs) == 0 {
+			log.Panic("No initial signing policies found:", err)
+		}
+
 		out <- logs
 
-		ticker := time.NewTicker(80 * time.Second) //TODO: optimize to reduce number of queries
+		//TODO refactor
+
+		lastSigningPolicy, err := attestation.ParseSigningPolicyInitializedLog(logs[0])
+
+		if err != nil {
+			log.Panic("error parsing initial logs:", err)
+		}
+
+		lastInitializedRewardEpochID := lastSigningPolicy.RewardEpochId.Uint64() // TODO check conversion
 
 		for {
-			<-ticker.C
+			expectedStartOfTheNextSigningPolicyInitialized := timing.ExpectedRewardEpochStartTimestamp(lastInitializedRewardEpochID + 1)
 
-			now := time.Now()
+			untilStart := time.Until(time.Unix(int64(expectedStartOfTheNextSigningPolicyInitialized)-90*15, 0)) //use const for headStart 90*15
 
-			logs, err := database.FetchLogsByAddressAndTopic0Timestamp(
-				db, relayContractAddress, signingPolicyInitializedEventSig, latestQuery.Unix(), now.Unix(),
-			)
-			if err != nil {
-				log.Error("fetch logs error:", err)
-				continue
-			}
+			timer := time.NewTimer(untilStart)
 
-			latestQuery = now
+			<-timer.C
 
-			if len(logs) > 0 {
-				log.Debug("Adding signing policy to channel")
-				out <- logs
+			ticker := time.NewTicker(89 * time.Second) // ticker that is guaranteed to tick at least once per SystemVotingRound
+
+		aggressiveQuery:
+			for {
+
+				now := time.Now()
+
+				logs, err := database.FetchLogsByAddressAndTopic0Timestamp(
+					db, relayContractAddress, signingPolicyInitializedEventSig, latestQuery.Unix(), now.Unix(),
+				)
+
+				if err != nil {
+					log.Error("fetch logs error:", err)
+					continue
+				}
+
+				if len(logs) > 0 {
+					log.Debug("Adding signing policy to channel")
+					out <- logs
+
+					lastInitializedRewardEpochID++
+					ticker.Stop()
+					timer.Stop()
+					break aggressiveQuery
+
+				}
+
+				<-ticker.C
+
 			}
 
 		}
