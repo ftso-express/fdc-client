@@ -7,7 +7,6 @@ import (
 	"flare-common/payload"
 	"fmt"
 	"local/fdc/client/shuffle"
-	"log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -156,7 +155,7 @@ func ConsensusBitVote(roundId uint64, weightedBitVotes []*WeightedBitVote, total
 	if (totalWeight+1)/2 > weightVoted {
 
 		percentage := (weightVoted * 100) / totalWeight
-		log.Printf("Only %d%% voted in round %d.", roundId, percentage)
+		log.Warnf("Only %d%% voted in round %d.", roundId, percentage)
 		return BitVote{}, errors.New("not enough weight bitVoted to get a consensus")
 	}
 
@@ -182,7 +181,7 @@ func ConsensusBitVote(roundId uint64, weightedBitVotes []*WeightedBitVote, total
 		result := <-ch
 
 		if result.err != nil {
-			log.Printf("Cannot compute consensus bitVote round %d because of a missing attestation.", roundId)
+			log.Errorf("Cannot compute consensus bitVote round %d because of a missing attestation.", roundId)
 
 			return BitVote{}, errors.New("missing attestations. cannot compute consensus bitvote")
 		}

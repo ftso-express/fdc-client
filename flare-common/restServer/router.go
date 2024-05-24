@@ -1,7 +1,7 @@
 package restServer
 
 import (
-	"log"
+	"flare-common/logger"
 
 	swagger "github.com/davidebianchi/gswagger"
 	"github.com/davidebianchi/gswagger/support/gorilla"
@@ -10,6 +10,8 @@ import (
 	"github.com/swaggest/swgui"
 	v3 "github.com/swaggest/swgui/v3"
 )
+
+var log = logger.GetLogger()
 
 type Router interface {
 	AddRoute(path string, handler RouteHandler, description ...string)

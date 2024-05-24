@@ -3,12 +3,12 @@ package collector
 import (
 	"flare-common/contracts/relay"
 	"flare-common/database"
+	"flare-common/logger"
 	"flare-common/payload"
 	"local/fdc/client/attestation"
 	"local/fdc/client/config"
 	"local/fdc/client/timing"
 	hub "local/fdc/contracts/FDC"
-	"log"
 	"time"
 
 	"gorm.io/gorm"
@@ -30,13 +30,12 @@ const (
 
 var signingPolicyEventSig string
 var requestEventSig string
+var log = logger.GetLogger()
 
 func init() {
-
 	relayAbi, err := relay.RelayMetaData.GetAbi()
-
 	if err != nil {
-		log.Panicf("cannot get relayAby: %s", err)
+		log.Panic("cannot get relayAby:", err)
 	}
 
 	signingPolicyEventSig = relayAbi.Events["SigningPolicyInitialized"].ID.String()[2:] //remove 0x
@@ -44,7 +43,7 @@ func init() {
 	fdcAbi, err := hub.HubMetaData.GetAbi()
 
 	if err != nil {
-		log.Panicf("cannot get fdcAbi: %s", err)
+		log.Panic("cannot get fdcAbi:", err)
 	}
 
 	requestEventSig = fdcAbi.Events["AttestationRequest"].ID.String()[2:] //remove 0x
@@ -74,7 +73,7 @@ func New(user config.UserConfigRaw, system config.SystemConfig) *Runner {
 
 	db, err := database.Connect(&user.DB)
 	if err != nil {
-		log.Fatal("Could not connect to database:", err)
+		log.Panic("Could not connect to database:", err)
 	}
 
 	runner := Runner{
@@ -111,7 +110,7 @@ func prepareChooseTriggers(trigger chan uint64, DB *gorm.DB) {
 
 	state, err := database.FetchState(DB)
 	if err != nil {
-		log.Fatal("database error:", err)
+		log.Panic("database error:", err)
 	}
 
 	nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp := timing.NextChoosePhaseEnd(state.BlockTimestamp)
@@ -129,7 +128,7 @@ func prepareChooseTriggers(trigger chan uint64, DB *gorm.DB) {
 			state, err := database.FetchState(DB)
 
 			if err != nil {
-				log.Println("database error:", err)
+				log.Error("database error:", err)
 			} else {
 				done := tryTriggerBitVote(
 					nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp, state.BlockTimestamp, trigger,
@@ -202,7 +201,7 @@ func BitVoteInitializedListener(db *gorm.DB, submitContractAddress, funcSig stri
 			)
 			if err != nil {
 				// TODO implement backoff/retry
-				log.Println("fetch txs error:", err)
+				log.Error("fetch txs error:", err)
 				continue
 			}
 
@@ -211,7 +210,7 @@ func BitVoteInitializedListener(db *gorm.DB, submitContractAddress, funcSig stri
 				tx := &txs[i]
 				payloads, err := payload.ExtractPayloads(tx)
 				if err != nil {
-					log.Println("extract payload error:", err)
+					log.Error("extract payload error:", err)
 					continue
 				}
 
@@ -247,7 +246,7 @@ func RequestsInitializedListener(
 
 		state, err := database.FetchState(db)
 		if err != nil {
-			log.Fatal("fetch initial state error:", err)
+			log.Panic("fetch initial state error:", err)
 		}
 
 		lastQueriedBlock := state.Index
@@ -256,7 +255,7 @@ func RequestsInitializedListener(
 			db, fdcContractAddress, requestEventSig, int64(startTimestamp), int64(state.Index),
 		)
 		if err != nil {
-			log.Fatal("fetch initial logs error")
+			log.Panic("fetch initial logs error")
 		}
 
 		if len(logs) > 0 {
@@ -269,7 +268,7 @@ func RequestsInitializedListener(
 			state, err = database.FetchState(db)
 			if err != nil {
 				// TODO implement backoff/retry
-				log.Print("fetch state error:", err)
+				log.Error("fetch state error:", err)
 				continue
 			}
 
@@ -277,15 +276,14 @@ func RequestsInitializedListener(
 				db, fdcContractAddress, requestEventSig, int64(lastQueriedBlock), int64(state.Index),
 			)
 			if err != nil {
-				log.Print("fetch logs error:", err)
+				log.Error("fetch logs error:", err)
 				continue
 			}
 
 			lastQueriedBlock = state.Index
 
 			if len(logs) > 0 {
-				log.Println("Added request to channel")
-				log.Println(len(logs))
+				log.Debugf("Adding %d request logs to channel", len(logs))
 				out <- logs
 			}
 
@@ -308,10 +306,10 @@ func SigningPolicyInitializedListener(db *gorm.DB, relayContractAddress, signing
 			db, relayContractAddress, signingPolicyInitializedEventSig, twoWeeksBefore.Unix(), latestQuery.Unix(),
 		)
 		if err != nil {
-			log.Fatal("error fetching initial logs:", err)
+			log.Panic("error fetching initial logs:", err)
 		}
 
-		log.Println("Logs length ", len(logs))
+		log.Debug("Logs length:", len(logs))
 
 		out <- logs
 
@@ -326,14 +324,14 @@ func SigningPolicyInitializedListener(db *gorm.DB, relayContractAddress, signing
 				db, relayContractAddress, signingPolicyInitializedEventSig, latestQuery.Unix(), now.Unix(),
 			)
 			if err != nil {
-				log.Println("fetch logs error:", err)
+				log.Error("fetch logs error:", err)
 				continue
 			}
 
 			latestQuery = now
 
 			if len(logs) > 0 {
-				log.Println("Added signing policy to channel")
+				log.Debug("Adding signing policy to channel")
 				out <- logs
 			}
 

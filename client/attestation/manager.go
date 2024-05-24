@@ -4,18 +4,20 @@ import (
 	"errors"
 	"flare-common/contracts/relay"
 	"flare-common/database"
+	"flare-common/logger"
 	"flare-common/payload"
 	"flare-common/policy"
 	"local/fdc/client/config"
 	"local/fdc/client/timing"
 	hub "local/fdc/contracts/FDC"
-	"log"
 
 	"github.com/ethereum/go-ethereum/common"
 )
 
 // capacity of rounds cache
 const roundBuffer uint64 = 256
+
+var log = logger.GetLogger()
 
 // hubFilterer is only used for Attestation Requests logs parsing. Set in init().
 var hubFilterer *hub.HubFilterer
@@ -50,14 +52,14 @@ func NewManager(configs config.UserConfigRaw) *Manager {
 	abiConfig, err := config.ParseAbi(configs.Abis)
 
 	if err != nil {
-		log.Panicf("parsing abis: %s", err)
+		log.Panic("parsing abis:", err)
 
 	}
 
 	verifierServers, err := config.ParseVerifiers(configs.Verifiers)
 
 	if err != nil {
-		log.Panicf("parsing verifiers: %s", err)
+		log.Panic("parsing verifiers:", err)
 
 	}
 
@@ -70,11 +72,11 @@ func (m *Manager) Run() {
 	// Get signing policy first as we cannot process any other message types
 	// without a signing policy.
 	signingPolicies := <-m.SigningPolicies
-	log.Println("Initial signing policy received.")
+	log.Info("Initial signing policy received.")
 
 	for i := range signingPolicies {
 		if err := m.OnSigningPolicy(signingPolicies[i]); err != nil {
-			log.Fatal("signing policy error:", err)
+			log.Panic("signing policy error:", err)
 		}
 	}
 
@@ -82,23 +84,23 @@ func (m *Manager) Run() {
 		select {
 		case signingPolicies := <-m.SigningPolicies:
 
-			log.Println("New signing policy received.")
+			log.Debug("New signing policy received.")
 
 			for i := range signingPolicies {
 
 				if err := m.OnSigningPolicy(signingPolicies[i]); err != nil {
-					log.Println("signing policy error:", err)
+					log.Error("signing policy error:", err)
 				}
 
 			}
 		case round := <-m.BitVotes:
 
-			log.Printf("Received %d bitVotes for round %d.", len(round.Messages), round.ID)
+			log.Debugf("Received %d bitVotes for round %d.", len(round.Messages), round.ID)
 
 			for i := range round.Messages {
 
 				if err := m.OnBitVote(round.Messages[i]); err != nil {
-					log.Println("bit vote error:", err)
+					log.Error("bit vote error:", err)
 				}
 			}
 
@@ -110,19 +112,19 @@ func (m *Manager) Run() {
 			err := r.ComputeConsensusBitVote()
 
 			if err != nil {
-				log.Printf("Failed bitVote for round %d", round.ID)
+				log.Errorf("Failed bitVote for round %d", round.ID)
 			} else {
-				log.Printf("Consensus bitVote for round %d computed.", round.ID)
+				log.Debugf("Consensus bitVote for round %d computed.", round.ID)
 			}
 
 		case requests := <-m.Requests:
 
-			log.Printf("Received %d requests.", len(requests))
+			log.Debugf("Received %d requests.", len(requests))
 
 			for i := range requests {
 
 				if err := m.OnRequest(requests[i]); err != nil {
-					log.Println("requests error:", err)
+					log.Error("requests error:", err)
 				}
 
 			}
@@ -142,12 +144,12 @@ func (m *Manager) GetOrCreateRound(roundId uint64) (*Round, error) {
 	policy, _ := m.signingPolicyStorage.GetForVotingRound(uint32(roundId))
 
 	if policy == nil {
-		log.Printf("No signing policy for round %d.", roundId)
+		log.Errorf("No signing policy for round %d.", roundId)
 		return nil, errors.New("no signing policy")
 	}
 
 	round = CreateRound(roundId, policy.Voters)
-	log.Printf("Round %d created.", roundId)
+	log.Debugf("Round %d created.", roundId)
 
 	m.Store(round)
 	return round, nil
@@ -189,7 +191,7 @@ func (m *Manager) OnBitVote(message payload.Message) error {
 	round, err := m.GetOrCreateRound(message.VotingRound)
 
 	if err != nil {
-		log.Printf("could not get round %d: %s", message.VotingRound, err)
+		log.Errorf("could not get round %d: %s", message.VotingRound, err)
 		return err
 	}
 
@@ -207,8 +209,7 @@ func (m *Manager) OnBitVote(message payload.Message) error {
 // The request is sent to verifier server and the verifier's response is validated.
 func (m *Manager) OnRequest(request database.Log) error {
 
-	log.Println("Processing request")
-	// log.Println(request)
+	log.Debug("Processing request: %+v", request)
 
 	roundID := timing.RoundIDForTimestamp(request.Timestamp)
 
@@ -219,7 +220,7 @@ func (m *Manager) OnRequest(request database.Log) error {
 	data, err := ParseAttestationRequestLog(request)
 
 	if err != nil {
-		log.Println("Error parsing attestation request")
+		log.Error("Error parsing attestation request")
 		return err
 	}
 
@@ -235,7 +236,7 @@ func (m *Manager) OnRequest(request database.Log) error {
 	round, err := m.GetOrCreateRound(roundID)
 
 	if err != nil {
-		log.Println("Error getting or creating round")
+		log.Error("Error getting or creating round")
 		return err
 	}
 
@@ -243,7 +244,7 @@ func (m *Manager) OnRequest(request database.Log) error {
 
 	go func() {
 		if err := m.handleAttestation(&attestation); err != nil {
-			log.Println("Error handling attestation:", err)
+			log.Error("Error handling attestation:", err)
 		}
 	}()
 
@@ -279,26 +280,26 @@ func (m *Manager) handleAttestation(attestation *Attestation) error {
 	err = ResolveAttestationRequest(attestation, verifier)
 
 	if err != nil {
-		log.Println("Error resolving attestation request")
+		log.Error("Error resolving attestation request")
 		attestation.Status = ProcessError
 
 		return err
 	} else {
-		log.Println("Response received, validating...")
+		log.Debug("Response received, validating...")
 		err := attestation.validateResponse()
-		log.Println(attestation.Status, attestation.RoundId)
+		log.Debug(attestation.Status, attestation.RoundId)
 		return err
 	}
 }
 
 // OnSigningPolicy parsed SigningPolicyInitialized log and stores it into the signingPolicyStorage.
 func (m *Manager) OnSigningPolicy(initializedPolicy database.Log) error {
-	log.Println("Processing signing policy")
+	log.Debug("Processing signing policy")
 
 	data, err := ParseSigningPolicyInitializedLog(initializedPolicy)
 
 	if err != nil {
-		log.Println("Error parsing signing policy")
+		log.Error("Error parsing signing policy")
 		return err
 	}
 
