@@ -9,6 +9,7 @@ import (
 	"local/fdc/client/config"
 	"local/fdc/client/timing"
 	hub "local/fdc/contracts/FDC"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -28,8 +29,8 @@ const (
 	bitVoteHeadStart = 5 * time.Second
 )
 
-var signingPolicyEventSig string
-var requestEventSig string
+var signingPolicyInitializedEventSig string
+var attestationRequestEventSig string
 var log = logger.GetLogger()
 
 func init() {
@@ -38,7 +39,13 @@ func init() {
 		log.Panic("cannot get relayAby:", err)
 	}
 
-	signingPolicyEventSig = relayAbi.Events["SigningPolicyInitialized"].ID.String()[2:] //remove 0x
+	signingPolicyEvent, ok := relayAbi.Events["SigningPolicyInitialized"]
+
+	if !ok {
+		log.Panic("cannot get SigningPolicyInitialized event:", err)
+	}
+
+	signingPolicyInitializedEventSig = strings.TrimPrefix(signingPolicyEvent.ID.String(), "0x")
 
 	fdcAbi, err := hub.HubMetaData.GetAbi()
 
@@ -46,17 +53,21 @@ func init() {
 		log.Panic("cannot get fdcAbi:", err)
 	}
 
-	requestEventSig = fdcAbi.Events["AttestationRequest"].ID.String()[2:] //remove 0x
+	requestEvent, ok := fdcAbi.Events["AttestationRequest"]
+
+	if !ok {
+		log.Panic("cannot get AttestationRequest event:", err)
+	}
+
+	attestationRequestEventSig = strings.TrimPrefix(requestEvent.ID.String(), "0x")
 
 }
 
 type Runner struct {
 	Protocol              uint64
 	SubmitContractAddress string
-	RequestEventSig       string
 	FdcContractAddress    string
 	RelayContractAddress  string
-	SigningPolicyEventSig string
 	DB                    *gorm.DB
 	submit1Sig            string
 	RoundManager          *attestation.Manager
@@ -93,11 +104,11 @@ func (r *Runner) Run() {
 
 	chooseTrigger := make(chan uint64)
 
-	r.RoundManager.SigningPolicies = SigningPolicyInitializedListener(r.DB, r.RelayContractAddress, signingPolicyEventSig, 3)
+	r.RoundManager.SigningPolicies = SigningPolicyInitializedListener(r.DB, r.RelayContractAddress, signingPolicyInitializedEventSig, 3)
 
 	r.RoundManager.BitVotes = BitVoteInitializedListener(r.DB, r.FdcContractAddress, r.submit1Sig, r.Protocol, bitVoteBufferSize, chooseTrigger)
 
-	r.RoundManager.Requests = RequestsInitializedListener(r.DB, r.FdcContractAddress, requestEventSig, requestsBufferSize, requestListenerInterval)
+	r.RoundManager.Requests = RequestsInitializedListener(r.DB, r.FdcContractAddress, attestationRequestEventSig, requestsBufferSize, requestListenerInterval)
 
 	go r.RoundManager.Run()
 

@@ -24,36 +24,44 @@ type Message struct {
 	Payload          string
 }
 
+// ExtractPayloads extracts Payloads from transactions to submission contract to functions submit1, submit2, submitSignatures.
 func ExtractPayloads(tx *database.Transaction) (map[uint64]Message, error) {
 
 	messages := make(map[uint64]Message)
 
-	data := tx.Input[10:]
+	data := strings.TrimPrefix(tx.Input, "0x")
+
+	data = data[8:] // trim function sig
 
 	for len(data) > 0 {
-		protocol, err := strconv.ParseUint(data[:2], 16, 64)
+
+		if len(data) < 14 {
+			return nil, errors.New("wrongly formatted tx input")
+		}
+
+		protocol, err := strconv.ParseUint(data[:2], 16, 64) // 1 byte protocol id
 
 		if err != nil {
 			return nil, errors.New("protocol id error")
 		}
-		votingRound, err := strconv.ParseUint(data[2:10], 16, 64)
+		votingRound, err := strconv.ParseUint(data[2:10], 16, 64) // 4 bytes votingRoundId
 		if err != nil {
 			return nil, errors.New("voting round error")
 		}
 
-		length, err := strconv.ParseUint(data[10:14], 16, 64)
+		length, err := strconv.ParseUint(data[10:14], 16, 64) // 2 bytes length of payload in bytes
 		if err != nil {
 			return nil, errors.New("length error")
 		}
 
-		end := 14 + 2*length
+		end := 14 + 2*length // 14 = 2 + 8 + 4
 		payload := data[14:end]
 
 		message := Message{tx.FromAddress, tx.FunctionSig, protocol, votingRound, tx.Timestamp, tx.BlockNumber, tx.TransactionIndex, length, payload}
 
 		messages[protocol] = message
 
-		data = data[end:]
+		data = data[end:] // trim the extracted payload
 
 	}
 
