@@ -55,7 +55,7 @@ type Attestation struct {
 	Consensus bool
 	Hash      common.Hash
 	abi       abi.Arguments
-	lutLimit  uint64
+	lutLimit  int64
 }
 
 // validateResponse check the MIC of the response against the MIC of the request. If the check is successful, attestation status is set to success and attestation hash is computed and set.
@@ -92,7 +92,7 @@ func (a *Attestation) validateResponse() error {
 
 	roundStart := timing.ChooseStartTimestamp(int(a.RoundId))
 
-	if roundStart-lut > a.lutLimit {
+	if int64(roundStart)-lut > a.lutLimit {
 		a.Status = InvalidLUT
 		return errors.New("lut to old")
 	}

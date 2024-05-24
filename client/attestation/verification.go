@@ -173,7 +173,7 @@ func (r Response) ComputeMic(args abi.Arguments) (common.Hash, error) {
 }
 
 // LUT returns the fourth slot in response. Solidity type of Lut is uint64.
-func (r Response) LUT() (uint64, error) {
+func (r Response) LUT() (int64, error) {
 
 	static, err := IsStaticType(r)
 
@@ -198,7 +198,7 @@ func (r Response) LUT() (uint64, error) {
 	safe = safe.SetBytes(lut)
 
 	if safe.IsInt64() {
-		return safe.Uint64(), nil
+		return safe.Int64(), nil
 	} else {
 		return 0, errors.New("lut too big")
 	}
