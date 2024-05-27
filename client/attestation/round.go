@@ -190,3 +190,15 @@ func (r *Round) GetMerkleRootCached() (common.Hash, error) {
 	return tree.Root()
 
 }
+
+func (r *Round) GetMerkleRootCachedHex() (string, error) {
+
+	root, err := r.GetMerkleRootCached()
+
+	if err != nil {
+		return "", err
+	}
+
+	return root.Hex(), nil
+
+}
