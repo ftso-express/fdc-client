@@ -11,72 +11,100 @@ log_queries = false
 # [verifiers.BTC.Payment]
 # url = "url"
 # api_key = "key"
+# lut_limit = 0
+
 
 # [verifiers.BTC.BalanceDecreasingTransaction]
 # url = "url"
 # api_key = "key"
+# lut_limit = 0
+
 
 # [verifiers.BTC.ConfirmedBlockHeightExists]
 # url = "url"
 # api_key = "key"
+# lut_limit = 0
+
 
 # [verifiers.BTC.ReferencedPaymentNonexistence]
 # url = "url"
 # api_key = "key"
+# lut_limit = 0
+
 
 # [verifiers.BTC.AddressValidity]
 # url = "url"
 # api_key = "key"
+# lut_limit = 0
 
 
 # # Verifiers for DOGE
 # [verifiers.DOGE.Payment]
 # url = "url"
 # api_key = "key"
+# lut_limit = 0
+
 
 # [verifiers.DOGE.BalanceDecreasingTransaction]
 # url = "url"
 # api_key = "key"
+# lut_limit = 0
+
 
 # [verifiers.DOGE.ConfirmedBlockHeightExists]
 # url = "url"
 # api_key = "key"
+# lut_limit = 0
+
 
 # [verifiers.DOGE.ReferencedPaymentNonexistence]
 # url = "url"
 # api_key = "key"
+# lut_limit = 0
+
 
 # [verifiers.DOGE.AddressValidity]
 # url = "url"
 # api_key = "key"
+# lut_limit = 0
 
 
 # # Verifiers for XRP
 # [verifiers.XRP.Payment]
 # url = "url"
 # api_key = "key"
+# lut_limit = 0
+
 
 # [verifiers.XRP.BalanceDecreasingTransaction]
 # url = "url"
 # api_key = "key"
+# lut_limit = 0
+
 
 # [verifiers.XRP.ConfirmedBlockHeightExists]
 # url = "url"
 # api_key = "key"
+# lut_limit = 0
+
 
 # [verifiers.XRP.ReferencedPaymentNonexistence]
 # url = "url"
 # api_key = "key"
+# lut_limit = 0
+
 
 # [verifiers.XRP.AddressValidity]
 # url = "url"
 # api_key = "key"
+# lut_limit = 0
 
 
 # Verifiers for ETH
 [verifiers.XRP.EVMTransaction]
 url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
 api_key = "12345"
+lut_limit = 18446744073709551615
 
 
 #ABIs
@@ -86,4 +114,4 @@ api_key = "12345"
 # ConfirmedBlockHeightExists = ""
 # ReferencedPaymentNonexistence = ""
 # AddressValidity = ""
-EVMTransaction = "configs/abis/EVMTransaction.json" #relative to main
+EVMTransaction = "configs/abis/EVMTransaction.json" #relative to project root

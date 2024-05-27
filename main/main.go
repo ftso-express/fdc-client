@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	USER_FILE   string = "configs/userConfig.toml"   //relative to main
-	SYSTEM_FILE string = "configs/systemConfig.toml" //relative to main
+	USER_FILE   string = "configs/userConfig.toml"   //relative to project root
+	SYSTEM_FILE string = "configs/systemConfig.toml" //relative to project root
 )
 
 var log = logger.GetLogger()
