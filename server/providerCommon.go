@@ -15,8 +15,8 @@ type FDCProtocolProviderController struct {
 	manager   *attestation.Manager
 	someValue string
 	// Mapper from submit address to voting round ID to merkle root storage object
-	// Submit address -> Voting round ID -> Merkle root storage object
-	rootStorage map[string]map[uint64]merkleRootStorageObject
+	// Voting round ID -> Submit address ->  Merkle root storage object
+	rootStorage map[uint64]map[string]merkleRootStorageObject
 }
 
 func newFDCProtocolProviderController(ctx AttestationServerContext) *FDCProtocolProviderController {

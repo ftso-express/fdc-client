@@ -28,12 +28,12 @@ func calculateMaskedRoot(real_root string, random_num string, address string) st
 
 func (controller *FDCProtocolProviderController) saveRoot(address string, round uint64, root string, random string) {
 	if restServer.IsNil(controller.rootStorage) {
-		controller.rootStorage = make(map[string]map[uint64]merkleRootStorageObject)
+		controller.rootStorage = make(map[uint64]map[string]merkleRootStorageObject)
 	}
-	if _, ok := controller.rootStorage[address]; !ok {
-		controller.rootStorage[address] = make(map[uint64]merkleRootStorageObject)
+	if _, ok := controller.rootStorage[round]; !ok {
+		controller.rootStorage[round] = make(map[string]merkleRootStorageObject)
 	}
-	controller.rootStorage[address][round] = merkleRootStorageObject{merkleRoot: root, randomNum: random}
+	controller.rootStorage[round][address] = merkleRootStorageObject{merkleRoot: root, randomNum: random}
 }
 
 func (controller *FDCProtocolProviderController) submit1Service(round uint64, address string) (string, error) {
@@ -82,13 +82,15 @@ func (controller *FDCProtocolProviderController) submit2Service(roundID uint64, 
 
 func (controller *FDCProtocolProviderController) submitSignaturesService(round uint64, address string) (addData, error) {
 	// check storage if root was saved
-	if _, ok := controller.rootStorage[address]; !ok {
-		return addData{}, fmt.Errorf("address not in storage")
+	storageForRound, ok := controller.rootStorage[round]
+
+	if !ok {
+		return addData{}, fmt.Errorf("round not in storage")
 	}
-	if _, ok := controller.rootStorage[address][round]; !ok {
+	savedRoot, ok := storageForRound[address]
+	if !ok {
 		return addData{}, fmt.Errorf("round for address not in storage")
 	}
-	savedRoot := controller.rootStorage[address][round]
 
 	log.Info("SubmitSignaturesHandler")
 	log.Logf(zapcore.DebugLevel, "round: %s\n", fmt.Sprint(round))
