@@ -68,3 +68,18 @@ func (s *SigningPolicyStorage) RemoveByVotingRound(votingRoundId uint32) []uint3
 	}
 	return removedRewardEpochIds
 }
+
+// RemoveByVotingRoundSafe removes all signing policies that ended strictly before votingRoundId.
+// Returns the list of removed reward epoch ids.
+func (s *SigningPolicyStorage) RemoveBeforeVotingRound(votingRoundId uint32) []uint32 {
+	s.Lock()
+	defer s.Unlock()
+
+	var removedRewardEpochIds []uint32
+	for len(s.spList) > 1 && s.spList[1].startVotingRoundId < votingRoundId {
+		removedRewardEpochIds = append(removedRewardEpochIds, uint32(s.spList[0].rewardEpochId))
+		s.spList[0] = nil
+		s.spList = s.spList[1:]
+	}
+	return removedRewardEpochIds
+}

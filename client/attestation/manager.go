@@ -35,6 +35,7 @@ func init() {
 
 type Manager struct {
 	rounds               map[uint64]*Round // cyclically cached rounds with buffer roundBuffer.
+	lastRoundCreated     uint64
 	Requests             <-chan []database.Log
 	BitVotes             <-chan payload.Round
 	SigningPolicies      <-chan []database.Log
@@ -92,6 +93,8 @@ func (m *Manager) Run() {
 				}
 
 			}
+			m.signingPolicyStorage.RemoveBeforeVotingRound(uint32(m.lastRoundCreated)) // delete all signing policies that have already ended
+
 		case round := <-m.BitVotes:
 
 			log.Debugf("Received %d bitVotes for round %d.", len(round.Messages), round.ID)
@@ -148,13 +151,14 @@ func (m *Manager) GetOrCreateRound(roundId uint64) (*Round, error) {
 	}
 
 	round = CreateRound(roundId, policy.Voters)
+	m.lastRoundCreated = roundId
 	log.Debugf("Round %d created.", roundId)
 
 	m.Store(round)
 	return round, nil
 }
 
-// Round returns a round for roundId stored by the Manager. If round is not stored, false is returned.
+// Round returns a round for roundId stored by the Manager. If round is not stored, false is returned as second argument.
 func (m *Manager) Round(roundId uint64) (*Round, bool) {
 
 	roundReminder := roundId / roundBuffer
