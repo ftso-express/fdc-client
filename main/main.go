@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	USER_FILE   string = "../../configs/userConfig.toml"   //relative to main
-	SYSTEM_FILE string = "../../configs/systemConfig.toml" //relative to main
+	USER_FILE   string = "configs/userConfig.toml"   //relative to main
+	SYSTEM_FILE string = "configs/systemConfig.toml" //relative to main
 )
 
 var log = logger.GetLogger()
@@ -49,7 +49,7 @@ func main() {
 	go server.RunProviderServer(context)
 
 	<-cancelChan
-	fmt.Printf("Shutting down server")
+	fmt.Println("\nShutting down server")
 
 }
 

@@ -86,4 +86,4 @@ api_key = "12345"
 # ConfirmedBlockHeightExists = ""
 # ReferencedPaymentNonexistence = ""
 # AddressValidity = ""
-EVMTransaction = "../configs/abis/EVMTransaction.json" #relative to main
+EVMTransaction = "configs/abis/EVMTransaction.json" #relative to main
