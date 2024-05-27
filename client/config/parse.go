@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 )
 
-// ParseAbi mapped each key with StringToByte32 and parses the file indicated by value into abi.Arguments.
+// ParseAbi maps each key with StringToByte32 and parses the file indicated by value into abi.Arguments and abi in string.
 func ParseAbi(config AbiConfigUnparsed) (AbiConfig, error) {
 
 	arguments := make(map[[32]byte]abi.Arguments)

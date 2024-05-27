@@ -67,7 +67,6 @@ func NewManager(configs config.UserConfigRaw) *Manager {
 }
 
 // Run starts processing data received through the manager's channels.
-// SigningPolicies channel is prioritized.
 func (m *Manager) Run() {
 	// Get signing policy first as we cannot process any other message types
 	// without a signing policy.
