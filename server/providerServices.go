@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"flare-common/logger"
-	"flare-common/restServer"
 	"fmt"
 	"math/rand"
 
@@ -20,20 +19,46 @@ type addData struct {
 // TODO: Luka - Get this from config
 const PROVIDER_RANDOM_SEED = 42
 
+const cyclicBufferSize uint64 = 10
+
 var log = logger.GetLogger()
 
 func calculateMaskedRoot(real_root string, random_num string, address string) string {
 	return hex.EncodeToString(crypto.Keccak256([]byte(real_root), []byte(random_num), []byte(address)))
 }
 
-func (controller *FDCProtocolProviderController) saveRoot(address string, round uint64, root string, random string) {
-	if restServer.IsNil(controller.rootStorage) {
-		controller.rootStorage = make(map[uint64]map[string]merkleRootStorageObject)
+func (storage rootStorage) saveRoot(address string, roundId uint64, root string, random string) {
+
+	roundMod := roundId % cyclicBufferSize
+
+	roundStorage, ok := storage[roundMod]
+
+	if !ok || roundStorage.roundId != roundId {
+
+		rootsF := RootsForRound{roundId: roundId, roots: make(map[string]merkleRootStorageObject)}
+
+		storage[roundMod] = rootsF
 	}
-	if _, ok := controller.rootStorage[round]; !ok {
-		controller.rootStorage[round] = make(map[string]merkleRootStorageObject)
+	storage[roundMod].roots[address] = merkleRootStorageObject{merkleRoot: root, randomNum: random, roundId: roundId}
+}
+
+func (storage rootStorage) Root(roundId uint64, address string) (merkleRootStorageObject, error) {
+
+	roundMod := roundId % cyclicBufferSize
+
+	roundStorage, ok := storage[roundMod]
+	if !ok || roundStorage.roundId != roundId {
+		return merkleRootStorageObject{}, errors.New("no root for") // edit error
 	}
-	controller.rootStorage[round][address] = merkleRootStorageObject{merkleRoot: root, randomNum: random}
+
+	object, ok := roundStorage.roots[address]
+
+	if !ok {
+		return merkleRootStorageObject{}, errors.New("no root for") // edit error
+	}
+
+	return object, nil
+
 }
 
 func (controller *FDCProtocolProviderController) submit1Service(round uint64, address string) (string, error) {
@@ -71,7 +96,7 @@ func (controller *FDCProtocolProviderController) submit2Service(roundID uint64, 
 
 	// save root to storage
 	//controller.saveRoot(address, roundID, root, random_num)
-	controller.saveRoot(address, roundID, real_root, random_num)
+	controller.storage.saveRoot(address, roundID, real_root, random_num)
 
 	//masked := calculateMaskedRoot(root, random_num)
 
@@ -82,13 +107,9 @@ func (controller *FDCProtocolProviderController) submit2Service(roundID uint64, 
 
 func (controller *FDCProtocolProviderController) submitSignaturesService(round uint64, address string) (addData, error) {
 	// check storage if root was saved
-	storageForRound, ok := controller.rootStorage[round]
 
-	if !ok {
-		return addData{}, fmt.Errorf("round not in storage")
-	}
-	savedRoot, ok := storageForRound[address]
-	if !ok {
+	savedRoot, err := controller.storage.Root(round, address)
+	if err != nil {
 		return addData{}, fmt.Errorf("round for address not in storage")
 	}
 

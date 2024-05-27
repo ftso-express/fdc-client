@@ -9,18 +9,28 @@ import (
 type merkleRootStorageObject struct {
 	merkleRoot string
 	randomNum  string
+	roundId    uint64
 }
+
+type RootsForRound struct {
+	roots   map[string]merkleRootStorageObject
+	roundId uint64
+}
+
+// rootStorage is a cyclic mapper from voting round ID and submit address to merkle root storage object.
+type rootStorage map[uint64]RootsForRound
 
 type FDCProtocolProviderController struct {
 	manager   *attestation.Manager
 	someValue string
-	// Mapper from submit address to voting round ID to merkle root storage object
-	// Voting round ID -> Submit address ->  Merkle root storage object
-	rootStorage map[uint64]map[string]merkleRootStorageObject
+	storage   rootStorage
 }
 
 func newFDCProtocolProviderController(ctx AttestationServerContext) *FDCProtocolProviderController {
-	return &FDCProtocolProviderController{manager: ctx.Manager, someValue: "initial value"}
+
+	storage := rootStorage{}
+
+	return &FDCProtocolProviderController{manager: ctx.Manager, someValue: "initial value", storage: storage}
 }
 
 // Registration of routes for the FDC protocol provider
