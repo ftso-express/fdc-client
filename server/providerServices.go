@@ -22,8 +22,8 @@ const PROVIDER_RANDOM_SEED = 42
 
 var log = logger.GetLogger()
 
-func calculateMaskedRoot(real_root string, random_num string) string {
-	return hex.EncodeToString(crypto.Keccak256([]byte(real_root), []byte(random_num)))
+func calculateMaskedRoot(real_root string, random_num string, address string) string {
+	return hex.EncodeToString(crypto.Keccak256([]byte(real_root), []byte(random_num), []byte(address)))
 }
 
 func (controller *FDCProtocolProviderController) saveRoot(address string, round uint64, root string, random string) {
@@ -75,7 +75,7 @@ func (controller *FDCProtocolProviderController) submit2Service(roundID uint64, 
 
 	//masked := calculateMaskedRoot(root, random_num)
 
-	masked := calculateMaskedRoot(real_root, random_num)
+	masked := calculateMaskedRoot(real_root, random_num, address)
 
 	return masked, nil
 }
