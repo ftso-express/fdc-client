@@ -101,10 +101,22 @@ log_queries = false
 
 
 # Verifiers for ETH
-[verifiers.XRP.EVMTransaction]
+[verifiers.ETH.EVMTransaction]
 url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
 api_key = "12345"
-lut_limit = 18446744073709551615
+lut_limit = 9223372036854775806
+
+
+[verifiers.testSGB.EVMTransaction]
+url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
+api_key = "12345"
+lut_limit = 9223372036854775806
+
+
+[verifiers.testFLR.EVMTransaction]
+url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
+api_key = "12345"
+lut_limit = 9223372036854775806
 
 
 #ABIs

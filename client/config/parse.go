@@ -55,8 +55,8 @@ func ParseVerifiers(config VerifierConfigUnparsed) (VerifierConfig, error) {
 
 	verifiers := make(VerifierConfig)
 
-	for attType, v := range config {
-		for sourceId, creds := range v {
+	for sourceId, v := range config {
+		for attType, creds := range v {
 
 			key, err := TwoStringsToByte64(attType, sourceId)
 

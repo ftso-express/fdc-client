@@ -94,7 +94,7 @@ func (a *Attestation) validateResponse() error {
 
 	if int64(roundStart)-lut > a.lutLimit {
 		a.Status = InvalidLUT
-		return errors.New("lut to old")
+		return errors.New("lut too old")
 	}
 
 	a.Hash, err = a.Response.Hash(a.RoundId)
