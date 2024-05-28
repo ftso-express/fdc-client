@@ -4,15 +4,16 @@ services:
     image: "mysql"
     environment:
       MYSQL_ROOT_PASSWORD: "root"
-    # volumes:
-    #   - ./c-chain-init.sql:/docker-entrypoint-initdb.d/db_init.sql
-    #   - indexer_data:/var/lib/mysql
+    volumes:
+      - ./c-chain-init.sql:/docker-entrypoint-initdb.d/db_init.sql
+      # uncomment to persist data
+      # - indexer_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "--silent", "--host", "localhost", "-proot"]
       timeout: 20s
       retries: 10
     ports:
-      - "3308:3306"
+      - "127.0.0.1:${DB_PROXY_PORT}:3306"
 
   indexer:
     container_name: ${COMPOSE_PROJECT_NAME}-indexer
@@ -20,9 +21,12 @@ services:
     volumes:
       - ./c-chain-index-config.toml:/app/config.toml
     restart: unless-stopped
+    env_file:
+        - ../../.env
     depends_on:
       indexer-db:
         condition: service_healthy
 
+# uncomment to persist data
 # volumes:
 #   indexer_data:
