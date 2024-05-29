@@ -49,7 +49,7 @@ func (s Cyclic[T]) Get(key uint64) (T, bool) {
 
 func NewCyclic[T any](size uint64) Cyclic[T] {
 
-	var items map[uint64]cyclicItem[T]
+	items := map[uint64]cyclicItem[T]{}
 
 	return Cyclic[T]{items: items, size: size}
 
