@@ -7,6 +7,7 @@ import (
 	"flare-common/logger"
 	"flare-common/payload"
 	"flare-common/policy"
+	"flare-common/storage"
 	"local/fdc/client/config"
 	"local/fdc/client/timing"
 	hub "local/fdc/contracts/FDC"
@@ -34,7 +35,7 @@ func init() {
 }
 
 type Manager struct {
-	rounds               map[uint64]*Round // cyclically cached rounds with buffer roundBuffer.
+	Rounds               storage.Cyclic[*Round] // cyclically cached rounds with buffer roundBuffer.
 	lastRoundCreated     uint64
 	Requests             <-chan []database.Log
 	BitVotes             <-chan payload.Round
@@ -46,7 +47,7 @@ type Manager struct {
 
 // NewManager initializes attestation round manager
 func NewManager(configs config.UserConfigRaw) *Manager {
-	rounds := make(map[uint64]*Round)
+	rounds := storage.NewCyclic[*Round](roundBuffer)
 	signingPolicyStorage := policy.NewSigningPolicyStorage()
 
 	abiConfig, err := config.ParseAbi(configs.Abis)
@@ -63,7 +64,7 @@ func NewManager(configs config.UserConfigRaw) *Manager {
 
 	}
 
-	return &Manager{rounds: rounds, signingPolicyStorage: signingPolicyStorage, abiConfig: abiConfig, verifierServers: verifierServers}
+	return &Manager{Rounds: rounds, signingPolicyStorage: signingPolicyStorage, abiConfig: abiConfig, verifierServers: verifierServers}
 }
 
 // Run starts processing data received through the manager's channels.
@@ -105,7 +106,7 @@ func (m *Manager) Run() {
 				}
 			}
 
-			r, ok := m.Round(round.ID)
+			r, ok := m.Rounds.Get(round.ID)
 			if !ok {
 				break
 			}
@@ -136,9 +137,9 @@ func (m *Manager) Run() {
 // GetOrCreateRound returns a round for roundId either from manager if a round is already stored or creates a new one and stores it.
 func (m *Manager) GetOrCreateRound(roundId uint64) (*Round, error) {
 
-	round, ok := m.Round(roundId)
+	round, ok := m.Rounds.Get(roundId)
 
-	if ok && round.roundId == roundId {
+	if ok {
 		return round, nil
 	}
 
@@ -153,31 +154,11 @@ func (m *Manager) GetOrCreateRound(roundId uint64) (*Round, error) {
 	m.lastRoundCreated = roundId
 	log.Debugf("Round %d created.", roundId)
 
-	m.Store(round)
+	m.Rounds.Store(roundId, round)
 	return round, nil
 }
 
-// Round returns a round for roundId stored by the Manager. If round is not stored, false is returned as second argument.
-func (m *Manager) Round(roundId uint64) (*Round, bool) {
-
-	roundReminder := roundId / roundBuffer
-
-	round, ok := m.rounds[roundReminder]
-
-	if ok && round.roundId == roundId {
-		return round, true
-	}
-
-	return nil, false
-}
-
 // Store stores round in to the cyclic cache
-func (m *Manager) Store(round *Round) {
-
-	roundReminder := round.roundId % roundBuffer
-
-	m.rounds[roundReminder] = round
-}
 
 // OnBitVote process payload message that is assumed to be a bitVote and adds it to the correct round.
 func (m *Manager) OnBitVote(message payload.Message) error {

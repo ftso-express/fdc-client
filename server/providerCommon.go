@@ -2,33 +2,29 @@ package server
 
 import (
 	"flare-common/restServer"
+	"flare-common/storage"
 	"local/fdc/client/attestation"
 	"net/http"
 )
 
+const storageSize = 10
+
 type merkleRootStorageObject struct {
 	merkleRoot string
 	randomNum  string
-	roundId    uint64
 }
 
-type RootsForRound struct {
-	roots   map[string]merkleRootStorageObject
-	roundId uint64
-}
-
-// rootStorage is a cyclic mapper from voting round ID and submit address to merkle root storage object.
-type rootStorage map[uint64]RootsForRound
+type RootsByAddress map[string]merkleRootStorageObject
 
 type FDCProtocolProviderController struct {
 	manager   *attestation.Manager
 	someValue string
-	storage   rootStorage
+	storage   storage.Cyclic[RootsByAddress]
 }
 
 func newFDCProtocolProviderController(ctx AttestationServerContext) *FDCProtocolProviderController {
 
-	storage := rootStorage{}
+	storage := storage.NewCyclic[RootsByAddress](storageSize)
 
 	return &FDCProtocolProviderController{manager: ctx.Manager, someValue: "initial value", storage: storage}
 }
