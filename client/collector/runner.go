@@ -125,7 +125,7 @@ func prepareChooseTriggers(trigger chan uint64, DB *gorm.DB) {
 		log.Panic("database error:", err)
 	}
 
-	nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp := timing.NextChoosePhaseEnd(state.BlockTimestamp)
+	nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp := timing.NextChoosePhaseEndPointers(state.BlockTimestamp)
 
 	bitVoteTicker := time.NewTicker(time.Hour) // timer will be reset to 90 seconds
 
@@ -142,11 +142,13 @@ func prepareChooseTriggers(trigger chan uint64, DB *gorm.DB) {
 			if err != nil {
 				log.Error("database error:", err)
 			} else {
+
 				done := tryTriggerBitVote(
 					nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp, state.BlockTimestamp, trigger,
 				)
 
 				if done {
+
 					break
 				}
 			}
@@ -176,13 +178,18 @@ func tryTriggerBitVote(nextChoosePhaseRoundIDEnd *int, nextChoosePhaseEndTimesta
 
 	if currentBlockTime > *nextChoosePhaseEndTimestamp {
 		c <- uint64(*nextChoosePhaseRoundIDEnd)
-		nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp = timing.NextChoosePhaseEnd(currentBlockTime)
+
+		log.Infof("bitVote for round %d started with on-chain time", *nextChoosePhaseRoundIDEnd)
+
+		*nextChoosePhaseRoundIDEnd, *nextChoosePhaseEndTimestamp = timing.NextChoosePhaseEnd(currentBlockTime)
 
 		return true
 	}
 
 	if (now - bitVoteOffChainTriggerSeconds) > *nextChoosePhaseEndTimestamp {
 		c <- uint64(*nextChoosePhaseRoundIDEnd)
+		log.Infof("bitVote for round %d started with off-chain time", *nextChoosePhaseRoundIDEnd)
+
 		*nextChoosePhaseRoundIDEnd++
 		*nextChoosePhaseEndTimestamp = *nextChoosePhaseEndTimestamp + 90
 
@@ -236,8 +243,14 @@ func BitVoteListener(
 			}
 
 			if len(bitVotes) > 0 {
+
+				log.Infof("Received %d for round %d", len(bitVotes), roundID)
+
 				out <- payload.Round{Messages: bitVotes, ID: roundID}
+			} else {
+				log.Infof("No bitVotes for round %d", roundID)
 			}
+
 		}
 
 	}()
@@ -379,7 +392,11 @@ func spiTargetedListener(db *gorm.DB, relayContractAddress string, lastLog datab
 	for {
 		expectedStartOfTheNextSigningPolicyInitialized := timing.ExpectedRewardEpochStartTimestamp(lastInitializedRewardEpochID + 1)
 
+		log.Info(expectedStartOfTheNextSigningPolicyInitialized)
+
 		untilStart := time.Until(time.Unix(int64(expectedStartOfTheNextSigningPolicyInitialized)-90*15, 0)) //use const for headStart 90*15
+
+		log.Infof("next signing policy expected in %.1fh", untilStart.Hours())
 
 		timer := time.NewTimer(untilStart)
 

@@ -72,7 +72,7 @@ func (m *Manager) Run() {
 	// Get signing policy first as we cannot process any other message types
 	// without a signing policy.
 	signingPolicies := <-m.SigningPolicies
-	log.Info("Initial signing policy received.")
+	log.Info("Initial signing policies received")
 
 	for i := range signingPolicies {
 		if err := m.OnSigningPolicy(signingPolicies[i]); err != nil {
@@ -84,7 +84,7 @@ func (m *Manager) Run() {
 		select {
 		case signingPolicies := <-m.SigningPolicies:
 
-			log.Debug("New signing policy received.")
+			log.Debug("New signing policy received")
 
 			for i := range signingPolicies {
 
@@ -97,7 +97,7 @@ func (m *Manager) Run() {
 
 		case round := <-m.BitVotes:
 
-			log.Debugf("Received %d bitVotes for round %d.", len(round.Messages), round.ID)
+			log.Debugf("Received %d bitVotes for round %d", len(round.Messages), round.ID)
 
 			for i := range round.Messages {
 
@@ -152,7 +152,7 @@ func (m *Manager) GetOrCreateRound(roundId uint64) (*Round, error) {
 
 	round = CreateRound(roundId, policy.Voters)
 	m.lastRoundCreated = roundId
-	log.Debugf("Round %d created.", roundId)
+	log.Debugf("Round %d created", roundId)
 
 	m.Rounds.Store(roundId, round)
 	return round, nil
@@ -191,8 +191,6 @@ func (m *Manager) OnBitVote(message payload.Message) error {
 // The request parsed into an Attestation that is assigned to an attestation round according to the timestamp.
 // The request is sent to verifier server and the verifier's response is validated.
 func (m *Manager) OnRequest(request database.Log) error {
-
-	log.Debug("Processing request: %+v", request)
 
 	roundID := timing.RoundIDForTimestamp(request.Timestamp)
 
@@ -278,25 +276,24 @@ func (m *Manager) handleAttestation(attestation *Attestation) error {
 
 		return err
 	} else {
-		log.Debug("Response received, validating...")
 		err := attestation.validateResponse()
-		log.Debug(attestation.Status, attestation.RoundId)
 		return err
 	}
 }
 
 // OnSigningPolicy parsed SigningPolicyInitialized log and stores it into the signingPolicyStorage.
 func (m *Manager) OnSigningPolicy(initializedPolicy database.Log) error {
-	log.Debug("Processing signing policy")
 
 	data, err := ParseSigningPolicyInitializedLog(initializedPolicy)
 
 	if err != nil {
-		log.Error("Error parsing signing policy")
+		log.Errorf("Error parsing signing policy")
 		return err
 	}
 
 	parsedPolicy := policy.NewSigningPolicy(data)
+
+	log.Infof("Processing signing policy for rewardEpoch %s", data.RewardEpochId.String())
 
 	err = m.signingPolicyStorage.Add(parsedPolicy)
 

@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/hex"
-	"errors"
 	"flare-common/logger"
 	"flare-common/storage"
 	"fmt"
@@ -40,48 +39,43 @@ func saveRoot(storage storage.Cyclic[RootsByAddress], roundId uint64, address st
 
 }
 
-func (controller *FDCProtocolProviderController) submit1Service(roundId uint64, address string) (string, error) {
+func (controller *FDCProtocolProviderController) submit1Service(roundId uint64, _ string) (string, bool, error) {
 	votingRound, exists := controller.manager.Rounds.Get(roundId)
 	if !exists {
-		return "", errors.New("round does not exist")
+		return "", false, nil
 	}
 	bitVoteString, err := votingRound.BitVoteHex()
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
-	return bitVoteString, nil
+	return bitVoteString, true, nil
 }
 
-func (controller *FDCProtocolProviderController) submit2Service(roundId uint64, address string) (string, error) {
+func (controller *FDCProtocolProviderController) submit2Service(roundId uint64, address string) (string, bool, error) {
 	// Get merkle tree root from attestation client from controller
 
-	// votingRound, exists := controller.manager.Round(roundID)
+	votingRound, exists := controller.manager.Rounds.Get(roundId)
 
-	// if !exists {
-	// 	return "", errors.New("round does not exist")
-	// }
+	if !exists {
+		return "", false, nil
+	}
 
-	// root, err := votingRound.GetMerkleRootCachedHex()
+	root, err := votingRound.GetMerkleRootCachedHex()
 
-	// if err != nil {
-	// 	return "", errors.New("root does not exist")
-	// }
-
-	r1 := rand.New(rand.NewSource(int64(roundId)))
-	real_root := hex.EncodeToString(crypto.Keccak256([]byte(fmt.Sprintf("%X", r1.Int63()))))
+	if err != nil {
+		return "", false, nil //decide what to do with empty round
+	}
 
 	r2 := rand.New(rand.NewSource(PROVIDER_RANDOM_SEED))
 	random_num := hex.EncodeToString(crypto.Keccak256([]byte(fmt.Sprintf("%X", r2.Int63()))))
 
 	// save root to storage
 	//controller.saveRoot(address, roundID, root, random_num)
-	saveRoot(controller.storage, roundId, address, real_root, random_num)
+	saveRoot(controller.storage, roundId, address, root, random_num)
 
-	//masked := calculateMaskedRoot(root, random_num)
+	masked := calculateMaskedRoot(root, random_num, address)
 
-	masked := calculateMaskedRoot(real_root, random_num, address)
-
-	return masked, nil
+	return masked, true, nil
 }
 
 func (controller *FDCProtocolProviderController) submitSignaturesService(roundId uint64, address string) (addData, error) {

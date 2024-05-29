@@ -37,13 +37,17 @@ func (controller *FDCProtocolProviderController) Submit1Controller(
 	if err != nil {
 		return PDPResponse{}, restServer.BadParamsErrorHandler(err)
 	}
-	rsp, err := controller.submit1Service(pathParams.votingRoundId, pathParams.submitAddress)
+	rsp, exists, err := controller.submit1Service(pathParams.votingRoundId, pathParams.submitAddress)
 	if err != nil {
 		return PDPResponse{}, restServer.InternalServerErrorHandler(err)
 	}
+	if !exists {
+		return PDPResponse{Data: rsp, Status: NOT_AVAILABLE}, nil
+
+	}
+
 	response := PDPResponse{Data: rsp, Status: OK}
-	fmt.Printf("previous value: %s\n", controller.someValue)
-	controller.someValue = "Submit1"
+
 	return response, nil
 }
 
@@ -55,13 +59,17 @@ func (controller *FDCProtocolProviderController) submit2Controller(
 	if err != nil {
 		return PDPResponse{}, restServer.BadParamsErrorHandler(err)
 	}
-	rsp, err := controller.submit2Service(pathParams.votingRoundId, pathParams.submitAddress)
+	rsp, exists, err := controller.submit2Service(pathParams.votingRoundId, pathParams.submitAddress)
 	if err != nil {
 		return PDPResponse{}, restServer.InternalServerErrorHandler(err)
 	}
+
+	if !exists {
+		return PDPResponse{Data: rsp, Status: NOT_AVAILABLE}, nil
+	}
+
 	response := PDPResponse{Data: rsp, Status: OK}
-	fmt.Printf("previous value: %s\n", controller.someValue)
-	controller.someValue = "Submit2"
+
 	return response, nil
 }
 
@@ -78,7 +86,6 @@ func (controller *FDCProtocolProviderController) submitSignaturesController(
 		return PDPResponse{}, restServer.InternalServerErrorHandler(err)
 	}
 	response := PDPResponse{Data: rsp.data, AdditionalData: rsp.additional, Status: OK}
-	fmt.Printf("previous value: %s\n", controller.someValue)
-	controller.someValue = "SubmitSignatures"
+
 	return response, nil
 }

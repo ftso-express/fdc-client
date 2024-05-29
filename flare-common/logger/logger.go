@@ -27,7 +27,7 @@ func GetLogger() *zap.SugaredLogger {
 		if os.Getenv("DEBUG") != "" {
 			logger, err = zap.NewDevelopment()
 		} else {
-			logger, err = zap.NewProduction()
+			logger, err = zap.NewDevelopment()
 		}
 
 		if err != nil {

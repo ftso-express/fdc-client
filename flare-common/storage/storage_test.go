@@ -83,6 +83,10 @@ func TestCyclicArray(t *testing.T) {
 
 	getOne = append(getOne, 1)
 
+	if len(getOne) != 2 {
+		t.Error("element no added")
+	}
+
 	getOne, exists = stg.Get(1)
 
 	if !exists || len(getOne) != 1 {

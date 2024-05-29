@@ -24,13 +24,13 @@ func main() {
 
 	userConfigRaw, err := config.ReadUserRaw(USER_FILE)
 	if err != nil {
-		log.Panic("cannot read user config:", err)
+		log.Panicf("cannot read user config: %s", err)
 	}
 
 	systemConfig, err := config.ReadSystem(SYSTEM_FILE)
 
 	if err != nil {
-		log.Panic("cannot read system config:", err)
+		log.Panicf("cannot read system config: %s", err)
 	}
 
 	collector := collector.New(userConfigRaw, systemConfig)

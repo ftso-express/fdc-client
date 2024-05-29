@@ -18,8 +18,6 @@ type AttestationServerContext struct {
 
 func RunProviderServer(ctx AttestationServerContext) {
 
-	fmt.Println("In development")
-
 	// Create Mux router
 	muxRouter := mux.NewRouter()
 
@@ -49,10 +47,10 @@ func RunProviderServer(ctx AttestationServerContext) {
 	}
 
 	go func() {
-		fmt.Printf("Starting server on %s", port)
+		log.Infof("Starting server on %s", port)
 		err := srv.ListenAndServe()
 		if err != nil {
-			fmt.Printf("Server error: %v", err)
+			log.Panicf("Server error: %v", err)
 		}
 	}()
 

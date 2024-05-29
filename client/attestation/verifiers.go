@@ -65,15 +65,13 @@ func ResolveAttestationRequest(att *Attestation, verifierCred config.VerifierCre
 	err = json.NewDecoder(resp.Body).Decode(&responseBody)
 
 	if err != nil {
-		fmt.Println("Error reading body")
+		log.Errorf("Error reading body %s", err)
 		return err
 	}
 
-	fmt.Println(responseBody.Status)
-
 	responseBytes, err := hex.DecodeString(strings.TrimPrefix(responseBody.AbiEncodedResponse, "0x"))
 	if err != nil {
-		fmt.Println("Error decoding response")
+		log.Errorf("Error decoding response %s", err)
 		return err
 	}
 	att.Response = responseBytes

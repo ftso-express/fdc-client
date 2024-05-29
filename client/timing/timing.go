@@ -34,7 +34,14 @@ func ChooseEndTimestamp(n int) uint64 {
 	return uint64(RoundStartTime(n).Add(collectTime + chooseTime).Unix())
 }
 
-func NextChoosePhaseEnd(t uint64) (*int, *uint64) {
+func NextChoosePhaseEnd(t uint64) (int, uint64) {
+	roundID := int((t - t0) / 90)
+	endTimestamp := uint64(t0 + (roundID+1)*90)
+
+	return roundID, endTimestamp
+}
+
+func NextChoosePhaseEndPointers(t uint64) (*int, *uint64) {
 	roundID := int((t - t0) / 90)
 	endTimestamp := uint64(t0 + (roundID+1)*90)
 
@@ -50,5 +57,5 @@ func LastCollectPhaseStart(t uint64) (int, uint64) {
 }
 
 func ExpectedRewardEpochStartTimestamp(rewardEpochId uint64) uint64 {
-	return t0 + 3360*90*rewardEpochId
+	return t0 + 240*90*rewardEpochId // TODO get this from config. currently for coston?
 }
