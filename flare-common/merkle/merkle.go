@@ -35,12 +35,17 @@ func Build(hashes []common.Hash, initialHash bool) Tree {
 		hashes = mapSingleHash(hashes)
 	}
 
+	n := len(hashes)
+
+	if n == 0 {
+		return Tree{}
+	}
+
 	// Hashes must be sorted to enable binary search.
 	sort.Slice(hashes, func(i, j int) bool {
 		return hashes[i].Hex() < hashes[j].Hex()
 	})
 
-	n := len(hashes)
 	tree := make([]common.Hash, n-1, (2*n)-1)
 	tree = append(tree, hashes...)
 

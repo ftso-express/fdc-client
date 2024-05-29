@@ -35,6 +35,15 @@ func TestEmptyTree(t *testing.T) {
 	assert.Equal(t, err, merkle.ErrHashNotFound)
 }
 
+func TestBuildEmpty(t *testing.T) {
+	hashes := []common.Hash{}
+	neki := merkle.Build(hashes, false)
+
+	if len(neki) > 0 {
+		t.Error("not empty tree")
+	}
+}
+
 func TestSingleLeafTree(t *testing.T) {
 	val := common.HexToHash("0x01")
 	tree := merkle.Tree{val}
