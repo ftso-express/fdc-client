@@ -221,7 +221,6 @@ func BitVoteListener(
 				int64(timing.ChooseEndTimestamp(int(roundID))),
 			)
 			if err != nil {
-				// TODO implement backoff/retry
 				log.Error("fetch txs error:", err)
 				continue
 			}
@@ -295,7 +294,6 @@ func AttestationRequestListener(
 
 			state, err = database.FetchState(db)
 			if err != nil {
-				// TODO implement backoff/retry
 				log.Error("fetch state error:", err)
 				continue
 			}

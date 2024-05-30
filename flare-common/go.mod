@@ -4,6 +4,7 @@ go 1.21.5
 
 require (
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
+	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/davidebianchi/gswagger v0.10.0
 	github.com/ethereum/go-ethereum v1.13.15
 	github.com/getkin/kin-openapi v0.123.0
