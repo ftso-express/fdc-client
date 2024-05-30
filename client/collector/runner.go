@@ -421,7 +421,6 @@ func spiTargetedListener(db *gorm.DB, relayContractAddress string, lastLog datab
 			}
 
 			if len(logs) > 0 {
-				log.Debug("Adding signing policy to channel")
 				out <- logs
 
 				lastInitializedRewardEpochID++

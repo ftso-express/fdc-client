@@ -47,7 +47,7 @@ func CreateRound(roundId uint64, voterSet *policy.VoterSet) *Round {
 func (r *Round) sortAttestations() {
 
 	sort.Slice(r.Attestations, func(i, j int) bool {
-		return lessLog(r.Attestations[i].Index, r.Attestations[j].Index)
+		return earlierLog(r.Attestations[i].Index, r.Attestations[j].Index)
 	})
 }
 

@@ -26,8 +26,8 @@ type IndexTx struct {
 	TransactionIndex uint64
 }
 
-// LessTx compares IndexTxs a,b. Returns true if a has lower BlockNumber than b or has the same BlockNumber and lower TransactionIndex.
-func LessTx(a, b IndexTx) bool {
+// earlierTx compares IndexTxs a,b. Returns true if a has lower BlockNumber than b or has the same BlockNumber and lower TransactionIndex.
+func earlierTx(a, b IndexTx) bool {
 	if a.BlockNumber < b.BlockNumber {
 		return true
 	}
@@ -155,8 +155,7 @@ func ConsensusBitVote(roundId uint64, weightedBitVotes []*WeightedBitVote, total
 	if (totalWeight+1)/2 > weightVoted {
 
 		percentage := (weightVoted * 100) / totalWeight
-		log.Warnf("Only %d%% voted in round %d.", roundId, percentage)
-		return BitVote{}, errors.New("not enough weight bitVoted to get a consensus")
+		return BitVote{}, fmt.Errorf("only %d%% bitVoted", percentage)
 	}
 
 	var bitVote BitVote
@@ -181,9 +180,8 @@ func ConsensusBitVote(roundId uint64, weightedBitVotes []*WeightedBitVote, total
 		result := <-ch
 
 		if result.err != nil {
-			log.Errorf("Cannot compute consensus bitVote round %d because of a missing attestation.", roundId)
 
-			return BitVote{}, errors.New("missing attestations. cannot compute consensus bitvote")
+			return BitVote{}, fmt.Errorf("missing attestation")
 		}
 
 		if result.value.Cmp(maxValue) == 1 {
@@ -285,19 +283,19 @@ func (r *Round) ProcessBitVote(message payload.Message) error {
 	}
 
 	if roundCheck != uint8(message.VotingRound%256) {
-		return errors.New("wrong round check")
+		return fmt.Errorf("wrong round check from %s", message.From)
 	}
 
 	voter, success := r.voterSet.VoterDataMap[common.HexToAddress(message.From)]
 
 	if !success {
-		return errors.New("invalid voter")
+		return fmt.Errorf("invalid voter %s", message.From)
 	}
 
 	weight := voter.Weight
 
 	if weight <= 0 {
-		return errors.New("zero weight")
+		return fmt.Errorf("zero weight voter %s ", message.From)
 	}
 
 	// check if a bitVote was already submitted by the sender
@@ -315,7 +313,7 @@ func (r *Round) ProcessBitVote(message payload.Message) error {
 	}
 
 	// more than one submission. The later submission is considered to be valid.
-	if ok && LessTx(weightedBitVote.indexTx, IndexTx{message.BlockNumber, message.TransactionIndex}) {
+	if ok && earlierTx(weightedBitVote.indexTx, IndexTx{message.BlockNumber, message.TransactionIndex}) {
 
 		weightedBitVote.BitVote = bitVote
 		weightedBitVote.Weight = weight

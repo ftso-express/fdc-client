@@ -32,8 +32,8 @@ type IndexLog struct {
 	LogIndex    uint64
 }
 
-// lessLog returns true if a has lower blockNumber as b or the same blockNumber and lower LogIndex. Otherwise, it returns false.
-func lessLog(a, b IndexLog) bool {
+// earlierLog returns true if a has lower blockNumber as b or the same blockNumber and lower LogIndex. Otherwise, it returns false.
+func earlierLog(a, b IndexLog) bool {
 	if a.BlockNumber < b.BlockNumber {
 		return true
 	}
@@ -55,7 +55,7 @@ type Attestation struct {
 	Consensus bool
 	Hash      common.Hash
 	abi       abi.Arguments
-	lutLimit  int64
+	lutLimit  uint64
 }
 
 // validateResponse check the MIC of the response against the MIC of the request. If the check is successful, attestation status is set to success and attestation hash is computed and set.
@@ -79,7 +79,7 @@ func (a *Attestation) validateResponse() error {
 
 	if micReq != micRes {
 		a.Status = WrongMIC
-		return nil
+		return errors.New("wrong mic")
 	}
 
 	lut, err := a.Response.LUT()
@@ -92,9 +92,9 @@ func (a *Attestation) validateResponse() error {
 
 	roundStart := timing.ChooseStartTimestamp(int(a.RoundId))
 
-	if int64(roundStart)-lut > a.lutLimit {
+	if !validLUT(lut, a.lutLimit, roundStart) {
 		a.Status = InvalidLUT
-		return errors.New("lut too old")
+		return errors.New("lut to old")
 	}
 
 	a.Hash, err = a.Response.Hash(a.RoundId)

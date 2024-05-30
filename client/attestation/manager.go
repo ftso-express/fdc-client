@@ -8,6 +8,7 @@ import (
 	"flare-common/payload"
 	"flare-common/policy"
 	"flare-common/storage"
+	"fmt"
 	"local/fdc/client/config"
 	"local/fdc/client/timing"
 	hub "local/fdc/contracts/FDC"
@@ -93,7 +94,11 @@ func (m *Manager) Run() {
 				}
 
 			}
-			m.signingPolicyStorage.RemoveBeforeVotingRound(uint32(m.lastRoundCreated)) // delete all signing policies that have already ended
+			deleted := m.signingPolicyStorage.RemoveBeforeVotingRound(uint32(m.lastRoundCreated)) // delete all signing policies that have already ended
+
+			for j := range deleted {
+				log.Infof("deleted signing policy for epoch %d", deleted[j])
+			}
 
 		case round := <-m.BitVotes:
 
@@ -102,7 +107,7 @@ func (m *Manager) Run() {
 			for i := range round.Messages {
 
 				if err := m.OnBitVote(round.Messages[i]); err != nil {
-					log.Error("bit vote error:", err)
+					log.Error("bit vote error", err)
 				}
 			}
 
@@ -114,7 +119,7 @@ func (m *Manager) Run() {
 			err := r.ComputeConsensusBitVote()
 
 			if err != nil {
-				log.Errorf("Failed bitVote for round %d", round.Id)
+				log.Warnf("Failed bitVote in round %d: %s", round.Id, err)
 			} else {
 				log.Debugf("Consensus bitVote %s for round %d computed.", r.ConsensusBitVote.EncodeBitVoteHex(round.Id), round.Id)
 			}
@@ -164,11 +169,11 @@ func (m *Manager) GetOrCreateRound(roundId uint64) (*Round, error) {
 func (m *Manager) OnBitVote(message payload.Message) error {
 
 	if message.Timestamp < timing.ChooseStartTimestamp(int(message.VotingRound)) {
-		return errors.New("bitvote too soon")
+		return fmt.Errorf("bitvote from %s too soon", message.From)
 	}
 
 	if message.Timestamp > timing.ChooseEndTimestamp(int(message.VotingRound)) {
-		return errors.New("bitvote too late")
+		return fmt.Errorf("bitvote from %s too late", message.From)
 	}
 
 	round, err := m.GetOrCreateRound(message.VotingRound)
