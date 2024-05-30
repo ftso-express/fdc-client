@@ -1,7 +1,7 @@
 variables:
   GOPATH: /go
-  GOLANG_VERSION: "1.21"
-  GOLINT_VERSION: "v1.55.2"
+  GOLANG_VERSION: "1.21.5"
+  GOLINT_VERSION: "v1.59.0"
 
 .gocache:
   key: ${CI_COMMIT_REF_SLUG}
