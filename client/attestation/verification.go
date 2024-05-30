@@ -173,7 +173,7 @@ func (r Response) ComputeMic(args abi.Arguments) (common.Hash, error) {
 }
 
 // LUT returns the fourth slot in response. Solidity type of Lut is uint64.
-func (r Response) LUT() (int64, error) {
+func (r Response) LUT() (uint64, error) {
 
 	static, err := IsStaticType(r)
 
@@ -197,12 +197,26 @@ func (r Response) LUT() (int64, error) {
 
 	safe = safe.SetBytes(lut)
 
-	if safe.IsInt64() {
-		return safe.Int64(), nil
+	if safe.IsUint64() {
+		return safe.Uint64(), nil
 	} else {
 		return 0, errors.New("lut too big")
 	}
 
+}
+
+// validLUT safely checks whether roundStart - lut < lutLimit
+func validLUT(lut, lutLimit, roundStart uint64) bool {
+
+	lutBig := new(big.Int).SetUint64(lut)
+	lutLimitBig := new(big.Int).SetUint64(lutLimit)
+	roundStartBig := new(big.Int).SetUint64(roundStart)
+
+	lhs := new(big.Int).Sub(roundStartBig, lutBig)
+
+	comp := lhs.Cmp(lutLimitBig)
+
+	return comp == -1
 }
 
 // AddRound sets the roundId in the response (third 32 bytes).
