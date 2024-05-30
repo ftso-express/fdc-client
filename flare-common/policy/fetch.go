@@ -26,12 +26,12 @@ type relayContractClient struct {
 
 	relay *relay.Relay
 
-	topic0SPI string // for SigningPolicyInitialized event
-	topic0PMR string // for ProtocolMessageRelayed event
+	topic0SPI common.Hash // for SigningPolicyInitialized event
+	topic0PMR common.Hash // for ProtocolMessageRelayed event
 }
 
 func (r *relayContractClient) FetchSigningPolicies(db *gorm.DB, from, to int64) ([]SigningPolicyListenerResponse, error) {
-	logs, err := database.FetchLogsByAddressAndTopic0Timestamp(db, r.address.String(), r.topic0SPI, from, to)
+	logs, err := database.FetchLogsByAddressAndTopic0Timestamp(db, r.address, r.topic0SPI, from, to)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (r *relayContractClient) SigningPolicyInitializedListener(db *gorm.DB, star
 		for {
 			<-ticker.C
 			now := time.Now().Unix()
-			logs, err := database.FetchLogsByAddressAndTopic0Timestamp(db, r.address.String(), r.topic0SPI, eventRangeStart, now)
+			logs, err := database.FetchLogsByAddressAndTopic0Timestamp(db, r.address, r.topic0SPI, eventRangeStart, now)
 			if err != nil {
 				continue
 			}

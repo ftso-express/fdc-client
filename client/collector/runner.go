@@ -1,18 +1,19 @@
 package collector
 
 import (
+	"encoding/hex"
+	"errors"
 	"flare-common/contracts/relay"
 	"flare-common/database"
 	"flare-common/logger"
 	"flare-common/payload"
-	"fmt"
 	"local/fdc/client/attestation"
 	"local/fdc/client/config"
 	"local/fdc/client/timing"
 	hub "local/fdc/contracts/FDC"
-	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"gorm.io/gorm"
 )
 
@@ -30,8 +31,8 @@ const (
 	bitVoteHeadStart = 5 * time.Second
 )
 
-var signingPolicyInitializedEventSig string
-var attestationRequestEventSig string
+var signingPolicyInitializedEventSig common.Hash
+var attestationRequestEventSig common.Hash
 var log = logger.GetLogger()
 
 func init() {
@@ -46,7 +47,7 @@ func init() {
 		log.Panic("cannot get SigningPolicyInitialized event:", err)
 	}
 
-	signingPolicyInitializedEventSig = strings.TrimPrefix(signingPolicyEvent.ID.String(), "0x")
+	signingPolicyInitializedEventSig = signingPolicyEvent.ID
 
 	fdcAbi, err := hub.HubMetaData.GetAbi()
 
@@ -60,32 +61,38 @@ func init() {
 		log.Panic("cannot get AttestationRequest event:", err)
 	}
 
-	attestationRequestEventSig = strings.TrimPrefix(requestEvent.ID.String(), "0x")
+	attestationRequestEventSig = requestEvent.ID
 
 }
 
 type Runner struct {
 	Protocol              uint64
-	SubmitContractAddress string
-	FdcContractAddress    string
-	RelayContractAddress  string
+	SubmitContractAddress common.Address
+	FdcContractAddress    common.Address
+	RelayContractAddress  common.Address
 	DB                    *gorm.DB
-	submit1Sig            string
+	submit1Sig            [4]byte
 	RoundManager          *attestation.Manager
 }
+
+const submit1FuncSigHex = "6c532fae"
 
 func New(user config.UserConfigRaw, system config.SystemConfig) *Runner {
 	// TODO: Luka - get these from config
 	// CONSTANTS
 	// requestEventSignature := "251377668af6553101c9bb094ba89c0c536783e005e203625e6cd57345918cc9"
 	// signingPolicySignature := "91d0280e969157fc6c5b8f952f237b03d934b18534dafcac839075bbc33522f8"
-	submit1FuncSig := "6c532fae"
 
 	roundManager := attestation.NewManager(user)
 
 	db, err := database.Connect(&user.DB)
 	if err != nil {
 		log.Panic("Could not connect to database:", err)
+	}
+
+	submit1FuncSig, err := parseFuncSig(submit1FuncSigHex)
+	if err != nil {
+		log.Panic("Could not parse submit1FuncSig:", err)
 	}
 
 	runner := Runner{
@@ -99,6 +106,18 @@ func New(user config.UserConfigRaw, system config.SystemConfig) *Runner {
 	}
 
 	return &runner
+}
+
+func parseFuncSig(sigInput string) ([4]byte, error) {
+	var ret [4]byte
+	inputBytes := []byte(sigInput)
+
+	if hex.DecodedLen(len(inputBytes)) != 4 {
+		return ret, errors.New("invalid length for function selector")
+	}
+
+	_, err := hex.Decode(ret[:], inputBytes)
+	return ret, err
 }
 
 func (r *Runner) Run() {
@@ -203,7 +222,12 @@ func tryTriggerBitVote(nextChoosePhaseRoundIDEnd *int, nextChoosePhaseEndTimesta
 // BitVoteListener returns a channel that servers payload data submitted do submitContractAddress to method with funcSig for protocol.
 // Payload for roundID is served whenever a trigger provides a roundID.
 func BitVoteListener(
-	db *gorm.DB, submitContractAddress, funcSig string, protocol uint64, bufferSize int, trigger <-chan uint64,
+	db *gorm.DB,
+	submitContractAddress common.Address,
+	funcSig [4]byte,
+	protocol uint64,
+	bufferSize int,
+	trigger <-chan uint64,
 ) <-chan payload.Round {
 
 	out := make(chan payload.Round, bufferSize)
@@ -260,7 +284,7 @@ func BitVoteListener(
 
 // AttestationRequestListener returns a channel that serves attestation requests events emitted by fdcContractAddress.
 func AttestationRequestListener(
-	db *gorm.DB, fdcContractAddress string, bufferSize int, ListenerInterval time.Duration,
+	db *gorm.DB, fdcContractAddress common.Address, bufferSize int, ListenerInterval time.Duration,
 ) <-chan []database.Log {
 
 	out := make(chan []database.Log, bufferSize)
@@ -320,32 +344,14 @@ func AttestationRequestListener(
 	return out
 }
 
-// fetchLastSigningPolicyInitializedEvents returns last number of signingPolicyInitialized events emitted by relayContractAddress.
-// The events are sorted by the timestamp descending.
-func fetchLastSigningPolicyInitializedEvents(db *gorm.DB, relayContractAddress string, number int) ([]database.Log, error) {
-
-	var logs []database.Log
-
-	err := db.Where("address = ? AND topic0 = ?",
-		strings.ToLower(strings.TrimPrefix(relayContractAddress, "0x")),
-		strings.ToLower(strings.TrimPrefix(signingPolicyInitializedEventSig, "0x")),
-	).Order("timestamp DESC").Limit(number).Find(&logs).Error
-
-	if err != nil {
-		return logs, fmt.Errorf("error fetching last sig policy logs: %s", err)
-	}
-
-	return logs, nil
-
-}
-
 // SigningPolicyInitializedListener returns a channel that serves signingPolicyInitialized events emitted by relayContractAddress.
-func SigningPolicyInitializedListener(db *gorm.DB, relayContractAddress string, bufferSize int) <-chan []database.Log {
+func SigningPolicyInitializedListener(db *gorm.DB, relayContractAddress common.Address, bufferSize int) <-chan []database.Log {
 	out := make(chan []database.Log, bufferSize)
 
 	go func() {
-
-		logs, err := fetchLastSigningPolicyInitializedEvents(db, relayContractAddress, 3)
+		logs, err := database.FetchLatestLogsByAddressAndTopic0(
+			db, relayContractAddress, signingPolicyInitializedEventSig, 3,
+		)
 
 		latestQuery := time.Now()
 
@@ -377,10 +383,14 @@ func SigningPolicyInitializedListener(db *gorm.DB, relayContractAddress string, 
 }
 
 // spiTargetedListener that only starts aggressive queries for new signingPolicyInitialized events a bit before the expected emission and stops once it get one and waits until the next window.
-func spiTargetedListener(db *gorm.DB, relayContractAddress string, lastLog database.Log, latestQuery time.Time, out chan<- []database.Log) {
-
+func spiTargetedListener(
+	db *gorm.DB,
+	relayContractAddress common.Address,
+	lastLog database.Log,
+	latestQuery time.Time,
+	out chan<- []database.Log,
+) {
 	lastSigningPolicy, err := attestation.ParseSigningPolicyInitializedLog(lastLog)
-
 	if err != nil {
 		log.Panic("error parsing initial logs:", err)
 	}

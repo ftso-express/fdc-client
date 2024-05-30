@@ -4,6 +4,7 @@ import (
 	"flare-common/database"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 type GlobalConfig struct {
@@ -46,16 +47,16 @@ type TimingConfig struct {
 type ListenersConfig struct {
 	Protocol uint64 `toml:"protocol"`
 
-	SubmitContractAddress       string `toml:"submit_contract_address"`
-	SubmitBuffer                int    `toml:"submit_buffer"`
-	OffChainTriggerDelaySeconds int    `toml:"off_chain_trigger_delay_seconds"`
+	SubmitContractAddress       common.Address `toml:"submit_contract_address"`
+	SubmitBuffer                int            `toml:"submit_buffer"`
+	OffChainTriggerDelaySeconds int            `toml:"off_chain_trigger_delay_seconds"`
 
-	RelayContractAddress string `toml:"relay_contract_address"`
-	RelayBuffer          int    `toml:"relay_buffer"`
+	RelayContractAddress common.Address `toml:"relay_contract_address"`
+	RelayBuffer          int            `toml:"relay_buffer"`
 
-	FdcContractAddress     string `toml:"fdc_contract_address"`
-	RequestBuffer          int    `toml:"request_buffer"`
-	RequestIntervalSeconds int    `toml:"request_interval_seconds"`
+	FdcContractAddress     common.Address `toml:"fdc_contract_address"`
+	RequestBuffer          int            `toml:"request_buffer"`
+	RequestIntervalSeconds int            `toml:"request_interval_seconds"`
 }
 
 type AbiConfigUnparsed map[string]string // map from attestation type to location of abi of its Response struct

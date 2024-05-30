@@ -1,20 +1,54 @@
 package database
 
 import (
+	"encoding/hex"
 	"errors"
 	"flare-common/logger"
-	"strings"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/ethereum/go-ethereum/common"
 	"gorm.io/gorm"
 )
 
 var log = logger.GetLogger()
 
+func FetchLatestLogsByAddressAndTopic0(
+	db *gorm.DB, address common.Address, topic0 common.Hash, number int,
+) ([]Log, error) {
+	var logs []Log
+
+	err := backoff.RetryNotify(
+		func() error {
+			var err error
+			logs, err = fetchLatestLogsByAddressAndTopic0(db, address, topic0, number)
+			return err
+		},
+		backoff.NewExponentialBackOff(),
+		func(err error, duration time.Duration) {
+			log.Errorf("error fetching logs: %v, retrying after %v", err, duration)
+		},
+	)
+
+	return logs, err
+}
+
+func fetchLatestLogsByAddressAndTopic0(
+	db *gorm.DB, address common.Address, topic0 common.Hash, number int,
+) ([]Log, error) {
+	var logs []Log
+
+	err := db.Where("address = ? AND topic0 = ?",
+		hex.EncodeToString(address[:]), // encodes without 0x prefix and without checksum
+		hex.EncodeToString(topic0[:]),
+	).Order("timestamp DESC").Limit(number).Find(&logs).Error
+
+	return logs, err
+}
+
 // Fetch all logs matching address and topic0 from timestamp range (from, to], order by timestamp
 func FetchLogsByAddressAndTopic0Timestamp(
-	db *gorm.DB, address string, topic0 string, from int64, to int64,
+	db *gorm.DB, address common.Address, topic0 common.Hash, from int64, to int64,
 ) ([]Log, error) {
 	var logs []Log
 
@@ -33,17 +67,16 @@ func FetchLogsByAddressAndTopic0Timestamp(
 	)
 
 	return logs, err
-
 }
 
 func fetchLogsByAddressAndTopic0Timestamp(
-	db *gorm.DB, address string, topic0 string, from int64, to int64,
+	db *gorm.DB, address common.Address, topic0 common.Hash, from int64, to int64,
 ) ([]Log, error) {
 	var logs []Log
 	err := db.Where(
 		"address = ? AND topic0 = ? AND timestamp > ? AND timestamp <= ?",
-		strings.ToLower(strings.TrimPrefix(address, "0x")),
-		strings.ToLower(strings.TrimPrefix(topic0, "0x")),
+		hex.EncodeToString(address[:]), // encodes without 0x prefix and without checksum
+		hex.EncodeToString(topic0[:]),
 		from, to,
 	).Order("timestamp").Find(&logs).Error
 	if err != nil {
@@ -54,7 +87,7 @@ func fetchLogsByAddressAndTopic0Timestamp(
 
 // Fetch all logs matching address and topic0 from timestamp to block number, order by timestamp
 func FetchLogsByAddressAndTopic0TimestampToBlockNumber(
-	db *gorm.DB, address string, topic0 string, from int64, to int64,
+	db *gorm.DB, address common.Address, topic0 common.Hash, from int64, to int64,
 ) ([]Log, error) {
 	var logs []Log
 
@@ -76,13 +109,13 @@ func FetchLogsByAddressAndTopic0TimestampToBlockNumber(
 }
 
 func fetchLogsByAddressAndTopic0TimestampToBlockNumber(
-	db *gorm.DB, address string, topic0 string, from int64, to int64,
+	db *gorm.DB, address common.Address, topic0 common.Hash, from int64, to int64,
 ) ([]Log, error) {
 	var logs []Log
 	err := db.Where(
 		"address = ? AND topic0 = ? AND timestamp >= ? AND block_number <= ?",
-		strings.ToLower(strings.TrimPrefix(address, "0x")),
-		strings.ToLower(strings.TrimPrefix(topic0, "0x")),
+		hex.EncodeToString(address[:]), // encodes without 0x prefix and without checksum
+		hex.EncodeToString(topic0[:]),
 		from, to,
 	).Order("timestamp").Find(&logs).Error
 	if err != nil {
@@ -93,7 +126,7 @@ func fetchLogsByAddressAndTopic0TimestampToBlockNumber(
 
 // Fetch all logs matching address and topic0 from block range (from, to], order by timestamp
 func FetchLogsByAddressAndTopic0BlockNumber(
-	db *gorm.DB, address string, topic0 string, from int64, to int64,
+	db *gorm.DB, address common.Address, topic0 common.Hash, from int64, to int64,
 ) ([]Log, error) {
 	var logs []Log
 
@@ -115,14 +148,14 @@ func FetchLogsByAddressAndTopic0BlockNumber(
 }
 
 func fetchLogsByAddressAndTopic0BlockNumber(
-	db *gorm.DB, address string, topic0 string, from int64, to int64,
+	db *gorm.DB, address common.Address, topic0 common.Hash, from int64, to int64,
 ) ([]Log, error) {
 	var logs []Log
 
 	err := db.Where(
 		"address = ? AND topic0 = ? AND block_number > ? AND block_number <= ?",
-		strings.ToLower(strings.TrimPrefix(address, "0x")),
-		strings.ToLower(strings.TrimPrefix(topic0, "0x")),
+		hex.EncodeToString(address[:]), // encodes without 0x prefix and without checksum
+		hex.EncodeToString(topic0[:]),
 		from, to,
 	).Order("timestamp").Find(&logs).Error
 	if err != nil {
@@ -134,7 +167,7 @@ func fetchLogsByAddressAndTopic0BlockNumber(
 
 // Fetch all transactions matching toAddress and functionSig from timestamp range (from, to], order by timestamp
 func FetchTransactionsByAddressAndSelectorTimestamp(
-	db *gorm.DB, toAddress string, functionSig string, from int64, to int64,
+	db *gorm.DB, toAddress common.Address, functionSig [4]byte, from int64, to int64,
 ) ([]Transaction, error) {
 	var txs []Transaction
 
@@ -156,14 +189,14 @@ func FetchTransactionsByAddressAndSelectorTimestamp(
 }
 
 func fetchTransactionsByAddressAndSelectorTimestamp(
-	db *gorm.DB, toAddress string, functionSig string, from int64, to int64,
+	db *gorm.DB, toAddress common.Address, functionSig [4]byte, from int64, to int64,
 ) ([]Transaction, error) {
 	var transactions []Transaction
 
 	err := db.Where(
 		"to_address = ? AND function_sig = ? AND timestamp > ? AND timestamp <= ?",
-		strings.ToLower(strings.TrimPrefix(toAddress, "0x")),
-		strings.ToLower(strings.TrimPrefix(functionSig, "0x")),
+		hex.EncodeToString(toAddress[:]), // encodes without 0x prefix and without checksum
+		hex.EncodeToString(functionSig[:]),
 		from, to,
 	).Order("timestamp").Find(&transactions).Error
 	if err != nil {
@@ -175,7 +208,7 @@ func fetchTransactionsByAddressAndSelectorTimestamp(
 
 // Fetch all transactions matching toAddress and functionSig from block number range (from, to], order by timestamp
 func FetchTransactionsByAddressAndSelectorBlockNumber(
-	db *gorm.DB, toAddress string, functionSig string, from int64, to int64,
+	db *gorm.DB, toAddress common.Address, functionSig [4]byte, from int64, to int64,
 ) ([]Transaction, error) {
 	var txs []Transaction
 
@@ -197,14 +230,14 @@ func FetchTransactionsByAddressAndSelectorBlockNumber(
 }
 
 func fetchTransactionsByAddressAndSelectorBlockNumber(
-	db *gorm.DB, toAddress string, functionSig string, from int64, to int64,
+	db *gorm.DB, toAddress common.Address, functionSig [4]byte, from int64, to int64,
 ) ([]Transaction, error) {
 	var transactions []Transaction
 
 	err := db.Where(
 		"to_address = ? AND function_sig = ? AND block_number > ? AND block_number <= ?",
-		strings.ToLower(strings.TrimPrefix(toAddress, "0x")),
-		strings.ToLower(strings.TrimPrefix(functionSig, "0x")),
+		hex.EncodeToString(toAddress[:]), // encodes without 0x prefix and without checksum
+		hex.EncodeToString(functionSig[:]),
 		from, to,
 	).Order("timestamp").Find(&transactions).Error
 	if err != nil {
