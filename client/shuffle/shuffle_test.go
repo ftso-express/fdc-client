@@ -8,9 +8,9 @@ import (
 
 func TestSeed(t *testing.T) {
 
-	seed1 := shuffle.Seed(1, 1)
+	seed1 := shuffle.Seed(1, 1, 300)
 
-	seed2 := shuffle.Seed(0, 0)
+	seed2 := shuffle.Seed(0, 0, 300)
 
 	if seed1 == seed2 {
 		t.Error("not random seeds")
@@ -20,7 +20,7 @@ func TestSeed(t *testing.T) {
 
 func TestFisherYates(t *testing.T) {
 
-	seed1 := shuffle.Seed(1, 1)
+	seed1 := shuffle.Seed(1, 1, 300)
 
 	shuffle1 := shuffle.FisherYates(0, seed1)
 
@@ -43,7 +43,7 @@ func TestFisherYates(t *testing.T) {
 		}
 	}
 
-	seed2 := shuffle.Seed(1, 0)
+	seed2 := shuffle.Seed(1, 0, 300)
 
 	shuffle3 := shuffle.FisherYates(100, seed2)
 
@@ -65,7 +65,7 @@ func BenchmarkFisherYates(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 
-		seed := shuffle.Seed(1, uint64(i))
+		seed := shuffle.Seed(1, uint64(i), 300)
 
 		shuffle.FisherYates(100, seed)
 

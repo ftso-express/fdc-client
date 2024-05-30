@@ -10,13 +10,13 @@ import (
 
 var uint64Ty, _ = abi.NewType("uint64", "uint64", nil)
 
-var args = abi.Arguments{{Type: uint64Ty}, {Type: uint64Ty}}
+var args = abi.Arguments{{Type: uint64Ty}, {Type: uint64Ty}, {Type: uint64Ty}}
 
 // Seed returns the initial seed for consecutive sample in roundId.
 // The Seed in Solidity is computed by keccak256(abi.encode(roundId,sample));, where roundId and sample are of type uint64.
-func Seed(roundId, sample uint64) common.Hash {
+func Seed(roundId, sample, protocolId uint64) common.Hash {
 
-	encoded, _ := args.Pack(roundId, sample)
+	encoded, _ := args.Pack(roundId, sample, protocolId)
 
 	return crypto.Keccak256Hash(encoded)
 }

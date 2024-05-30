@@ -167,7 +167,7 @@ func ConsensusBitVote(roundId uint64, weightedBitVotes []*WeightedBitVote, total
 
 	for i := 0; i < NumOfSamples; i++ {
 		go func(j uint64) {
-			seed := shuffle.Seed((roundId), j)
+			seed := shuffle.Seed(roundId, j, 300) // TODO get protocol id (300) from somewhere
 			shuffled := shuffle.FisherYates(uint64(noOfVoters), seed)
 			tempBitVote, supportingWeight := bitVoteForSet(weightedBitVotes, totalWeight, shuffled)
 			value, err := value(tempBitVote, supportingWeight, attestations)
