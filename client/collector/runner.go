@@ -31,8 +31,8 @@ const (
 	bitVoteHeadStart = 5 * time.Second
 )
 
-var signingPolicyInitializedEventSig common.Hash
-var attestationRequestEventSig common.Hash
+var signingPolicyInitializedEventSel common.Hash
+var attestationRequestEventSel common.Hash
 var log = logger.GetLogger()
 
 func init() {
@@ -47,7 +47,7 @@ func init() {
 		log.Panic("cannot get SigningPolicyInitialized event:", err)
 	}
 
-	signingPolicyInitializedEventSig = signingPolicyEvent.ID
+	signingPolicyInitializedEventSel = signingPolicyEvent.ID
 
 	fdcAbi, err := hub.HubMetaData.GetAbi()
 
@@ -61,7 +61,7 @@ func init() {
 		log.Panic("cannot get AttestationRequest event:", err)
 	}
 
-	attestationRequestEventSig = requestEvent.ID
+	attestationRequestEventSel = requestEvent.ID
 
 }
 
@@ -71,11 +71,11 @@ type Runner struct {
 	FdcContractAddress    common.Address
 	RelayContractAddress  common.Address
 	DB                    *gorm.DB
-	submit1Sig            [4]byte
+	submit1Sel            [4]byte
 	RoundManager          *attestation.Manager
 }
 
-const submit1FuncSigHex = "6c532fae"
+const submit1FuncSelHex = "6c532fae"
 
 func New(user config.UserConfigRaw, system config.SystemConfig) *Runner {
 	// TODO: Luka - get these from config
@@ -90,9 +90,9 @@ func New(user config.UserConfigRaw, system config.SystemConfig) *Runner {
 		log.Panic("Could not connect to database:", err)
 	}
 
-	submit1FuncSig, err := parseFuncSig(submit1FuncSigHex)
+	submit1FuncSel, err := parseFuncSel(submit1FuncSelHex)
 	if err != nil {
-		log.Panic("Could not parse submit1FuncSig:", err)
+		log.Panic("Could not parse submit1FuncSel:", err)
 	}
 
 	runner := Runner{
@@ -101,14 +101,14 @@ func New(user config.UserConfigRaw, system config.SystemConfig) *Runner {
 		FdcContractAddress:    system.Listener.FdcContractAddress,
 		RelayContractAddress:  system.Listener.RelayContractAddress,
 		DB:                    db,
-		submit1Sig:            submit1FuncSig,
+		submit1Sel:            submit1FuncSel,
 		RoundManager:          roundManager,
 	}
 
 	return &runner
 }
 
-func parseFuncSig(sigInput string) ([4]byte, error) {
+func parseFuncSel(sigInput string) ([4]byte, error) {
 	var ret [4]byte
 	inputBytes := []byte(sigInput)
 
@@ -126,7 +126,7 @@ func (r *Runner) Run() {
 
 	r.RoundManager.SigningPolicies = SigningPolicyInitializedListener(r.DB, r.RelayContractAddress, 3)
 
-	r.RoundManager.BitVotes = BitVoteListener(r.DB, r.FdcContractAddress, r.submit1Sig, r.Protocol, bitVoteBufferSize, chooseTrigger)
+	r.RoundManager.BitVotes = BitVoteListener(r.DB, r.FdcContractAddress, r.submit1Sel, r.Protocol, bitVoteBufferSize, chooseTrigger)
 
 	r.RoundManager.Requests = AttestationRequestListener(r.DB, r.FdcContractAddress, requestsBufferSize, requestListenerInterval)
 
@@ -219,12 +219,12 @@ func tryTriggerBitVote(nextChoosePhaseRoundIDEnd *int, nextChoosePhaseEndTimesta
 	return false
 }
 
-// BitVoteListener returns a channel that servers payload data submitted do submitContractAddress to method with funcSig for protocol.
+// BitVoteListener returns a channel that servers payload data submitted do submitContractAddress to method with funcSel for protocol.
 // Payload for roundID is served whenever a trigger provides a roundID.
 func BitVoteListener(
 	db *gorm.DB,
 	submitContractAddress common.Address,
-	funcSig [4]byte,
+	funcSel [4]byte,
 	protocol uint64,
 	bufferSize int,
 	trigger <-chan uint64,
@@ -240,7 +240,7 @@ func BitVoteListener(
 			txs, err := database.FetchTransactionsByAddressAndSelectorTimestamp(
 				db,
 				submitContractAddress,
-				funcSig,
+				funcSel,
 				int64(timing.ChooseStartTimestamp(int(roundID))),
 				int64(timing.ChooseEndTimestamp(int(roundID))),
 			)
@@ -303,7 +303,7 @@ func AttestationRequestListener(
 		lastQueriedBlock := state.Index
 
 		logs, err := database.FetchLogsByAddressAndTopic0TimestampToBlockNumber(
-			db, fdcContractAddress, attestationRequestEventSig, int64(startTimestamp), int64(state.Index),
+			db, fdcContractAddress, attestationRequestEventSel, int64(startTimestamp), int64(state.Index),
 		)
 		if err != nil {
 			log.Panic("fetch initial logs error")
@@ -323,7 +323,7 @@ func AttestationRequestListener(
 			}
 
 			logs, err := database.FetchLogsByAddressAndTopic0BlockNumber(
-				db, fdcContractAddress, attestationRequestEventSig, int64(lastQueriedBlock), int64(state.Index),
+				db, fdcContractAddress, attestationRequestEventSel, int64(lastQueriedBlock), int64(state.Index),
 			)
 			if err != nil {
 				log.Error("fetch logs error:", err)
@@ -350,7 +350,7 @@ func SigningPolicyInitializedListener(db *gorm.DB, relayContractAddress common.A
 
 	go func() {
 		logs, err := database.FetchLatestLogsByAddressAndTopic0(
-			db, relayContractAddress, signingPolicyInitializedEventSig, 3,
+			db, relayContractAddress, signingPolicyInitializedEventSel, 3,
 		)
 
 		latestQuery := time.Now()
@@ -418,7 +418,7 @@ func spiTargetedListener(
 			now := time.Now()
 
 			logs, err := database.FetchLogsByAddressAndTopic0Timestamp(
-				db, relayContractAddress, signingPolicyInitializedEventSig, latestQuery.Unix(), now.Unix(),
+				db, relayContractAddress, signingPolicyInitializedEventSel, latestQuery.Unix(), now.Unix(),
 			)
 
 			latestQuery = now

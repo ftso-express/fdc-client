@@ -165,9 +165,9 @@ func fetchLogsByAddressAndTopic0BlockNumber(
 	return logs, nil
 }
 
-// Fetch all transactions matching toAddress and functionSig from timestamp range (from, to], order by timestamp
+// Fetch all transactions matching toAddress and functionSel from timestamp range (from, to], order by timestamp
 func FetchTransactionsByAddressAndSelectorTimestamp(
-	db *gorm.DB, toAddress common.Address, functionSig [4]byte, from int64, to int64,
+	db *gorm.DB, toAddress common.Address, functionSel [4]byte, from int64, to int64,
 ) ([]Transaction, error) {
 	var txs []Transaction
 
@@ -175,7 +175,7 @@ func FetchTransactionsByAddressAndSelectorTimestamp(
 		func() error {
 			var err error
 			txs, err = fetchTransactionsByAddressAndSelectorTimestamp(
-				db, toAddress, functionSig, from, to,
+				db, toAddress, functionSel, from, to,
 			)
 			return err
 		},
@@ -189,14 +189,14 @@ func FetchTransactionsByAddressAndSelectorTimestamp(
 }
 
 func fetchTransactionsByAddressAndSelectorTimestamp(
-	db *gorm.DB, toAddress common.Address, functionSig [4]byte, from int64, to int64,
+	db *gorm.DB, toAddress common.Address, functionSel [4]byte, from int64, to int64,
 ) ([]Transaction, error) {
 	var transactions []Transaction
 
 	err := db.Where(
 		"to_address = ? AND function_sig = ? AND timestamp > ? AND timestamp <= ?",
 		hex.EncodeToString(toAddress[:]), // encodes without 0x prefix and without checksum
-		hex.EncodeToString(functionSig[:]),
+		hex.EncodeToString(functionSel[:]),
 		from, to,
 	).Order("timestamp").Find(&transactions).Error
 	if err != nil {
@@ -206,9 +206,9 @@ func fetchTransactionsByAddressAndSelectorTimestamp(
 	return transactions, nil
 }
 
-// Fetch all transactions matching toAddress and functionSig from block number range (from, to], order by timestamp
+// Fetch all transactions matching toAddress and functionSel from block number range (from, to], order by timestamp
 func FetchTransactionsByAddressAndSelectorBlockNumber(
-	db *gorm.DB, toAddress common.Address, functionSig [4]byte, from int64, to int64,
+	db *gorm.DB, toAddress common.Address, functionSel [4]byte, from int64, to int64,
 ) ([]Transaction, error) {
 	var txs []Transaction
 
@@ -216,7 +216,7 @@ func FetchTransactionsByAddressAndSelectorBlockNumber(
 		func() error {
 			var err error
 			txs, err = fetchTransactionsByAddressAndSelectorBlockNumber(
-				db, toAddress, functionSig, from, to,
+				db, toAddress, functionSel, from, to,
 			)
 			return err
 		},
@@ -230,14 +230,14 @@ func FetchTransactionsByAddressAndSelectorBlockNumber(
 }
 
 func fetchTransactionsByAddressAndSelectorBlockNumber(
-	db *gorm.DB, toAddress common.Address, functionSig [4]byte, from int64, to int64,
+	db *gorm.DB, toAddress common.Address, functionSel [4]byte, from int64, to int64,
 ) ([]Transaction, error) {
 	var transactions []Transaction
 
 	err := db.Where(
 		"to_address = ? AND function_sig = ? AND block_number > ? AND block_number <= ?",
 		hex.EncodeToString(toAddress[:]), // encodes without 0x prefix and without checksum
-		hex.EncodeToString(functionSig[:]),
+		hex.EncodeToString(functionSel[:]),
 		from, to,
 	).Order("timestamp").Find(&transactions).Error
 	if err != nil {
