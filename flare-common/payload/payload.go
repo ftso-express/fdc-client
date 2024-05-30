@@ -9,7 +9,7 @@ import (
 
 type Round struct {
 	Messages []Message
-	ID       uint64
+	Id       uint64
 }
 
 type Message struct {

@@ -29,16 +29,18 @@ func validateSubmitXParams(params map[string]string) (submitXParams, error) {
 	return submitXParams{votingRoundId: votingRoundId, submitAddress: submitAddress}, nil
 }
 
-func (controller *FDCProtocolProviderController) Submit1Controller(
+func (controller *FDCProtocolProviderController) submit1Controller(
 	params map[string]string,
 	queryParams interface{},
 	body interface{}) (PDPResponse, *restServer.ErrorHandler) {
 	pathParams, err := validateSubmitXParams(params)
 	if err != nil {
+		log.Error(err)
 		return PDPResponse{}, restServer.BadParamsErrorHandler(err)
 	}
 	rsp, exists, err := controller.submit1Service(pathParams.votingRoundId, pathParams.submitAddress)
 	if err != nil {
+		log.Error(err)
 		return PDPResponse{}, restServer.InternalServerErrorHandler(err)
 	}
 	if !exists {
@@ -57,10 +59,12 @@ func (controller *FDCProtocolProviderController) submit2Controller(
 	body interface{}) (PDPResponse, *restServer.ErrorHandler) {
 	pathParams, err := validateSubmitXParams(params)
 	if err != nil {
+		log.Error(err)
 		return PDPResponse{}, restServer.BadParamsErrorHandler(err)
 	}
 	rsp, exists, err := controller.submit2Service(pathParams.votingRoundId, pathParams.submitAddress)
 	if err != nil {
+		log.Error(err)
 		return PDPResponse{}, restServer.InternalServerErrorHandler(err)
 	}
 
@@ -79,11 +83,12 @@ func (controller *FDCProtocolProviderController) submitSignaturesController(
 	body interface{}) (PDPResponse, *restServer.ErrorHandler) {
 	pathParams, err := validateSubmitXParams(params)
 	if err != nil {
+		log.Error(err)
 		return PDPResponse{}, restServer.BadParamsErrorHandler(err)
 	}
-	rsp, err := controller.submitSignaturesService(pathParams.votingRoundId, pathParams.submitAddress)
-	if err != nil {
-		return PDPResponse{}, restServer.InternalServerErrorHandler(err)
+	rsp, exists := controller.submitSignaturesService(pathParams.votingRoundId, pathParams.submitAddress)
+	if !exists {
+		return PDPResponse{Status: NOT_AVAILABLE}, nil
 	}
 	response := PDPResponse{Data: rsp.data, AdditionalData: rsp.additional, Status: OK}
 

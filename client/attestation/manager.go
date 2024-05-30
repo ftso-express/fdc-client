@@ -97,7 +97,7 @@ func (m *Manager) Run() {
 
 		case round := <-m.BitVotes:
 
-			log.Debugf("Received %d bitVotes for round %d", len(round.Messages), round.ID)
+			log.Debugf("Received %d bitVotes for round %d", len(round.Messages), round.Id)
 
 			for i := range round.Messages {
 
@@ -106,7 +106,7 @@ func (m *Manager) Run() {
 				}
 			}
 
-			r, ok := m.Rounds.Get(round.ID)
+			r, ok := m.Rounds.Get(round.Id)
 			if !ok {
 				break
 			}
@@ -114,9 +114,9 @@ func (m *Manager) Run() {
 			err := r.ComputeConsensusBitVote()
 
 			if err != nil {
-				log.Errorf("Failed bitVote for round %d", round.ID)
+				log.Errorf("Failed bitVote for round %d", round.Id)
 			} else {
-				log.Debugf("Consensus bitVote for round %d computed.", round.ID)
+				log.Debugf("Consensus bitVote %s for round %d computed.", r.ConsensusBitVote.EncodeBitVoteHex(round.Id), round.Id)
 			}
 
 		case requests := <-m.Requests:
