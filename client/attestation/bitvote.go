@@ -47,7 +47,7 @@ type WeightedBitVote struct {
 }
 
 type bitVoteWithValue struct {
-	index   int64
+	index   uint64
 	bitVote BitVote
 	value   *big.Int // support multiplied with fees
 	err     error
@@ -161,19 +161,19 @@ func ConsensusBitVote(roundId uint64, weightedBitVotes []*WeightedBitVote, total
 	var bitVote BitVote
 	maxValue := big.NewInt(0)
 
-	index := int64(0)
+	index := uint64(0)
 
 	ch := make(chan bitVoteWithValue)
 
 	for i := 0; i < NumOfSamples; i++ {
-		go func(j int64) {
-			seed := shuffle.Seed(int64(roundId), j)
+		go func(j uint64) {
+			seed := shuffle.Seed((roundId), j)
 			shuffled := shuffle.FisherYates(uint64(noOfVoters), seed)
 			tempBitVote, supportingWeight := bitVoteForSet(weightedBitVotes, totalWeight, shuffled)
 			value, err := value(tempBitVote, supportingWeight, attestations)
 
 			ch <- bitVoteWithValue{j, tempBitVote, value, err}
-		}(int64(i))
+		}(uint64(i))
 	}
 
 	for i := 0; i < NumOfSamples; i++ {
