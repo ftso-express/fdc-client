@@ -410,39 +410,44 @@ func spiTargetedListener(
 
 		<-timer.C
 
-		ticker := time.NewTicker(89 * time.Second) // ticker that is guaranteed to tick at least once per SystemVotingRound
-
-	aggressiveQuery:
-		for {
-
-			now := time.Now()
-
-			logs, err := database.FetchLogsByAddressAndTopic0Timestamp(
-				db, relayContractAddress, signingPolicyInitializedEventSel, latestQuery.Unix(), now.Unix(),
-			)
-
-			latestQuery = now
-
-			if err != nil {
-				log.Error("fetch logs error:", err)
-				continue
-			}
-
-			if len(logs) > 0 {
-				log.Debug("Adding signing policy to channel")
-				out <- logs
-
-				lastInitializedRewardEpochID++
-				ticker.Stop()
-				timer.Stop()
-				break aggressiveQuery
-
-			}
-
-			<-ticker.C
-
+		if err := queryNextSPI(db, relayContractAddress, latestQuery, out); err != nil {
+			log.Error("error querying next SPI event:", err)
+			continue
 		}
 
+		lastInitializedRewardEpochID++
 	}
+}
 
+func queryNextSPI(
+	db *gorm.DB,
+	relayContractAddress common.Address,
+	latestQuery time.Time,
+	out chan<- []database.Log,
+) error {
+	ticker := time.NewTicker(89 * time.Second) // ticker that is guaranteed to tick at least once per SystemVotingRound
+
+	for {
+		now := time.Now()
+
+		logs, err := database.FetchLogsByAddressAndTopic0Timestamp(
+			db, relayContractAddress, signingPolicyInitializedEventSel, latestQuery.Unix(), now.Unix(),
+		)
+
+		latestQuery = now
+
+		if err != nil {
+			return err
+		}
+
+		if len(logs) > 0 {
+			log.Debug("Adding signing policy to channel")
+			out <- logs
+
+			ticker.Stop()
+			return nil
+		}
+
+		<-ticker.C
+	}
 }
