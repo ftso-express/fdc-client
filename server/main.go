@@ -6,18 +6,19 @@ import (
 	"fmt"
 	"local/fdc/client/attestation"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 )
 
-type AttestationServerContext struct {
-	Manager *attestation.Manager
-	context.Context
+type Server struct {
+	srv *http.Server
 }
 
-func RunProviderServer(ctx context.Context, manager *attestation.Manager) {
+const port = "8008"
 
+func New(manager *attestation.Manager) Server {
 	// Create Mux router
 	muxRouter := mux.NewRouter()
 
@@ -30,7 +31,6 @@ func RunProviderServer(ctx context.Context, manager *attestation.Manager) {
 
 	// Bind to a port and pass our router in
 
-	var port = "8008"
 	// fmt.Printf("Listening on port %s\n", port)
 	// log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), r))
 
@@ -46,12 +46,27 @@ func RunProviderServer(ctx context.Context, manager *attestation.Manager) {
 		// ReadTimeout:  15 * time.Second,
 	}
 
-	go func() {
-		log.Infof("Starting server on %s", port)
-		err := srv.ListenAndServe()
-		if err != nil {
-			log.Panicf("Server error: %v", err)
-		}
-	}()
+	return Server{srv: srv}
+}
 
+func (s *Server) Run(ctx context.Context) {
+	log.Infof("Starting server on %s", port)
+
+	err := s.srv.ListenAndServe()
+	if err != nil && err != http.ErrServerClosed {
+		log.Panicf("Server error: %v", err)
+	}
+}
+
+var shutdownTimeout = 5 * time.Second
+
+func (s *Server) Shutdown() {
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	if err := s.srv.Shutdown(ctx); err != nil {
+		log.Error("Server shutdown failed:", err)
+	} else {
+		log.Info("Server gracefully stopped")
+	}
 }

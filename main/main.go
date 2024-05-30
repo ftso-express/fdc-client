@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flare-common/logger"
-	"fmt"
 	"local/fdc/client/collector"
 	"local/fdc/client/config"
 	"local/fdc/server"
@@ -33,23 +32,30 @@ func main() {
 		log.Panicf("cannot read system config: %s", err)
 	}
 
+	// Prepare context
+	ctx, cancel := context.WithCancel(context.Background())
+
 	collector := collector.New(userConfigRaw, systemConfig)
 	go collector.Run()
-
-	// Prepare context
-	ctx := context.Background()
-	manager := collector.RoundManager
 
 	cancelChan := make(chan os.Signal, 1)
 	signal.Notify(cancelChan, os.Interrupt, syscall.SIGTERM)
 
 	// run server
 	log.Info("Running server")
-	go server.RunProviderServer(ctx, manager)
+	srv := server.New(collector.RoundManager)
+	go srv.Run(ctx)
 
-	<-cancelChan
-	fmt.Println("\nShutting down server")
+	// Block until a termination signal is received.
+	select {
+	case <-cancelChan:
+		log.Info("Received an interrupt signal, shutting down...")
+	case <-ctx.Done():
+		log.Info("Context cancelled, shutting down...")
+	}
 
+	cancel()
+	srv.Shutdown()
 }
 
 // func printStructFields(s interface{}) {
