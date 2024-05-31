@@ -70,7 +70,15 @@ func BitVoteListener(
 
 			if len(bitVotes) > 0 {
 				log.Infof("Received %d for round %d", len(bitVotes), roundId)
-				out <- payload.Round{Messages: bitVotes, Id: roundId}
+
+				select {
+				case out <- payload.Round{Messages: bitVotes, Id: roundId}:
+					log.Debugf("sent bitVotes for round %d", roundId)
+
+				case <-ctx.Done():
+					log.Info("BitVoteListener exiting")
+					return
+				}
 			} else {
 				log.Infof("No bitVotes for round %d", roundId)
 			}
@@ -107,7 +115,7 @@ func prepareChooseTriggers(ctx context.Context, trigger chan uint64, db *gorm.DB
 			} else {
 
 				done := tryTriggerBitVote(
-					nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp, state.BlockTimestamp, trigger,
+					ctx, nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp, state.BlockTimestamp, trigger,
 				)
 
 				if done {
@@ -150,14 +158,24 @@ func configureTicker(ctx context.Context, ticker *time.Ticker, start time.Time, 
 
 // tryTriggerBitVote checks whether the blockchain timestamp has surpassed end of choose phase or local time has surpassed it for more than bitVoteOffChainTriggerSeconds.
 // If conditions are met, roundId is passed to the chanel c.
-func tryTriggerBitVote(nextChoosePhaseRoundIDEnd *int, nextChoosePhaseEndTimestamp *uint64, currentBlockTime uint64, c chan uint64) bool {
-
+func tryTriggerBitVote(
+	ctx context.Context,
+	nextChoosePhaseRoundIDEnd *int,
+	nextChoosePhaseEndTimestamp *uint64,
+	currentBlockTime uint64,
+	c chan uint64,
+) bool {
 	now := uint64(time.Now().Unix())
 
 	if currentBlockTime > *nextChoosePhaseEndTimestamp {
-		c <- uint64(*nextChoosePhaseRoundIDEnd)
+		select {
+		case c <- uint64(*nextChoosePhaseRoundIDEnd):
+			log.Infof("bitVote for round %d started with on-chain time", *nextChoosePhaseRoundIDEnd)
 
-		log.Infof("bitVote for round %d started with on-chain time", *nextChoosePhaseRoundIDEnd)
+		case <-ctx.Done():
+			log.Info("tryTriggerBitVote exiting:", ctx.Err())
+			return false
+		}
 
 		*nextChoosePhaseRoundIDEnd, *nextChoosePhaseEndTimestamp = timing.NextChoosePhaseEnd(currentBlockTime)
 
@@ -165,8 +183,14 @@ func tryTriggerBitVote(nextChoosePhaseRoundIDEnd *int, nextChoosePhaseEndTimesta
 	}
 
 	if (now - bitVoteOffChainTriggerSeconds) > *nextChoosePhaseEndTimestamp {
-		c <- uint64(*nextChoosePhaseRoundIDEnd)
-		log.Infof("bitVote for round %d started with off-chain time", *nextChoosePhaseRoundIDEnd)
+		select {
+		case c <- uint64(*nextChoosePhaseRoundIDEnd):
+			log.Infof("bitVote for round %d started with off-chain time", *nextChoosePhaseRoundIDEnd)
+
+		case <-ctx.Done():
+			log.Info("tryTriggerBitVote exiting:", ctx.Err())
+			return false
+		}
 
 		*nextChoosePhaseRoundIDEnd++
 		*nextChoosePhaseEndTimestamp = *nextChoosePhaseEndTimestamp + 90

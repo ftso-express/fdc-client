@@ -42,7 +42,13 @@ func AttestationRequestListener(
 		}
 
 		if len(logs) > 0 {
-			out <- logs
+			select {
+			case out <- logs:
+
+			case <-ctx.Done():
+				log.Info("AttestationRequestListener exiting:", ctx.Err())
+				return
+			}
 		}
 
 		for {
@@ -72,8 +78,14 @@ func AttestationRequestListener(
 			lastQueriedBlock = state.Index
 
 			if len(logs) > 0 {
-				log.Debugf("Adding %d request logs to channel", len(logs))
-				out <- logs
+				select {
+				case out <- logs:
+					log.Debugf("Added %d request logs to channel", len(logs))
+
+				case <-ctx.Done():
+					log.Info("AttestationRequestListener exiting:", ctx.Err())
+					return
+				}
 			}
 
 		}

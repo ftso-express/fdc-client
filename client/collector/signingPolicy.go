@@ -45,7 +45,12 @@ func SigningPolicyInitializedListener(
 			sorted = append(sorted, logs[len(logs)-i-1])
 		}
 
-		out <- sorted
+		select {
+		case out <- sorted:
+
+		case <-ctx.Done():
+			log.Info("SigningPolicyInitializedListener exiting:", ctx.Err())
+		}
 
 		spiTargetedListener(ctx, db, relayContractAddress, logs[0], latestQuery, out)
 
@@ -128,7 +133,13 @@ func queryNextSPI(
 
 		if len(logs) > 0 {
 			log.Debug("Adding signing policy to channel")
-			out <- logs
+
+			select {
+			case out <- logs:
+
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 
 			ticker.Stop()
 			return nil
