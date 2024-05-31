@@ -45,7 +45,7 @@ func TestAddRound(t *testing.T) {
 		t.Error("fail")
 	}
 
-	resp.AddRound(257)
+	_, _ = resp.AddRound(257)
 
 	if resp[95] != byte(1) || resp[94] != byte(1) {
 		t.Error("fail")
