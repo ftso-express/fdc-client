@@ -219,8 +219,8 @@ func tryTriggerBitVote(nextChoosePhaseRoundIDEnd *int, nextChoosePhaseEndTimesta
 	return false
 }
 
-// BitVoteListener returns a channel that servers payload data submitted do submitContractAddress to method with funcSel for protocol.
-// Payload for roundID is served whenever a trigger provides a roundID.
+// BitVoteListener returns a channel that servers payload data submitted do submitContractAddress to method with funcSig for protocol.
+// Payload for roundId is served whenever a trigger provides a roundId.
 func BitVoteListener(
 	db *gorm.DB,
 	submitContractAddress common.Address,
@@ -235,14 +235,14 @@ func BitVoteListener(
 	go func() {
 
 		for {
-			roundID := <-trigger
+			roundId := <-trigger
 
 			txs, err := database.FetchTransactionsByAddressAndSelectorTimestamp(
 				db,
 				submitContractAddress,
 				funcSel,
-				int64(timing.ChooseStartTimestamp(int(roundID))),
-				int64(timing.ChooseEndTimestamp(int(roundID))),
+				int64(timing.ChooseStartTimestamp(int(roundId))),
+				int64(timing.ChooseEndTimestamp(int(roundId))),
 			)
 			if err != nil {
 				log.Error("fetch txs error:", err)
@@ -267,11 +267,11 @@ func BitVoteListener(
 
 			if len(bitVotes) > 0 {
 
-				log.Infof("Received %d for round %d", len(bitVotes), roundID)
+				log.Infof("Received %d for round %d", len(bitVotes), roundId)
 
-				out <- payload.Round{Messages: bitVotes, ID: roundID}
+				out <- payload.Round{Messages: bitVotes, Id: roundId}
 			} else {
-				log.Infof("No bitVotes for round %d", roundID)
+				log.Infof("No bitVotes for round %d", roundId)
 			}
 
 		}

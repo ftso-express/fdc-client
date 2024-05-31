@@ -31,3 +31,13 @@ func TestReadUserRaw(t *testing.T) {
 	}
 
 }
+
+func TestReadSystem(t *testing.T) {
+
+	_, err := config.ReadSystem(SYSTEM_FILE)
+
+	if err != nil {
+		t.Errorf("error: %s", err)
+	}
+
+}

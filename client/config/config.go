@@ -69,7 +69,7 @@ type AbiConfig struct {
 type VerifierCredentials struct {
 	Url      string `toml:"url"`
 	ApiKey   string `toml:"api_key"`
-	LutLimit int64  `toml:"lut_limit"`
+	LutLimit uint64 `toml:"lut_limit"`
 }
 
 type VerifierConfigUnparsed map[string]map[string]VerifierCredentials // map from attestation type and source Id to verifier credentials

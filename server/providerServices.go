@@ -21,17 +21,19 @@ const PROVIDER_RANDOM_SEED = 42
 
 var log = logger.GetLogger()
 
-func calculateMaskedRoot(real_root string, random_num string, address string) string {
-	return hex.EncodeToString(crypto.Keccak256([]byte(real_root), []byte(random_num), []byte(address)))
+// calculateMaskedRoot masks the root with random number and address.
+func calculateMaskedRoot(root string, random string, address string) string {
+	return hex.EncodeToString(crypto.Keccak256([]byte(root), []byte(random), []byte(address)))
 }
 
-func saveRoot(storage storage.Cyclic[RootsByAddress], roundId uint64, address string, root string, random string) {
+// storeRoot stores root and random for roundId and address for use in submitSignatures.
+func storeRoot(storage storage.Cyclic[RootsByAddress], roundId uint64, address string, root string, random string) {
 
 	forRound, exists := storage.Get(roundId)
 
 	if exists {
-		forRound[address] = merkleRootStorageObject{root, random}
-	} else {
+		forRound[address] = merkleRootStorageObject{root, random} //store root for another address
+	} else { // store for a new round
 		forRound = make(RootsByAddress)
 		forRound[address] = merkleRootStorageObject{root, random}
 		storage.Store(roundId, forRound)
@@ -42,12 +44,17 @@ func saveRoot(storage storage.Cyclic[RootsByAddress], roundId uint64, address st
 func (controller *FDCProtocolProviderController) submit1Service(roundId uint64, _ string) (string, bool, error) {
 	votingRound, exists := controller.manager.Rounds.Get(roundId)
 	if !exists {
+		log.Infof("submit1 round %d not stored", roundId)
 		return "", false, nil
 	}
 	bitVoteString, err := votingRound.BitVoteHex()
 	if err != nil {
+		log.Errorf("submit1: error for bitVote %s", err)
+
 		return "", false, err
 	}
+
+	log.Debugf("submit1: for round %d: %s", roundId, bitVoteString)
 	return bitVoteString, true, nil
 }
 
@@ -57,39 +64,46 @@ func (controller *FDCProtocolProviderController) submit2Service(roundId uint64, 
 	votingRound, exists := controller.manager.Rounds.Get(roundId)
 
 	if !exists {
+		log.Infof("submit2: round %d not stored", roundId)
+
 		return "", false, nil
 	}
 
 	root, err := votingRound.GetMerkleRootCachedHex()
 
 	if err != nil {
+		log.Infof("submit2: Merkle root for round %d not available", roundId)
+
 		return "", false, nil //decide what to do with empty round
 	}
 
 	r2 := rand.New(rand.NewSource(PROVIDER_RANDOM_SEED))
-	random_num := hex.EncodeToString(crypto.Keccak256([]byte(fmt.Sprintf("%X", r2.Int63()))))
+	random := hex.EncodeToString(crypto.Keccak256([]byte(fmt.Sprintf("%X", r2.Int63()))))
 
-	// save root to storage
+	// storeRoot saves root together with random number and address to storage
 	//controller.saveRoot(address, roundID, root, random_num)
-	saveRoot(controller.storage, roundId, address, root, random_num)
+	storeRoot(controller.storage, roundId, address, root, random)
 
-	masked := calculateMaskedRoot(root, random_num, address)
+	masked := calculateMaskedRoot(root, random, address)
 
+	log.Debugf("submit2: for round %d and address %s: %s", roundId, address, masked)
 	return masked, true, nil
 }
 
-func (controller *FDCProtocolProviderController) submitSignaturesService(roundId uint64, address string) (addData, error) {
-	// check storage if root was saved
+func (controller *FDCProtocolProviderController) submitSignaturesService(roundId uint64, address string) (addData, bool) {
 
 	savedRoots, exists := controller.storage.Get(roundId)
 	if !exists {
-		return addData{}, fmt.Errorf("roots for round %d not stored", roundId)
+		log.Infof("submitSigantures: data for round %d not stored", roundId)
+		return addData{}, false
 	}
 
 	rootData, exists := savedRoots[address]
 
 	if !exists {
-		return addData{}, fmt.Errorf("root for %s in round %d not in root storage", address, roundId)
+		log.Infof("submitSigantures: root for address %s not stored for round %d", address, roundId)
+
+		return addData{}, false
 	}
 
 	log.Info("SubmitSignaturesHandler")
@@ -98,5 +112,5 @@ func (controller *FDCProtocolProviderController) submitSignaturesService(roundId
 	log.Logf(zapcore.DebugLevel, "root: %s\n", rootData.merkleRoot)
 	log.Logf(zapcore.DebugLevel, "random: %s\n", rootData.randomNum)
 
-	return addData{data: rootData.merkleRoot, additional: rootData.randomNum}, nil
+	return addData{data: rootData.merkleRoot, additional: rootData.randomNum}, true
 }

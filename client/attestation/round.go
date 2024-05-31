@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flare-common/merkle"
 	"flare-common/policy"
+	"fmt"
 	"sort"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -46,7 +47,7 @@ func CreateRound(roundId uint64, voterSet *policy.VoterSet) *Round {
 func (r *Round) sortAttestations() {
 
 	sort.Slice(r.Attestations, func(i, j int) bool {
-		return lessLog(r.Attestations[i].Index, r.Attestations[j].Index)
+		return earlierLog(r.Attestations[i].Index, r.Attestations[j].Index)
 	})
 }
 
@@ -73,7 +74,7 @@ func (r *Round) BitVoteHex() (string, error) {
 	bitVote, err := BitVoteFromAttestations(r.Attestations)
 
 	if err != nil {
-		return "", errors.New("cannot get bitvote")
+		return "", fmt.Errorf("cannot get bitvote for round %d", r.roundId)
 	}
 
 	return bitVote.EncodeBitVoteHex(r.roundId), nil

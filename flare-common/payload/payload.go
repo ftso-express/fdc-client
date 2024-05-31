@@ -9,7 +9,7 @@ import (
 
 type Round struct {
 	Messages []Message
-	ID       uint64
+	Id       uint64
 }
 
 type Message struct {
@@ -31,7 +31,7 @@ func ExtractPayloads(tx *database.Transaction) (map[uint64]Message, error) {
 
 	data := strings.TrimPrefix(tx.Input, "0x")
 
-	data = data[8:] // trim function sig
+	data = data[8:] // trim function selector
 
 	for len(data) > 0 {
 

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"local/fdc/client/config"
 	"net/http"
 	"strings"
@@ -39,13 +38,11 @@ func ResolveAttestationRequest(att *Attestation, verifierCred config.VerifierCre
 
 	encodedBody, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("Error encoding request")
 		return err
 	}
 
 	request, err := http.NewRequest("POST", verifierCred.Url, bytes.NewBuffer(encodedBody))
 	if err != nil {
-		fmt.Println("Error creating request")
 		return err
 	}
 
@@ -54,7 +51,6 @@ func ResolveAttestationRequest(att *Attestation, verifierCred config.VerifierCre
 	resp, err := client.Do(request)
 
 	if err != nil {
-		fmt.Println("Error sending request")
 		return err
 	}
 
@@ -65,13 +61,11 @@ func ResolveAttestationRequest(att *Attestation, verifierCred config.VerifierCre
 	err = json.NewDecoder(resp.Body).Decode(&responseBody)
 
 	if err != nil {
-		log.Errorf("Error reading body %s", err)
 		return err
 	}
 
 	responseBytes, err := hex.DecodeString(strings.TrimPrefix(responseBody.AbiEncodedResponse, "0x"))
 	if err != nil {
-		log.Errorf("Error decoding response %s", err)
 		return err
 	}
 	att.Response = responseBytes
