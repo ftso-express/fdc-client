@@ -7,35 +7,31 @@ type cyclicItem[T any] struct {
 
 // Cyclic is a limited size storage. Keys are nonnegative integers. Item with key n is stored to n (mod size) together with the key.
 type Cyclic[T any] struct {
-	values map[uint64]cyclicItem[T]
-	size   uint64
+	values []*cyclicItem[T]
 }
 
 // Size is the size of cyclic storage.
 func (s Cyclic[T]) Size() uint64 {
-
-	return s.size
+	return uint64(len(s.values))
 }
 
 // Store stores value with key to key (mod size).
 func (s Cyclic[T]) Store(key uint64, value T) {
+	keyMod := key % s.Size()
 
-	keyMod := key % s.size
-
-	storedItem := cyclicItem[T]{key: key, value: value}
+	storedItem := &cyclicItem[T]{key: key, value: value}
 
 	s.values[keyMod] = storedItem
 }
 
 // Get retrieves element from key (mod size) if the stored element has key key.
 func (s Cyclic[T]) Get(key uint64) (T, bool) {
-
 	var k T
-	keyMod := key % s.size
+	keyMod := key % s.Size()
 
-	storedItem, exists := s.values[keyMod]
+	storedItem := s.values[keyMod]
 
-	if !exists {
+	if storedItem == nil {
 		return k, false
 	}
 
@@ -48,14 +44,9 @@ func (s Cyclic[T]) Get(key uint64) (T, bool) {
 	k = storedItem.value
 
 	return k, true
-
 }
 
 // NewCyclic initializes a Cyclic storage with size.
 func NewCyclic[T any](size uint64) Cyclic[T] {
-
-	items := map[uint64]cyclicItem[T]{}
-
-	return Cyclic[T]{values: items, size: size}
-
+	return Cyclic[T]{values: make([]*cyclicItem[T], size)}
 }
