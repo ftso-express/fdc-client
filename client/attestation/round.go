@@ -85,6 +85,8 @@ func (r *Round) ComputeConsensusBitVote() error {
 
 	r.sortBitVotes()
 
+	r.sortAttestations()
+
 	consensus, err := ConsensusBitVote(r.roundId, r.bitVotes, r.voterSet.TotalWeight, r.Attestations)
 
 	if err != nil {
@@ -93,7 +95,7 @@ func (r *Round) ComputeConsensusBitVote() error {
 	}
 	r.ConsensusBitVote = consensus
 
-	return SetBitVoteStatus(r.Attestations, consensus)
+	return r.SetConsensusStatus()
 }
 
 func (r *Round) GetConsensusBitVote() (BitVote, error) {
@@ -107,6 +109,7 @@ func (r *Round) GetConsensusBitVote() (BitVote, error) {
 
 // SetConsensusStatus sets consensus status of the attestations.
 // The scenario where a chosen attestation is missing is not possible as in such case, it is not possible to compute the consensus bitVote.
+// It is assumed that the Attestations are already ordered.
 func (r *Round) SetConsensusStatus() error {
 
 	consensusBitVote, err := r.GetConsensusBitVote()
@@ -114,8 +117,6 @@ func (r *Round) SetConsensusStatus() error {
 	if err != nil {
 		return err
 	}
-
-	r.sortAttestations()
 
 	for i := range r.Attestations {
 		r.Attestations[i].Consensus = consensusBitVote.BitVector.Bit(i) == 1
@@ -134,7 +135,7 @@ func (r *Round) GetMerkleTree() (merkle.Tree, error) {
 
 	hashes := []common.Hash{}
 
-	lastHash := common.Hash{}
+	added := make(map[common.Hash]bool)
 
 	for i := range r.Attestations {
 		if r.Attestations[i].Consensus {
@@ -142,11 +143,14 @@ func (r *Round) GetMerkleTree() (merkle.Tree, error) {
 				return merkle.Tree{}, errors.New("cannot build merkle tree")
 			}
 
-			// skip duplicates
-			if lastHash != r.Attestations[i].Hash {
+			//skip duplicates
+			if _, alreadyAdded := added[r.Attestations[i].Hash]; !alreadyAdded {
+
 				hashes = append(hashes, r.Attestations[i].Hash)
-				lastHash = r.Attestations[i].Hash
+				added[r.Attestations[i].Hash] = true
+
 			}
+
 		}
 	}
 

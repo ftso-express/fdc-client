@@ -259,7 +259,6 @@ func (r Response) AddRound(roundId uint64) (Response, error) {
 }
 
 // Hash computes hash of the response.
-// It is assumed that the roundId in the Response is set to the correct voting round.
 func (r Response) Hash(roundId uint64) (common.Hash, error) {
 	if len(r) < 128 {
 		return common.Hash{}, errors.New("response is to short")

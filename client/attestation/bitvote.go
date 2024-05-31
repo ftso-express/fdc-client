@@ -197,21 +197,6 @@ func ConsensusBitVote(roundId uint64, weightedBitVotes []*WeightedBitVote, total
 	return bitVote, nil
 }
 
-// SetBitVoteStatus sets the Consensus status of attestations to true for the attestations chosen by BitVote
-func SetBitVoteStatus(attestations []*Attestation, bitVote BitVote) error {
-
-	if bitVote.BitVector.BitLen() > len(attestations) {
-		return errors.New("chosen attestation does not exist")
-	}
-
-	for i := range attestations {
-		attestations[i].Consensus = bitVote.BitVector.Bit(i) == 1
-	}
-
-	return nil
-
-}
-
 // EncodeBitVoteHex encodes BitVote with roundCheck to be published on chain
 func (b BitVote) EncodeBitVoteHex(roundId uint64) string {
 
