@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"context"
 	"encoding/hex"
 	"errors"
 	"flare-common/contracts/relay"
@@ -117,18 +118,18 @@ func parseFuncSel(sigInput string) ([4]byte, error) {
 	return ret, err
 }
 
-func (r *Collector) Run() {
+func (r *Collector) Run(ctx context.Context) {
 
 	chooseTrigger := make(chan uint64)
 
-	r.RoundManager.SigningPolicies = SigningPolicyInitializedListener(r.DB, r.RelayContractAddress, 3)
+	r.RoundManager.SigningPolicies = SigningPolicyInitializedListener(ctx, r.DB, r.RelayContractAddress, 3)
 
-	r.RoundManager.BitVotes = BitVoteListener(r.DB, r.FdcContractAddress, r.submit1Sel, r.Protocol, bitVoteBufferSize, chooseTrigger)
+	r.RoundManager.BitVotes = BitVoteListener(ctx, r.DB, r.FdcContractAddress, r.submit1Sel, r.Protocol, bitVoteBufferSize, chooseTrigger)
 
-	r.RoundManager.Requests = AttestationRequestListener(r.DB, r.FdcContractAddress, requestsBufferSize, requestListenerInterval)
+	r.RoundManager.Requests = AttestationRequestListener(ctx, r.DB, r.FdcContractAddress, requestsBufferSize, requestListenerInterval)
 
-	go r.RoundManager.Run()
+	go r.RoundManager.Run(ctx)
 
-	prepareChooseTriggers(chooseTrigger, r.DB)
+	prepareChooseTriggers(ctx, chooseTrigger, r.DB)
 
 }

@@ -36,7 +36,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	collector := collector.New(userConfigRaw, systemConfig)
-	go collector.Run()
+	go collector.Run(ctx)
 
 	cancelChan := make(chan os.Signal, 1)
 	signal.Notify(cancelChan, os.Interrupt, syscall.SIGTERM)

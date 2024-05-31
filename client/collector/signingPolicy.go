@@ -1,6 +1,8 @@
 package collector
 
 import (
+	"context"
+	"errors"
 	"flare-common/database"
 	"local/fdc/client/attestation"
 	"local/fdc/client/timing"
@@ -11,12 +13,17 @@ import (
 )
 
 // SigningPolicyInitializedListener returns a channel that serves signingPolicyInitialized events emitted by relayContractAddress.
-func SigningPolicyInitializedListener(db *gorm.DB, relayContractAddress common.Address, bufferSize int) <-chan []database.Log {
+func SigningPolicyInitializedListener(
+	ctx context.Context,
+	db *gorm.DB,
+	relayContractAddress common.Address,
+	bufferSize int,
+) <-chan []database.Log {
 	out := make(chan []database.Log, bufferSize)
 
 	go func() {
 		logs, err := database.FetchLatestLogsByAddressAndTopic0(
-			db, relayContractAddress, signingPolicyInitializedEventSel, 3,
+			ctx, db, relayContractAddress, signingPolicyInitializedEventSel, 3,
 		)
 
 		latestQuery := time.Now()
@@ -31,7 +38,7 @@ func SigningPolicyInitializedListener(db *gorm.DB, relayContractAddress common.A
 			log.Panic("No initial signing policies found:", err)
 		}
 
-		sorted := []database.Log{}
+		var sorted []database.Log
 
 		// signingPolicyStorage expects policies in increasing order
 		for i := range logs {
@@ -40,7 +47,7 @@ func SigningPolicyInitializedListener(db *gorm.DB, relayContractAddress common.A
 
 		out <- sorted
 
-		spiTargetedListener(db, relayContractAddress, logs[0], latestQuery, out)
+		spiTargetedListener(ctx, db, relayContractAddress, logs[0], latestQuery, out)
 
 	}()
 
@@ -50,6 +57,7 @@ func SigningPolicyInitializedListener(db *gorm.DB, relayContractAddress common.A
 
 // spiTargetedListener that only starts aggressive queries for new signingPolicyInitialized events a bit before the expected emission and stops once it get one and waits until the next window.
 func spiTargetedListener(
+	ctx context.Context,
 	db *gorm.DB,
 	relayContractAddress common.Address,
 	lastLog database.Log,
@@ -74,9 +82,21 @@ func spiTargetedListener(
 
 		timer := time.NewTimer(untilStart)
 
-		<-timer.C
+		select {
+		case <-timer.C:
+			log.Debug("querying for next signing policy")
 
-		if err := queryNextSPI(db, relayContractAddress, latestQuery, out); err != nil {
+		case <-ctx.Done():
+			log.Info("spiTargetedListener exiting:", ctx.Err())
+			return
+		}
+
+		if err := queryNextSPI(ctx, db, relayContractAddress, latestQuery, out); err != nil {
+			if errors.Is(err, ctx.Err()) {
+				log.Info("spiTargetedListener exiting:", err)
+				return
+			}
+
 			log.Error("error querying next SPI event:", err)
 			continue
 		}
@@ -86,6 +106,7 @@ func spiTargetedListener(
 }
 
 func queryNextSPI(
+	ctx context.Context,
 	db *gorm.DB,
 	relayContractAddress common.Address,
 	latestQuery time.Time,
@@ -97,11 +118,10 @@ func queryNextSPI(
 		now := time.Now()
 
 		logs, err := database.FetchLogsByAddressAndTopic0Timestamp(
-			db, relayContractAddress, signingPolicyInitializedEventSel, latestQuery.Unix(), now.Unix(),
+			ctx, db, relayContractAddress, signingPolicyInitializedEventSel, latestQuery.Unix(), now.Unix(),
 		)
 
 		latestQuery = now
-
 		if err != nil {
 			return err
 		}
@@ -114,6 +134,12 @@ func queryNextSPI(
 			return nil
 		}
 
-		<-ticker.C
+		select {
+		case <-ticker.C:
+			log.Debug("starting next queryNextSPI iteration")
+
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 }

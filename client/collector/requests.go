@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"context"
 	"flare-common/database"
 	"local/fdc/client/timing"
 	"time"
@@ -11,7 +12,11 @@ import (
 
 // AttestationRequestListener returns a channel that serves attestation requests events emitted by fdcContractAddress.
 func AttestationRequestListener(
-	db *gorm.DB, fdcContractAddress common.Address, bufferSize int, ListenerInterval time.Duration,
+	ctx context.Context,
+	db *gorm.DB,
+	fdcContractAddress common.Address,
+	bufferSize int,
+	ListenerInterval time.Duration,
 ) <-chan []database.Log {
 
 	out := make(chan []database.Log, bufferSize)
@@ -22,7 +27,7 @@ func AttestationRequestListener(
 
 		_, startTimestamp := timing.LastCollectPhaseStart(uint64(time.Now().Unix()))
 
-		state, err := database.FetchState(db)
+		state, err := database.FetchState(ctx, db)
 		if err != nil {
 			log.Panic("fetch initial state error:", err)
 		}
@@ -30,7 +35,7 @@ func AttestationRequestListener(
 		lastQueriedBlock := state.Index
 
 		logs, err := database.FetchLogsByAddressAndTopic0TimestampToBlockNumber(
-			db, fdcContractAddress, attestationRequestEventSel, int64(startTimestamp), int64(state.Index),
+			ctx, db, fdcContractAddress, attestationRequestEventSel, int64(startTimestamp), int64(state.Index),
 		)
 		if err != nil {
 			log.Panic("fetch initial logs error")
@@ -41,16 +46,23 @@ func AttestationRequestListener(
 		}
 
 		for {
-			<-trigger.C
+			select {
+			case <-trigger.C:
+				log.Debug("starting next AttestationRequestListener iteration")
 
-			state, err = database.FetchState(db)
+			case <-ctx.Done():
+				log.Info("AttestationRequestListener exiting:", ctx.Err())
+				return
+			}
+
+			state, err = database.FetchState(ctx, db)
 			if err != nil {
 				log.Error("fetch state error:", err)
 				continue
 			}
 
 			logs, err := database.FetchLogsByAddressAndTopic0BlockNumber(
-				db, fdcContractAddress, attestationRequestEventSel, int64(lastQueriedBlock), int64(state.Index),
+				ctx, db, fdcContractAddress, attestationRequestEventSel, int64(lastQueriedBlock), int64(state.Index),
 			)
 			if err != nil {
 				log.Error("fetch logs error:", err)

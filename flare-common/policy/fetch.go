@@ -1,6 +1,7 @@
 package policy
 
 import (
+	"context"
 	"flare-common/contracts/relay"
 	"flare-common/database"
 	"flare-common/events"
@@ -30,8 +31,10 @@ type relayContractClient struct {
 	topic0PMR common.Hash // for ProtocolMessageRelayed event
 }
 
-func (r *relayContractClient) FetchSigningPolicies(db *gorm.DB, from, to int64) ([]SigningPolicyListenerResponse, error) {
-	logs, err := database.FetchLogsByAddressAndTopic0Timestamp(db, r.address, r.topic0SPI, from, to)
+func (r *relayContractClient) FetchSigningPolicies(
+	ctx context.Context, db *gorm.DB, from, to int64,
+) ([]SigningPolicyListenerResponse, error) {
+	logs, err := database.FetchLogsByAddressAndTopic0Timestamp(ctx, db, r.address, r.topic0SPI, from, to)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +50,9 @@ func (r *relayContractClient) FetchSigningPolicies(db *gorm.DB, from, to int64) 
 	return result, nil
 }
 
-func (r *relayContractClient) SigningPolicyInitializedListener(db *gorm.DB, startTime time.Time) <-chan SigningPolicyListenerResponse {
+func (r *relayContractClient) SigningPolicyInitializedListener(
+	ctx context.Context, db *gorm.DB, startTime time.Time,
+) <-chan SigningPolicyListenerResponse {
 	out := make(chan SigningPolicyListenerResponse, listenerBufferSize)
 	go func() {
 		ticker := time.NewTicker(ListenerInterval)
@@ -55,7 +60,7 @@ func (r *relayContractClient) SigningPolicyInitializedListener(db *gorm.DB, star
 		for {
 			<-ticker.C
 			now := time.Now().Unix()
-			logs, err := database.FetchLogsByAddressAndTopic0Timestamp(db, r.address, r.topic0SPI, eventRangeStart, now)
+			logs, err := database.FetchLogsByAddressAndTopic0Timestamp(ctx, db, r.address, r.topic0SPI, eventRangeStart, now)
 			if err != nil {
 				continue
 			}
