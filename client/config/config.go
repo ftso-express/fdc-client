@@ -2,6 +2,7 @@ package config
 
 import (
 	"flare-common/database"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -66,12 +67,18 @@ type AbiConfig struct {
 	ResponseAbisString map[[32]byte]string
 }
 
-type VerifierCredentials struct {
-	Url      string `toml:"url"`
-	ApiKey   string `toml:"api_key"`
-	LutLimit uint64 `toml:"lut_limit"`
+type VerifierCredentialsBig struct {
+	Url      string   `toml:"url"`
+	ApiKey   string   `toml:"api_key"`
+	LutLimit *big.Int `toml:"lut_limit"`
 }
 
-type VerifierConfigUnparsed map[string]map[string]VerifierCredentials // map from attestation type and source Id to verifier credentials
+type VerifierCredentials struct {
+	Url      string
+	ApiKey   string
+	LutLimit uint64
+}
+
+type VerifierConfigUnparsed map[string]map[string]VerifierCredentialsBig // map from attestation type and source Id to verifier credentials
 
 type VerifierConfig map[[64]byte]VerifierCredentials // map from attestation type and source Id to verifier credentials

@@ -64,7 +64,14 @@ func ParseVerifiers(config VerifierConfigUnparsed) (VerifierConfig, error) {
 				return VerifierConfig{}, err
 			}
 
-			verifiers[key] = creds
+			if !creds.LutLimit.IsUint64() {
+				return VerifierConfig{}, fmt.Errorf("lut limit for %s, %s is too big: %s", attType, sourceId, creds.LutLimit.String())
+
+			}
+
+			credsParsed := VerifierCredentials{Url: creds.Url, ApiKey: creds.ApiKey, LutLimit: creds.LutLimit.Uint64()}
+
+			verifiers[key] = credsParsed
 
 		}
 
