@@ -1,7 +1,6 @@
 package attestation
 
 import (
-	"errors"
 	"flare-common/contracts/relay"
 	"flare-common/database"
 	"flare-common/logger"
@@ -131,7 +130,7 @@ func (m *Manager) Run() {
 			for i := range requests {
 
 				if err := m.OnRequest(requests[i]); err != nil {
-					log.Error("requests error:", err)
+					log.Error("On request:", err)
 				}
 
 			}
@@ -151,8 +150,7 @@ func (m *Manager) GetOrCreateRound(roundId uint64) (*Round, error) {
 	policy, _ := m.signingPolicyStorage.GetForVotingRound(uint32(roundId))
 
 	if policy == nil {
-		log.Errorf("No signing policy for round %d.", roundId)
-		return nil, errors.New("no signing policy")
+		return nil, fmt.Errorf("creating round: no signing policy for round %d", roundId)
 	}
 
 	round = CreateRound(roundId, policy.Voters)
@@ -206,8 +204,7 @@ func (m *Manager) OnRequest(request database.Log) error {
 	data, err := ParseAttestationRequestLog(request)
 
 	if err != nil {
-		log.Error("Error parsing attestation request")
-		return err
+		return fmt.Errorf("on request, parsing log: %w", err)
 	}
 
 	attestation.Request = data.Data
@@ -222,7 +219,6 @@ func (m *Manager) OnRequest(request database.Log) error {
 	round, err := m.GetOrCreateRound(roundID)
 
 	if err != nil {
-		log.Error("Error getting or creating round")
 		return err
 	}
 
@@ -257,7 +253,7 @@ func (m *Manager) handleAttestation(attestation *Attestation) error {
 
 	if !ok {
 		attestation.Status = UnsupportedPair
-		return errors.New("unsupported att type: no abi")
+		return fmt.Errorf("handle attestation: no abi for: %s", string(attType[:]))
 
 	}
 
@@ -265,24 +261,29 @@ func (m *Manager) handleAttestation(attestation *Attestation) error {
 
 	if !ok {
 		attestation.Status = UnsupportedPair
-		return errors.New("unsupported pair")
+		return fmt.Errorf("handle attestation: no verifier for pair %s %s", string(attTypeAndSource[0:32]), string(attTypeAndSource[32:64]))
 
 	}
 
 	attestation.lutLimit = verifier.LutLimit
-
 	attestation.Status = Processing
 
 	err = ResolveAttestationRequest(attestation, verifier)
 
 	if err != nil {
-		log.Error("Error resolving attestation request")
 		attestation.Status = ProcessError
 
-		return err
+		return fmt.Errorf("handleAttestation, resolve request: %w", err)
 	} else {
 		err := attestation.validateResponse()
-		return err
+
+		if err != nil {
+
+			return fmt.Errorf("handelAttestation, validate response: %w", err)
+
+		}
+
+		return nil
 	}
 }
 
@@ -292,7 +293,6 @@ func (m *Manager) OnSigningPolicy(initializedPolicy database.Log) error {
 	data, err := ParseSigningPolicyInitializedLog(initializedPolicy)
 
 	if err != nil {
-		log.Errorf("Error parsing signing policy")
 		return err
 	}
 
