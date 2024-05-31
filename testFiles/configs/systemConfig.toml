@@ -1,11 +1,11 @@
 [listener]
 protocol = 200
-submit_contract_address = "2cA6571Daa15ce734Bbd0Bf27D5C9D16787fc33f"
+submit_contract_address = "0x2cA6571Daa15ce734Bbd0Bf27D5C9D16787fc33f"
 submit_buffer = 2
 off_chain_trigger_delay_seconds = 15
-relay_contract_address = "32D46A1260BB2D8C9d5Ab1C9bBd7FF7D7CfaabCC"
+relay_contract_address = "0x32D46A1260BB2D8C9d5Ab1C9bBd7FF7D7CfaabCC"
 relay_buffer = 2
-fdc_contract_address = "Cf6798810Bc8C0B803121405Fee2A5a9cc0CA5E5"
+fdc_contract_address = "0xCf6798810Bc8C0B803121405Fee2A5a9cc0CA5E5"
 request_buffer = 5
 request_interval_seconds = 2
 
