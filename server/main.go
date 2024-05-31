@@ -16,7 +16,7 @@ type AttestationServerContext struct {
 	context.Context
 }
 
-func RunProviderServer(ctx AttestationServerContext) {
+func RunProviderServer(ctx context.Context, manager *attestation.Manager) {
 
 	// Create Mux router
 	muxRouter := mux.NewRouter()
@@ -25,7 +25,7 @@ func RunProviderServer(ctx AttestationServerContext) {
 
 	// Register routes
 
-	RegisterFDCProviderRoutes(router, ctx)
+	RegisterFDCProviderRoutes(manager, router)
 	router.Finalize()
 
 	// Bind to a port and pass our router in

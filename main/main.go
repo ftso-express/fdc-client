@@ -37,16 +37,15 @@ func main() {
 	go collector.Run()
 
 	// Prepare context
-	// Empty context
-	baseCtx := context.Background()
-	context := server.AttestationServerContext{Context: baseCtx, Manager: collector.RoundManager}
+	ctx := context.Background()
+	manager := collector.RoundManager
 
 	cancelChan := make(chan os.Signal, 1)
 	signal.Notify(cancelChan, os.Interrupt, syscall.SIGTERM)
 
 	// run server
 	log.Info("Running server")
-	go server.RunProviderServer(context)
+	go server.RunProviderServer(ctx, manager)
 
 	<-cancelChan
 	fmt.Println("\nShutting down server")

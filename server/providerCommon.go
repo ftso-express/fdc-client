@@ -21,18 +21,17 @@ type FDCProtocolProviderController struct {
 	storage storage.Cyclic[RootsByAddress]
 }
 
-func newFDCProtocolProviderController(ctx AttestationServerContext) *FDCProtocolProviderController {
-
+func newFDCProtocolProviderController(manager *attestation.Manager) *FDCProtocolProviderController {
 	storage := storage.NewCyclic[RootsByAddress](storageSize)
 
-	return &FDCProtocolProviderController{manager: ctx.Manager, storage: storage}
+	return &FDCProtocolProviderController{manager: manager, storage: storage}
 }
 
 // Registration of routes for the FDC protocol provider
-func RegisterFDCProviderRoutes(router restServer.Router, ctx AttestationServerContext) {
+func RegisterFDCProviderRoutes(manager *attestation.Manager, router restServer.Router) {
 	// Prepare service controller
 
-	ctrl := newFDCProtocolProviderController(ctx)
+	ctrl := newFDCProtocolProviderController(manager)
 	paramMap := map[string]string{"votingRoundId": "Voting round ID", "submitAddress": "Submit address"}
 	submit1Handler := restServer.GeneralRouteHandler(ctrl.submit1Controller, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{})
 	router.AddRoute("/submit1/{votingRoundId}/{submitAddress}", submit1Handler, "Submit1")
