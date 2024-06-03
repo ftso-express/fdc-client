@@ -2,6 +2,8 @@ variables:
   GOPATH: /go
   GOLANG_VERSION: "1.21.5"
   GOLINT_VERSION: "v1.59.0"
+  COVERAGE_FILE: "coverage.out"
+  COBERTURA_FILE: "coverage.xml"
 
 .gocache:
   key: ${CI_COMMIT_REF_SLUG}
@@ -16,6 +18,7 @@ build:
   needs: []
   cache: !reference [.gocache]
   script:
+    - go mod download
     - go build ./...
 
 lint:
@@ -26,3 +29,21 @@ lint:
   script:
     - '! gofmt -l . | grep -q .'
     - golangci-lint run --timeout 5m0s
+
+test:
+  stage: test
+  image: golang:${GOLANG_VERSION}
+  needs: [build]
+  cache: !reference [.gocache]
+  before_script:
+    - go get github.com/boumenot/gocover-cobertura
+  script:
+    - go test -v -coverprofile=${COVERAGE_FILE} -covermode count ./...
+    - go tool cover -func=${COVERAGE_FILE}
+    - go run github.com/boumenot/gocover-cobertura < ${COVERAGE_FILE} > ${COBERTURA_FILE}
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: ${COBERTURA_FILE}
+  coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
