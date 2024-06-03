@@ -55,6 +55,13 @@ func ExtractPayloads(tx *database.Transaction) (map[uint64]Message, error) {
 		}
 
 		end := 14 + 2*length // 14 = 2 + 8 + 4
+
+		if len(data) < int(end) {
+
+			return nil, errors.New("wrongly formatted tx input")
+
+		}
+
 		payload := data[14:end]
 
 		message := Message{tx.FromAddress, tx.FunctionSig, protocol, votingRound, tx.Timestamp, tx.BlockNumber, tx.TransactionIndex, length, payload}
