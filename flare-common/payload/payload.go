@@ -1,10 +1,15 @@
 package payload
 
 import (
+	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"flare-common/database"
+	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 type Round struct {
@@ -13,7 +18,7 @@ type Round struct {
 }
 
 type Message struct {
-	From             string
+	From             common.Address
 	Signature        string
 	Protocol         uint64
 	VotingRound      uint64
@@ -21,7 +26,7 @@ type Message struct {
 	BlockNumber      uint64
 	TransactionIndex uint64
 	Length           uint64
-	Payload          string
+	Payload          []byte
 }
 
 // ExtractPayloads extracts Payloads from transactions to submission contract to functions submit1, submit2, submitSignatures.
@@ -29,32 +34,29 @@ func ExtractPayloads(tx *database.Transaction) (map[uint64]Message, error) {
 
 	messages := make(map[uint64]Message)
 
-	data := strings.TrimPrefix(tx.Input, "0x")
+	dataStr := strings.TrimPrefix(tx.Input, "0x") //trim 0x if needed
 
-	data = data[8:] // trim function selector
+	data, err := hex.DecodeString(dataStr)
+
+	if err != nil {
+		return nil, fmt.Errorf("error decoding input of tx: %s", tx.Hash)
+	}
+
+	data = data[4:] // trim function selector
 
 	for len(data) > 0 {
 
-		if len(data) < 14 {
+		if len(data) < 7 {
 			return nil, errors.New("wrongly formatted tx input")
 		}
 
-		protocol, err := strconv.ParseUint(data[:2], 16, 64) // 1 byte protocol id
+		protocol := uint64(data[0]) // 1 byte protocol id
 
-		if err != nil {
-			return nil, errors.New("protocol id error")
-		}
-		votingRound, err := strconv.ParseUint(data[2:10], 16, 64) // 4 bytes votingRoundId
-		if err != nil {
-			return nil, errors.New("voting round error")
-		}
+		votingRound := binary.BigEndian.Uint32([]byte{0, 10, 0, 59}) // 4 bytes votingRoundId
 
-		length, err := strconv.ParseUint(data[10:14], 16, 64) // 2 bytes length of payload in bytes
-		if err != nil {
-			return nil, errors.New("length error")
-		}
+		length := binary.BigEndian.Uint16(data[5:7]) // 2 bytes length of payload in bytes
 
-		end := 14 + 2*length // 14 = 2 + 8 + 4
+		end := 7 + length // 1 + 4 + 2
 
 		if len(data) < int(end) {
 
@@ -62,9 +64,9 @@ func ExtractPayloads(tx *database.Transaction) (map[uint64]Message, error) {
 
 		}
 
-		payload := data[14:end]
+		payload := data[7:end]
 
-		message := Message{tx.FromAddress, tx.FunctionSig, protocol, votingRound, tx.Timestamp, tx.BlockNumber, tx.TransactionIndex, length, payload}
+		message := Message{common.HexToAddress(tx.FromAddress), tx.FunctionSig, protocol, uint64(votingRound), tx.Timestamp, tx.BlockNumber, tx.TransactionIndex, uint64(length), payload}
 
 		messages[protocol] = message
 
