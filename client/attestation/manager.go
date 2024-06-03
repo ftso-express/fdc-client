@@ -1,6 +1,7 @@
 package attestation
 
 import (
+	"context"
 	"flare-common/contracts/relay"
 	"flare-common/database"
 	"flare-common/logger"
@@ -68,11 +69,19 @@ func NewManager(configs config.UserConfigRaw) *Manager {
 }
 
 // Run starts processing data received through the manager's channels.
-func (m *Manager) Run() {
+func (m *Manager) Run(ctx context.Context) {
 	// Get signing policy first as we cannot process any other message types
 	// without a signing policy.
-	signingPolicies := <-m.SigningPolicies
-	log.Info("Initial signing policies received")
+	var signingPolicies []database.Log
+
+	select {
+	case signingPolicies = <-m.SigningPolicies:
+		log.Info("Initial signing policies received")
+
+	case <-ctx.Done():
+		log.Info("Manager exiting:", ctx.Err())
+		return
+	}
 
 	for i := range signingPolicies {
 		if err := m.OnSigningPolicy(signingPolicies[i]); err != nil {
@@ -134,6 +143,10 @@ func (m *Manager) Run() {
 				}
 
 			}
+
+		case <-ctx.Done():
+			log.Info("Manager exiting:", ctx.Err())
+			return
 		}
 	}
 }

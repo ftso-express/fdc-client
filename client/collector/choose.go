@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"context"
 	"flare-common/database"
 	"flare-common/payload"
 	"local/fdc/client/timing"
@@ -13,6 +14,7 @@ import (
 // BitVoteListener returns a channel that servers payload data submitted do submitContractAddress to method with funcSig for protocol.
 // Payload for roundId is served whenever a trigger provides a roundId.
 func BitVoteListener(
+	ctx context.Context,
 	db *gorm.DB,
 	submitContractAddress common.Address,
 	funcSel [4]byte,
@@ -26,9 +28,19 @@ func BitVoteListener(
 	go func() {
 
 		for {
-			roundId := <-trigger
+			var roundId uint64
+
+			select {
+			case roundId = <-trigger:
+				log.Debug("starting next BitVoteListener iteration")
+
+			case <-ctx.Done():
+				log.Info("BitVoteListener exiting:", ctx.Err())
+				return
+			}
 
 			txs, err := database.FetchTransactionsByAddressAndSelectorTimestamp(
+				ctx,
 				db,
 				submitContractAddress,
 				funcSel,
@@ -57,10 +69,16 @@ func BitVoteListener(
 			}
 
 			if len(bitVotes) > 0 {
-
 				log.Infof("Received %d for round %d", len(bitVotes), roundId)
 
-				out <- payload.Round{Messages: bitVotes, Id: roundId}
+				select {
+				case out <- payload.Round{Messages: bitVotes, Id: roundId}:
+					log.Debugf("sent bitVotes for round %d", roundId)
+
+				case <-ctx.Done():
+					log.Info("BitVoteListener exiting")
+					return
+				}
 			} else {
 				log.Infof("No bitVotes for round %d", roundId)
 			}
@@ -74,9 +92,8 @@ func BitVoteListener(
 }
 
 // prepareChooseTriggers tracks chain timestamps and makes sure that roundId of the round whose choose phase has just ended to the trigger chanel.
-func prepareChooseTriggers(trigger chan uint64, DB *gorm.DB) {
-
-	state, err := database.FetchState(DB)
+func prepareChooseTriggers(ctx context.Context, trigger chan uint64, db *gorm.DB) {
+	state, err := database.FetchState(ctx, db)
 	if err != nil {
 		log.Panic("database error:", err)
 	}
@@ -85,57 +102,80 @@ func prepareChooseTriggers(trigger chan uint64, DB *gorm.DB) {
 
 	bitVoteTicker := time.NewTicker(time.Hour) // timer will be reset to 90 seconds
 
-	go configureTicker(bitVoteTicker, time.Unix(int64(*nextChoosePhaseEndTimestamp), 0), bitVoteHeadStart)
+	go configureTicker(ctx, bitVoteTicker, time.Unix(int64(*nextChoosePhaseEndTimestamp), 0), bitVoteHeadStart)
 
 	for {
 
 		ticker := time.NewTicker(databasePollTime)
 
 		for {
-
-			state, err := database.FetchState(DB)
-
+			state, err := database.FetchState(ctx, db)
 			if err != nil {
 				log.Error("database error:", err)
 			} else {
 
 				done := tryTriggerBitVote(
-					nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp, state.BlockTimestamp, trigger,
+					ctx, nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp, state.BlockTimestamp, trigger,
 				)
 
 				if done {
-
 					break
 				}
 			}
-			<-ticker.C
+
+			select {
+			case <-ticker.C:
+				log.Debug("starting next prepareChooseTriggers inner iteration")
+
+			case <-ctx.Done():
+				log.Info("prepareChooseTriggers exiting:", ctx.Err())
+				return
+			}
 
 		}
 
-		<-bitVoteTicker.C
+		select {
+		case <-bitVoteTicker.C:
+			log.Debug("starting next prepareChooseTriggers outer iteration")
+
+		case <-ctx.Done():
+			log.Info("prepareChooseTriggers exiting:", ctx.Err())
+		}
 	}
 
 }
 
 // configureTicker resets the ticker at headStart before start to roundLength
-func configureTicker(ticker *time.Ticker, start time.Time, headStart time.Duration) {
+func configureTicker(ctx context.Context, ticker *time.Ticker, start time.Time, headStart time.Duration) {
+	select {
+	case <-time.After(time.Until(start) - headStart):
+		ticker.Reset(roundLength)
 
-	time.Sleep(time.Until(start) - headStart)
-
-	ticker.Reset(roundLength)
-
+	case <-ctx.Done():
+		return
+	}
 }
 
 // tryTriggerBitVote checks whether the blockchain timestamp has surpassed end of choose phase or local time has surpassed it for more than bitVoteOffChainTriggerSeconds.
 // If conditions are met, roundId is passed to the chanel c.
-func tryTriggerBitVote(nextChoosePhaseRoundIDEnd *int, nextChoosePhaseEndTimestamp *uint64, currentBlockTime uint64, c chan uint64) bool {
-
+func tryTriggerBitVote(
+	ctx context.Context,
+	nextChoosePhaseRoundIDEnd *int,
+	nextChoosePhaseEndTimestamp *uint64,
+	currentBlockTime uint64,
+	c chan uint64,
+) bool {
 	now := uint64(time.Now().Unix())
 
 	if currentBlockTime > *nextChoosePhaseEndTimestamp {
-		c <- uint64(*nextChoosePhaseRoundIDEnd)
+		select {
+		case c <- uint64(*nextChoosePhaseRoundIDEnd):
+			log.Infof("bitVote for round %d started with on-chain time", *nextChoosePhaseRoundIDEnd)
 
-		log.Infof("bitVote for round %d started with on-chain time", *nextChoosePhaseRoundIDEnd)
+		case <-ctx.Done():
+			log.Info("tryTriggerBitVote exiting:", ctx.Err())
+			return false
+		}
 
 		*nextChoosePhaseRoundIDEnd, *nextChoosePhaseEndTimestamp = timing.NextChoosePhaseEnd(currentBlockTime)
 
@@ -143,8 +183,14 @@ func tryTriggerBitVote(nextChoosePhaseRoundIDEnd *int, nextChoosePhaseEndTimesta
 	}
 
 	if (now - bitVoteOffChainTriggerSeconds) > *nextChoosePhaseEndTimestamp {
-		c <- uint64(*nextChoosePhaseRoundIDEnd)
-		log.Infof("bitVote for round %d started with off-chain time", *nextChoosePhaseRoundIDEnd)
+		select {
+		case c <- uint64(*nextChoosePhaseRoundIDEnd):
+			log.Infof("bitVote for round %d started with off-chain time", *nextChoosePhaseRoundIDEnd)
+
+		case <-ctx.Done():
+			log.Info("tryTriggerBitVote exiting:", ctx.Err())
+			return false
+		}
 
 		*nextChoosePhaseRoundIDEnd++
 		*nextChoosePhaseEndTimestamp = *nextChoosePhaseEndTimestamp + 90
