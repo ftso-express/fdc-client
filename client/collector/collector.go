@@ -120,6 +120,15 @@ func parseFuncSel(sigInput string) ([4]byte, error) {
 
 func (r *Collector) Run(ctx context.Context) {
 
+	state, err := database.FetchState(ctx, r.DB)
+	if err != nil {
+		log.Panic("database error:", err)
+	}
+
+	if k := time.Now().Unix() - int64(state.BlockTimestamp); k > 60 { //get 60 from config
+		log.Panic("database not up to date")
+	}
+
 	chooseTrigger := make(chan uint64)
 
 	r.RoundManager.SigningPolicies = SigningPolicyInitializedListener(ctx, r.DB, r.RelayContractAddress, 3)

@@ -55,6 +55,7 @@ type bitVoteWithValue struct {
 
 // BitVoteFromAttestations calculates BitVote for an array of attestations.
 // For i-th attestation in array, i-th bit in BitVote(from the right) is 1 if and only if i-th attestation status is Success.
+// Sorting of attestation must be done prior.
 func BitVoteFromAttestations(attestations []*Attestation) (BitVote, error) {
 	bitVector := big.NewInt(0)
 
@@ -118,7 +119,7 @@ func bitVoteForSet(weightedBitVotes []*WeightedBitVote, totalWeight uint16, shuf
 }
 
 // andBitwise returns the BitVote that has 1s at the places where both a and b have 1s and 0s elsewhere.
-// If one BitVote is longer the resulting BitVote has larger length with 0s on the excess places.
+// If one BitVote is longer, the resulting BitVote has larger length with 0s on the excess places.
 func andBitwise(a, b BitVote) BitVote {
 
 	maxLen := max(a.Length, b.Length)
