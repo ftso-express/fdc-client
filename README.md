@@ -3,3 +3,10 @@
 </p>
 
 # Flare Data Connector Suit
+
+To run all tests locally and generate a coverage report:
+
+```
+$ go test -v -coverprofile=coverage.out ./...
+$ go tool cover -html=coverage.out
+```
