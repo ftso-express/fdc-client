@@ -20,19 +20,19 @@ type Round struct {
 type Message struct {
 	From             common.Address
 	Selector         string // function selector
-	Protocol         uint64 // id of the protocol
-	VotingRound      uint64
+	Protocol         uint8  // id of the protocol
+	VotingRound      uint32
 	Timestamp        uint64
 	BlockNumber      uint64
 	TransactionIndex uint64
-	Length           uint64 //length of payload in bytes
+	Length           uint16 //length of payload in bytes
 	Payload          []byte
 }
 
 // ExtractPayloads extracts Payloads from transactions to submission contract to functions submit1, submit2, submitSignatures.
-func ExtractPayloads(tx *database.Transaction) (map[uint64]Message, error) {
+func ExtractPayloads(tx *database.Transaction) (map[uint8]Message, error) {
 
-	messages := make(map[uint64]Message)
+	messages := make(map[uint8]Message)
 
 	dataStr := strings.TrimPrefix(tx.Input, "0x") //trim 0x if needed
 
@@ -50,7 +50,7 @@ func ExtractPayloads(tx *database.Transaction) (map[uint64]Message, error) {
 			return nil, errors.New("wrongly formatted tx input")
 		}
 
-		protocol := uint64(data[0]) // 1 byte protocol id
+		protocol := data[0] // 1 byte protocol id
 
 		votingRound := binary.BigEndian.Uint32(data[1:5]) // 4 bytes votingRoundId
 
@@ -64,7 +64,7 @@ func ExtractPayloads(tx *database.Transaction) (map[uint64]Message, error) {
 
 		payload := data[7:end]
 
-		message := Message{common.HexToAddress(tx.FromAddress), tx.FunctionSig, protocol, uint64(votingRound), tx.Timestamp, tx.BlockNumber, tx.TransactionIndex, uint64(length), payload}
+		message := Message{common.HexToAddress(tx.FromAddress), tx.FunctionSig, protocol, votingRound, tx.Timestamp, tx.BlockNumber, tx.TransactionIndex, length, payload}
 
 		messages[protocol] = message
 

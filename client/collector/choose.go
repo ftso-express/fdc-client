@@ -18,7 +18,7 @@ func BitVoteListener(
 	db *gorm.DB,
 	submitContractAddress common.Address,
 	funcSel [4]byte,
-	protocol uint64,
+	protocol uint8,
 	bufferSize int,
 	trigger <-chan uint64,
 ) <-chan payload.Round {
