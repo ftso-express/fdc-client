@@ -1,5 +1,7 @@
 package storage
 
+import "sync"
+
 type cyclicItem[T any] struct {
 	key   uint64
 	value T
@@ -8,10 +10,14 @@ type cyclicItem[T any] struct {
 // Cyclic is a limited size storage. Keys are nonnegative integers. Item with key n is stored to n (mod size) together with the key.
 type Cyclic[T any] struct {
 	values []*cyclicItem[T]
+	mu     *sync.RWMutex
 }
 
 // Size is the size of cyclic storage.
 func (s Cyclic[T]) Size() uint64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	return uint64(len(s.values))
 }
 
@@ -21,6 +27,8 @@ func (s Cyclic[T]) Store(key uint64, value T) {
 
 	storedItem := &cyclicItem[T]{key: key, value: value}
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.values[keyMod] = storedItem
 }
 
@@ -29,6 +37,8 @@ func (s Cyclic[T]) Get(key uint64) (T, bool) {
 	var k T
 	keyMod := key % s.Size()
 
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	storedItem := s.values[keyMod]
 
 	if storedItem == nil {
@@ -48,5 +58,5 @@ func (s Cyclic[T]) Get(key uint64) (T, bool) {
 
 // NewCyclic initializes a Cyclic storage with size.
 func NewCyclic[T any](size uint64) Cyclic[T] {
-	return Cyclic[T]{values: make([]*cyclicItem[T], size)}
+	return Cyclic[T]{values: make([]*cyclicItem[T], size), mu: new(sync.RWMutex)}
 }
