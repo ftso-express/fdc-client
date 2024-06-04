@@ -65,7 +65,7 @@ func init() {
 }
 
 type Collector struct {
-	Protocol              uint64
+	Protocol              uint8
 	SubmitContractAddress common.Address
 	FdcContractAddress    common.Address
 	RelayContractAddress  common.Address

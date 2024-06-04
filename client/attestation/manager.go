@@ -37,7 +37,7 @@ func init() {
 
 type Manager struct {
 	Rounds               storage.Cyclic[*Round] // cyclically cached rounds with buffer roundBuffer.
-	lastRoundCreated     uint64
+	lastRoundCreated     uint32
 	Requests             <-chan []database.Log
 	BitVotes             <-chan payload.Round
 	SigningPolicies      <-chan []database.Log
@@ -152,25 +152,25 @@ func (m *Manager) Run(ctx context.Context) {
 }
 
 // GetOrCreateRound returns a round for roundId either from manager if a round is already stored or creates a new one and stores it.
-func (m *Manager) GetOrCreateRound(roundId uint64) (*Round, error) {
+func (m *Manager) GetOrCreateRound(roundId uint32) (*Round, error) {
 
-	round, ok := m.Rounds.Get(roundId)
+	round, ok := m.Rounds.Get(uint64(roundId))
 
 	if ok {
 		return round, nil
 	}
 
-	policy, _ := m.signingPolicyStorage.GetForVotingRound(uint32(roundId))
+	policy, _ := m.signingPolicyStorage.GetForVotingRound(roundId)
 
 	if policy == nil {
 		return nil, fmt.Errorf("creating round: no signing policy for round %d", roundId)
 	}
 
-	round = CreateRound(roundId, policy.Voters)
+	round = CreateRound(uint64(roundId), policy.Voters)
 	m.lastRoundCreated = roundId
 	log.Debugf("Round %d created", roundId)
 
-	m.Rounds.Store(roundId, round)
+	m.Rounds.Store(uint64(roundId), round)
 	return round, nil
 }
 

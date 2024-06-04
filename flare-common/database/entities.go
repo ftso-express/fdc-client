@@ -20,7 +20,7 @@ type State struct {
 type Transaction struct {
 	BaseEntity
 	Hash             string `gorm:"type:varchar(64);index;unique"`
-	FunctionSig      string `gorm:"type:varchar(50);index"`
+	FunctionSig      string `gorm:"type:varchar(50);index"` //function selector
 	Input            string `gorm:"type:string"`
 	BlockNumber      uint64
 	BlockHash        string `gorm:"type:varchar(64)"`

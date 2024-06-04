@@ -46,7 +46,7 @@ type TimingConfig struct {
 }
 
 type ListenersConfig struct {
-	Protocol uint64 `toml:"protocol"`
+	Protocol uint8 `toml:"protocol"`
 
 	SubmitContractAddress       common.Address `toml:"submit_contract_address"`
 	SubmitBuffer                int            `toml:"submit_buffer"`

@@ -25,7 +25,7 @@ type Round struct {
 	roundId          uint64
 	Attestations     []*Attestation
 	bitVotes         []*WeightedBitVote
-	bitVoteCheckList map[string]*WeightedBitVote
+	bitVoteCheckList map[common.Address]*WeightedBitVote
 	ConsensusBitVote BitVote
 	voterSet         *policy.VoterSet
 	merkleTree       merkle.Tree

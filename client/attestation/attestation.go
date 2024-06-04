@@ -47,7 +47,7 @@ func earlierLog(a, b IndexLog) bool {
 
 type Attestation struct {
 	Index     IndexLog
-	RoundId   uint64
+	RoundId   uint32
 	Request   Request
 	Response  Response
 	Fee       *big.Int

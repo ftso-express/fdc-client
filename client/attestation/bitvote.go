@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"local/fdc/client/shuffle"
 	"math/big"
-
-	"github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -218,42 +216,22 @@ func (b BitVote) EncodeBitVoteHex(roundId uint64) string {
 }
 
 // DecodeBitVoteHex decodes hex encoded BitVote and returns roundCheck
-func DecodeBitVoteHex(bitVoteHex string) (BitVote, uint8, error) {
+func DecodeBitVoteHex(bitVoteByte []byte) (BitVote, uint8, error) {
 
-	roundCheckStr := bitVoteHex[:2]
-	lengthStr := bitVoteHex[2:6]
-	bitVectorStr := bitVoteHex[6:]
-
-	roundCheckBytes, err := hex.DecodeString(roundCheckStr)
-	if err != nil || len(roundCheckBytes) != 1 {
-		return BitVote{}, 0, errors.New("bad bitvote")
-
-	}
-
-	roundCheck := uint8(roundCheckBytes[0])
-
-	lengthBytes, err := hex.DecodeString(lengthStr)
-	if err != nil || len(lengthBytes) != 2 {
-		return BitVote{}, 0, errors.New("bad bitvote")
-
-	}
+	roundCheck := bitVoteByte[0]
+	lengthBytes := bitVoteByte[1:3]
+	bitVector := bitVoteByte[3:]
 
 	length := binary.BigEndian.Uint16(lengthBytes)
 
-	bitVector := big.NewInt(0)
-	_, success := bitVector.SetString(bitVectorStr, 16)
+	bigBitVector := new(big.Int).SetBytes(bitVector)
 
-	if !success {
+	if bigBitVector.BitLen() > int(length) {
 		return BitVote{}, 0, errors.New("bad bitvote")
 
 	}
 
-	if bitVector.BitLen() > int(length) {
-		return BitVote{}, 0, errors.New("bad bitvote")
-
-	}
-
-	return BitVote{length, bitVector}, roundCheck, nil
+	return BitVote{length, bigBitVector}, roundCheck, nil
 
 }
 
@@ -272,7 +250,7 @@ func (r *Round) ProcessBitVote(message payload.Message) error {
 		return fmt.Errorf("wrong round check from %s", message.From)
 	}
 
-	voter, success := r.voterSet.VoterDataMap[common.HexToAddress(message.From)]
+	voter, success := r.voterSet.VoterDataMap[message.From]
 
 	if !success {
 		return fmt.Errorf("invalid voter %s", message.From)
