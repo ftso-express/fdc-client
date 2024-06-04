@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"flare-common/restServer"
-	"fmt"
+	"flare-common/storage"
 	"local/fdc/client/attestation"
 	"net/http"
 	"time"
@@ -16,9 +16,7 @@ type Server struct {
 	srv *http.Server
 }
 
-const port = "8008"
-
-func New(manager *attestation.Manager) Server {
+func New(address string, rounds *storage.Cyclic[*attestation.Round]) Server {
 	// Create Mux router
 	muxRouter := mux.NewRouter()
 
@@ -26,7 +24,7 @@ func New(manager *attestation.Manager) Server {
 
 	// Register routes
 
-	RegisterFDCProviderRoutes(manager, router)
+	RegisterFDCProviderRoutes(router, rounds)
 	router.Finalize()
 
 	// Bind to a port and pass our router in
@@ -40,7 +38,7 @@ func New(manager *attestation.Manager) Server {
 	corsMuxRouter := cors.Handler(muxRouter)
 	srv := &http.Server{
 		Handler: corsMuxRouter,
-		Addr:    fmt.Sprintf(":%s", port),
+		Addr:    address,
 		// Good practice: enforce timeouts for servers you create -- config?
 		// WriteTimeout: 15 * time.Second,
 		// ReadTimeout:  15 * time.Second,
@@ -50,7 +48,7 @@ func New(manager *attestation.Manager) Server {
 }
 
 func (s *Server) Run(ctx context.Context) {
-	log.Infof("Starting server on %s", port)
+	log.Infof("Starting server on %s", s.srv.Addr)
 
 	err := s.srv.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {

@@ -42,7 +42,7 @@ func storeRoot(storage storage.Cyclic[RootsByAddress], roundId uint64, address s
 }
 
 func (controller *FDCProtocolProviderController) submit1Service(roundId uint64, _ string) (string, bool, error) {
-	votingRound, exists := controller.manager.Rounds.Get(roundId)
+	votingRound, exists := controller.rounds.Get(roundId)
 	if !exists {
 		log.Infof("submit1 round %d not stored", roundId)
 		return "", false, nil
@@ -61,7 +61,7 @@ func (controller *FDCProtocolProviderController) submit1Service(roundId uint64, 
 func (controller *FDCProtocolProviderController) submit2Service(roundId uint64, address string) (string, bool, error) {
 	// Get merkle tree root from attestation client from controller
 
-	votingRound, exists := controller.manager.Rounds.Get(roundId)
+	votingRound, exists := controller.rounds.Get(roundId)
 
 	if !exists {
 		log.Infof("submit2: round %d not stored", roundId)

@@ -17,21 +17,21 @@ type merkleRootStorageObject struct {
 type RootsByAddress map[string]merkleRootStorageObject
 
 type FDCProtocolProviderController struct {
-	manager *attestation.Manager
+	rounds  *storage.Cyclic[*attestation.Round]
 	storage storage.Cyclic[RootsByAddress]
 }
 
-func newFDCProtocolProviderController(manager *attestation.Manager) *FDCProtocolProviderController {
+func newFDCProtocolProviderController(rounds *storage.Cyclic[*attestation.Round]) *FDCProtocolProviderController {
 	storage := storage.NewCyclic[RootsByAddress](storageSize)
 
-	return &FDCProtocolProviderController{manager: manager, storage: storage}
+	return &FDCProtocolProviderController{rounds: rounds, storage: storage}
 }
 
 // Registration of routes for the FDC protocol provider
-func RegisterFDCProviderRoutes(manager *attestation.Manager, router restServer.Router) {
+func RegisterFDCProviderRoutes(router restServer.Router, rounds *storage.Cyclic[*attestation.Round]) {
 	// Prepare service controller
 
-	ctrl := newFDCProtocolProviderController(manager)
+	ctrl := newFDCProtocolProviderController(rounds)
 	paramMap := map[string]string{"votingRoundId": "Voting round ID", "submitAddress": "Submit address"}
 	submit1Handler := restServer.GeneralRouteHandler(ctrl.submit1Controller, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{})
 	router.AddRoute("/submit1/{votingRoundId}/{submitAddress}", submit1Handler, "Submit1")
