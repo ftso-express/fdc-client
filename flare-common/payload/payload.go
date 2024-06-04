@@ -19,13 +19,13 @@ type Round struct {
 
 type Message struct {
 	From             common.Address
-	Signature        string
-	Protocol         uint64
+	Selector         string // function selector
+	Protocol         uint64 // id of the protocol
 	VotingRound      uint64
 	Timestamp        uint64
 	BlockNumber      uint64
 	TransactionIndex uint64
-	Length           uint64
+	Length           uint64 //length of payload in bytes
 	Payload          []byte
 }
 
@@ -46,22 +46,20 @@ func ExtractPayloads(tx *database.Transaction) (map[uint64]Message, error) {
 
 	for len(data) > 0 {
 
-		if len(data) < 7 {
+		if len(data) < 7 { // 7 = 1 + 4 + 2
 			return nil, errors.New("wrongly formatted tx input")
 		}
 
 		protocol := uint64(data[0]) // 1 byte protocol id
 
-		votingRound := binary.BigEndian.Uint32([]byte{0, 10, 0, 59}) // 4 bytes votingRoundId
+		votingRound := binary.BigEndian.Uint32(data[1:5]) // 4 bytes votingRoundId
 
 		length := binary.BigEndian.Uint16(data[5:7]) // 2 bytes length of payload in bytes
 
-		end := 7 + length // 1 + 4 + 2
+		end := 7 + length
 
 		if len(data) < int(end) {
-
 			return nil, errors.New("wrongly formatted tx input")
-
 		}
 
 		payload := data[7:end]
