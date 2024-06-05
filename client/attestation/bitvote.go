@@ -1,6 +1,7 @@
 package attestation
 
 import (
+	"context"
 	"encoding/binary"
 	"encoding/hex"
 	"flare-common/payload"
@@ -211,7 +212,7 @@ func ConsensusBitVote(input *ConsensusBitVoteInput) (BitVote, error) {
 		return BitVote{}, errors.Errorf("only %.1f%% bitVoted", percentage)
 	}
 
-	var eg errgroup.Group
+	eg, ctx := errgroup.WithContext(context.Background())
 	var mu sync.Mutex
 	tmpResult := tempBitVoteResult{
 		maxValueCapped: big.NewInt(0),
@@ -221,7 +222,7 @@ func ConsensusBitVote(input *ConsensusBitVoteInput) (BitVote, error) {
 	for i := 0; i < NumOfSamples; i++ {
 		index := uint64(i)
 		eg.Go(func() error {
-			bitVoteVals, err := calcBitVoteVals(input, index)
+			bitVoteVals, err := calcBitVoteVals(ctx, input, index)
 			if err != nil {
 				return err
 			}
@@ -257,7 +258,7 @@ const (
 	protocolID = 300 // TODO get protocol id (300) from somewhere
 )
 
-func calcBitVoteVals(input *ConsensusBitVoteInput, index uint64) ([]bitVoteWithValue, error) {
+func calcBitVoteVals(ctx context.Context, input *ConsensusBitVoteInput, index uint64) ([]bitVoteWithValue, error) {
 	results := make([]bitVoteWithValue, 0, 2)
 
 	seed := shuffle.Seed(input.RoundID, index, protocolID)
@@ -282,6 +283,10 @@ func calcBitVoteVals(input *ConsensusBitVoteInput, index uint64) ([]bitVoteWithV
 		valueCapped: valueCapped,
 		value:       value,
 	})
+
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
 
 	tempBitVoteOpt, supportingWeightOpt := bitVoteForSetOptimistic(
 		input.WeightedBitVotes, input.TotalWeight, shuffled,
