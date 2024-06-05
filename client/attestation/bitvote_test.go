@@ -401,12 +401,12 @@ func TestConsensusMixed(t *testing.T) {
 
 		var atts []*attestation.Attestation
 
-		if 75 > j {
+		if 65 > j {
 
 			atts = setAttestations(100, []int{2, 3})
 		} else {
 
-			atts = setAttestations(100, []int{2, (j % 20) + 1})
+			atts = setAttestations(100, []int{2, 7})
 		}
 
 		bitVote, err := attestation.BitVoteFromAttestations(atts)
