@@ -324,7 +324,12 @@ func TestConsensusAllEqual(t *testing.T) {
 
 	}
 
-	bv, err := attestation.ConsensusBitVote(1, weightedBitvotes, totalWeight, atts)
+	bv, err := attestation.ConsensusBitVote(&attestation.ConsensusBitVoteInput{
+		RoundID:          1,
+		WeightedBitVotes: weightedBitvotes,
+		TotalWeight:      totalWeight,
+		Attestations:     atts,
+	})
 
 	require.NoError(t, err)
 
@@ -354,7 +359,12 @@ func TestConsensusNotMoreThanHalf(t *testing.T) {
 
 	}
 
-	_, err = attestation.ConsensusBitVote(1, weightedBitvotes, 2*totalWeight, atts)
+	_, err = attestation.ConsensusBitVote(&attestation.ConsensusBitVoteInput{
+		RoundID:          1,
+		WeightedBitVotes: weightedBitvotes,
+		TotalWeight:      2 * totalWeight,
+		Attestations:     atts,
+	})
 
 	require.Error(t, err)
 
@@ -383,9 +393,14 @@ func TestConsensusMissingAttestation(t *testing.T) {
 
 	}
 
-	_, err = attestation.ConsensusBitVote(1, weightedBitvotes, totalWeight, atts[:3])
+	_, err = attestation.ConsensusBitVote(&attestation.ConsensusBitVoteInput{
+		RoundID:          1,
+		WeightedBitVotes: weightedBitvotes,
+		TotalWeight:      totalWeight,
+		Attestations:     atts[:3],
+	})
 
-	fmt.Printf("err: %v\n", err)
+	t.Log("err:", err)
 
 	require.Error(t, err)
 
@@ -424,7 +439,12 @@ func TestConsensusMixed(t *testing.T) {
 	}
 
 	atts := setAttestations(100, []int{2, 3})
-	bv, err := attestation.ConsensusBitVote(1, weightedBitvotes, totalWeight, atts)
+	bv, err := attestation.ConsensusBitVote(&attestation.ConsensusBitVoteInput{
+		RoundID:          1,
+		WeightedBitVotes: weightedBitvotes,
+		TotalWeight:      totalWeight,
+		Attestations:     atts,
+	})
 
 	require.NoError(t, err)
 

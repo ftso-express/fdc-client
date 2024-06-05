@@ -87,8 +87,12 @@ func (r *Round) ComputeConsensusBitVote() error {
 
 	r.sortAttestations()
 
-	consensus, err := ConsensusBitVote(r.roundId, r.bitVotes, r.voterSet.TotalWeight, r.Attestations)
-
+	consensus, err := ConsensusBitVote(&ConsensusBitVoteInput{
+		RoundID:          r.roundId,
+		WeightedBitVotes: r.bitVotes,
+		TotalWeight:      r.voterSet.TotalWeight,
+		Attestations:     r.Attestations,
+	})
 	if err != nil {
 		return err
 
