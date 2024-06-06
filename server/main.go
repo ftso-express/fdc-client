@@ -20,6 +20,19 @@ func New(address string, rounds *storage.Cyclic[*attestation.Round]) Server {
 	// Create Mux router
 	muxRouter := mux.NewRouter()
 
+	// create api auth middleware
+	keyMiddleware := &restServer.AipKeyAuthMiddleware{
+		KeyName: "X-API-KEY",
+		Keys:    []string{"123456"},
+		ExcludeEndpoints: []restServer.ExcludeEndpointStruct{
+			{Path: "/swagger", Method: http.MethodGet},
+			{Path: "/documentation/json", Method: http.MethodGet},
+		},
+	}
+	keyMiddleware.Init()
+
+	muxRouter.Use(keyMiddleware.Middleware)
+
 	router := restServer.NewSwaggerRouter(muxRouter, "FDC protocol data provider API", "0.0.0")
 
 	// Register routes

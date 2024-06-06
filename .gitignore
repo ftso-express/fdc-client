@@ -24,3 +24,5 @@ go.work.sum
 # Log files
 logs/
 
+# Temporary file
+tmp/
