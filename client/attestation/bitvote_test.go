@@ -6,6 +6,7 @@ import (
 	"local/fdc/client/attestation"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -424,7 +425,12 @@ func TestConsensusMixed(t *testing.T) {
 	}
 
 	atts := setAttestations(100, []int{2, 3})
+
+	start := time.Now()
+
 	bv, err := attestation.ConsensusBitVote(1, weightedBitvotes, totalWeight, atts)
+
+	fmt.Printf("time passed: %v\n", time.Since(start).Seconds())
 
 	require.NoError(t, err)
 
@@ -535,5 +541,48 @@ func TestDecodeFail(t *testing.T) {
 	_, _, err = attestation.DecodeBitVoteBytes(byteEncoded)
 
 	require.Error(t, err)
+
+}
+
+func BenchmarkConsensusMixed(b *testing.B) {
+
+	weightedBitvotes := []*attestation.WeightedBitVote{}
+
+	totalWeight := uint16(0)
+
+	for j := 0; j < 100; j++ {
+
+		var atts []*attestation.Attestation
+
+		if 65 > j {
+
+			atts = setAttestations(20, []int{2, 3})
+		} else {
+
+			atts = setAttestations(20, []int{2, 7})
+		}
+
+		bitVote, err := attestation.BitVoteFromAttestations(atts)
+
+		require.NoError(b, err)
+
+		c := new(attestation.WeightedBitVote)
+		c.Index = j
+		c.Weight = uint16(1)
+		totalWeight += c.Weight
+		c.BitVote = bitVote
+
+		weightedBitvotes = append(weightedBitvotes, c)
+
+	}
+
+	atts := setAttestations(100, []int{2, 3})
+
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+
+		attestation.ConsensusBitVote(1, weightedBitvotes, totalWeight, atts)
+
+	}
 
 }
