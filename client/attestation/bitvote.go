@@ -3,15 +3,22 @@ package attestation
 import (
 	"encoding/binary"
 	"encoding/hex"
-	"errors"
 	"flare-common/payload"
 	"fmt"
 	"local/fdc/client/shuffle"
+	"math"
 	"math/big"
+	"sync"
+
+	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
-	NumOfSamples int = 100 // read from config/toml
+	NumOfSamples int     = 100000    // the actual number of samples is x2 (one normal and one optimistic for each seed)
+	divOpt       uint16  = 5         // totalWeight/divOpt is the weight of the optimistic samples
+	valueCap     float64 = 4.0 / 5.0 // bitVote support cap in factor of totalWeight
+	protocolId           = 300       // TODO get protocol id (300) from somewhere // read from config/toml
 )
 
 type BitVote struct {
@@ -45,10 +52,10 @@ type WeightedBitVote struct {
 }
 
 type bitVoteWithValue struct {
-	index   uint64
-	bitVote BitVote
-	value   *big.Int // support multiplied with fees
-	err     error
+	index       int
+	bitVote     BitVote
+	valueCapped *big.Int
+	value       *big.Int // support multiplied with fees
 }
 
 // BitVoteFromAttestations calculates BitVote for an array of attestations.
@@ -79,10 +86,10 @@ func (bv BitVote) fees(attestations []*Attestation) (*big.Int, error) {
 
 	fees := big.NewInt(0)
 
-	for i, a := range attestations {
+	for i := range attestations {
 
 		if bv.BitVector.Bit(i) == 1 {
-			fees.Add(fees, a.Fee)
+			fees.Add(fees, attestations[i].Fee)
 		}
 	}
 	return fees, nil
@@ -98,16 +105,43 @@ func bitVoteForSet(weightedBitVotes []*WeightedBitVote, totalWeight uint16, shuf
 
 	bitVote := (weightedBitVotes)[shuffled[0]].BitVote
 
-	halfWeight := (totalWeight + 1) / 2
+	supportingWeight := uint16(0)
+
+	auxBigInt := new(big.Int)
+
+	for j := range shuffled {
+		if supportingWeight < totalWeight/2 {
+			bitVote = andBitwise(bitVote, weightedBitVotes[shuffled[j]].BitVote)
+			supportingWeight += weightedBitVotes[shuffled[j]].Weight
+		} else if auxBigInt.And(bitVote.BitVector, weightedBitVotes[shuffled[j]].BitVote.BitVector).Cmp(bitVote.BitVector) == 0 {
+			supportingWeight += weightedBitVotes[shuffled[j]].Weight
+		}
+
+	}
+
+	return bitVote, supportingWeight
+
+}
+
+// bitVoteForSet calculates bitwise and of the WeightedBitVote in the order defined by shuffled
+// until the added weight does not exceed x% of the total weight.
+// Then it adds the weight of the rest of WeightedBitVote that support the calculated BitVote.
+// Returns the BitVote that is the result of the bitwise and, and supportingWeight.
+// It is assumed that len(weightedBitVotes) = len(shuffled) > 0, shuffled contains each integer from 0 to len(shuffled)- 1.
+func bitVoteForSetOptimistic(weightedBitVotes []*WeightedBitVote, totalWeight uint16, shuffled []uint64, div uint16) (BitVote, uint16) {
+
+	bitVote := (weightedBitVotes)[shuffled[0]].BitVote
 
 	supportingWeight := uint16(0)
 
-	for _, v := range shuffled {
-		if supportingWeight < halfWeight {
-			bitVote = andBitwise(bitVote, weightedBitVotes[v].BitVote)
-			supportingWeight += weightedBitVotes[v].Weight
-		} else if andBitwise(bitVote, weightedBitVotes[v].BitVote).BitVector == weightedBitVotes[v].BitVote.BitVector {
-			supportingWeight += weightedBitVotes[v].Weight
+	auxBigInt := new(big.Int)
+
+	for j := range shuffled {
+		if supportingWeight < totalWeight/div {
+			bitVote = andBitwise(bitVote, weightedBitVotes[shuffled[j]].BitVote)
+			supportingWeight += weightedBitVotes[shuffled[j]].Weight
+		} else if auxBigInt.And(bitVote.BitVector, weightedBitVotes[shuffled[j]].BitVote.BitVector).Cmp(bitVote.BitVector) == 0 {
+			supportingWeight += weightedBitVotes[shuffled[j]].Weight
 		}
 
 	}
@@ -130,70 +164,160 @@ func andBitwise(a, b BitVote) BitVote {
 
 }
 
-// Value calculates the value of the BitVote, which is the product of the fees and supportingWeight.
-func value(bitVote BitVote, supportingWeight uint16, attestations []*Attestation) (*big.Int, error) {
+// Value calculates the cappedValue and Value of the BitVote, which is the product of the fees and supportingWeight.
+func Values(bitVote BitVote, supportingWeight uint16, totalWeight uint16, attestations []*Attestation, capPercentage float64) (*big.Int, *big.Int, error) {
 	fees, err := bitVote.fees(attestations)
 
 	if err != nil {
-		return nil, fmt.Errorf("cannot compute value : %s", err)
+		return nil, nil, fmt.Errorf("cannot compute value : %s", err)
 	}
 
-	return fees.Mul(fees, big.NewInt(int64(supportingWeight))), nil
+	auxBigInt := new(big.Int)
+
+	cap := uint16(math.Ceil(float64(totalWeight) * capPercentage))
+
+	if cap < supportingWeight {
+
+		return auxBigInt.Mul(fees, big.NewInt(int64(cap))), auxBigInt.Mul(fees, big.NewInt(int64(supportingWeight))), nil
+
+	}
+
+	return auxBigInt.Mul(fees, big.NewInt(int64(supportingWeight))), auxBigInt, nil
+}
+
+type tempBitVoteResult struct {
+	index          int
+	maxValueCapped *big.Int
+	maxValue       *big.Int
+	bitVote        BitVote
+}
+
+type ConsensusBitVoteInput struct {
+	RoundID          uint64
+	WeightedBitVotes []*WeightedBitVote
+	TotalWeight      uint16
+	Attestations     []*Attestation
 }
 
 // ConsensusBitVote calculates the ConsensusBitVote for roundId given the weightedBitVotes.
-func ConsensusBitVote(roundId uint64, weightedBitVotes []*WeightedBitVote, totalWeight uint16, attestations []*Attestation) (BitVote, error) {
+func ConsensusBitVote(input *ConsensusBitVoteInput) (BitVote, error) {
+	weightVoted := sumWeightedBitVotes(input.WeightedBitVotes)
 
-	noOfVoters := len(weightedBitVotes)
+	if weightVoted <= input.TotalWeight/2 {
+		percentage := (float32(weightVoted) * 100.0) / float32(input.TotalWeight)
+		return BitVote{}, errors.Errorf("only %.1f%% bitVoted", percentage)
+	}
 
-	weightVoted := uint16(0)
+	var eg errgroup.Group
+	var mu sync.Mutex
+	tmpResult := tempBitVoteResult{
+		maxValueCapped: big.NewInt(0),
+		maxValue:       big.NewInt(0),
+	}
+
+	for i := 0; i < NumOfSamples; i++ {
+		index := i
+		eg.Go(func() error {
+			bitVoteVals, err := calcBitVoteVals(input, index)
+			if err != nil {
+				return err
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+
+			updateTmpResult(&tmpResult, bitVoteVals[0])
+			if bv := bitVoteVals[1]; bv != nil {
+				updateTmpResult(&tmpResult, bitVoteVals[1])
+			}
+
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		return BitVote{}, err
+	}
+
+	return tmpResult.bitVote, nil
+}
+
+func sumWeightedBitVotes(weightedBitVotes []*WeightedBitVote) (weightVoted uint16) {
 	for j := range weightedBitVotes {
-		weightVoted += weightedBitVotes[j].Weight
+		weightVoted += (weightedBitVotes[j].Weight)
 	}
 
-	if (totalWeight+1)/2 > weightVoted {
+	return weightVoted
+}
 
-		percentage := (weightVoted * 100) / totalWeight
-		return BitVote{}, fmt.Errorf("only %d%% bitVoted", percentage)
-	}
+func calcBitVoteVals(input *ConsensusBitVoteInput, index int) ([2]*bitVoteWithValue, error) {
+	var results [2]*bitVoteWithValue
 
-	var bitVote BitVote
-	maxValue := big.NewInt(0)
+	seed := shuffle.Seed(input.RoundID, uint64(index), protocolId)
+	shuffled := shuffle.FisherYates(uint64(len(input.WeightedBitVotes)), seed)
 
-	index := uint64(0)
+	var eg errgroup.Group
 
-	ch := make(chan bitVoteWithValue)
-
-	for i := 0; i < NumOfSamples; i++ {
-		go func(j uint64) {
-			seed := shuffle.Seed(roundId, j, 300) // TODO get protocol id (300) from somewhere
-			shuffled := shuffle.FisherYates(uint64(noOfVoters), seed)
-			tempBitVote, supportingWeight := bitVoteForSet(weightedBitVotes, totalWeight, shuffled)
-			value, err := value(tempBitVote, supportingWeight, attestations)
-
-			ch <- bitVoteWithValue{j, tempBitVote, value, err}
-		}(uint64(i))
-	}
-
-	for i := 0; i < NumOfSamples; i++ {
-		result := <-ch
-
-		if result.err != nil {
-
-			return BitVote{}, fmt.Errorf("missing attestation")
+	eg.Go(func() error {
+		tempBitVote, supportingWeight := bitVoteForSet(input.WeightedBitVotes, input.TotalWeight, shuffled)
+		valueCapped, value, err := Values(tempBitVote, supportingWeight, input.TotalWeight, input.Attestations, valueCap)
+		if err != nil {
+			return err
 		}
 
-		if result.value.Cmp(maxValue) == 1 {
-			bitVote = result.bitVote
-			index = result.index
-			maxValue = result.value
-		} else if result.value.Cmp(maxValue) == 0 && index > result.index {
-			bitVote = result.bitVote
-			index = result.index
+		results[0] = &bitVoteWithValue{
+			index:       index,
+			bitVote:     tempBitVote,
+			valueCapped: valueCapped,
+			value:       value,
 		}
-	}
 
-	return bitVote, nil
+		return nil
+	})
+
+	eg.Go(func() error {
+		tempBitVoteOpt, supportingWeightOpt := bitVoteForSetOptimistic(
+			input.WeightedBitVotes, input.TotalWeight, shuffled, divOpt,
+		)
+
+		if supportingWeightOpt > input.TotalWeight/2 {
+			valueOptimisticCapped, valueOptimistic, err := Values(
+				tempBitVoteOpt, supportingWeightOpt, input.TotalWeight, input.Attestations, valueCap,
+			)
+			if err != nil {
+				return err
+			}
+
+			results[1] = &bitVoteWithValue{
+				index:       index,
+				bitVote:     tempBitVoteOpt,
+				valueCapped: valueOptimisticCapped,
+				value:       valueOptimistic,
+			}
+		}
+
+		return nil
+	})
+
+	err := eg.Wait()
+
+	return results, err
+}
+
+func updateTmpResult(tmpResult *tempBitVoteResult, result *bitVoteWithValue) {
+	if result.valueCapped.Cmp(tmpResult.maxValueCapped) == 1 {
+		tmpResult.bitVote = result.bitVote
+		tmpResult.index = result.index
+		tmpResult.maxValueCapped = result.valueCapped
+		tmpResult.maxValue = result.value
+	} else if result.valueCapped.Cmp(tmpResult.maxValueCapped) == 0 && result.value.Cmp(tmpResult.maxValue) == 1 {
+		tmpResult.bitVote = result.bitVote
+		tmpResult.index = result.index
+		tmpResult.maxValue = result.value
+	} else if result.valueCapped.Cmp(tmpResult.maxValueCapped) == 0 && result.value.Cmp(tmpResult.maxValue) == 0 && tmpResult.index > result.index {
+		tmpResult.bitVote = result.bitVote
+		tmpResult.index = result.index
+	}
 }
 
 // EncodeBitVoteHex encodes BitVote with roundCheck to be published on chain
@@ -215,8 +339,12 @@ func (b BitVote) EncodeBitVoteHex(roundId uint64) string {
 
 }
 
-// DecodeBitVoteHex decodes hex encoded BitVote and returns roundCheck
-func DecodeBitVoteHex(bitVoteByte []byte) (BitVote, uint8, error) {
+// DecodeBitVoteBytes decodes bytes encoded BitVote and returns roundCheck
+func DecodeBitVoteBytes(bitVoteByte []byte) (BitVote, uint8, error) {
+
+	if len(bitVoteByte) < 3 {
+		return BitVote{}, 0, errors.New("bitVote too short")
+	}
 
 	roundCheck := bitVoteByte[0]
 	lengthBytes := bitVoteByte[1:3]
@@ -225,6 +353,8 @@ func DecodeBitVoteHex(bitVoteByte []byte) (BitVote, uint8, error) {
 	length := binary.BigEndian.Uint16(lengthBytes)
 
 	bigBitVector := new(big.Int).SetBytes(bitVector)
+
+	// TODO: decide whether leading zeros are legal
 
 	if bigBitVector.BitLen() > int(length) {
 		return BitVote{}, 0, errors.New("bad bitvote")
@@ -240,7 +370,7 @@ func DecodeBitVoteHex(bitVoteByte []byte) (BitVote, uint8, error) {
 // If a voter already submitted a valid bitVote for the round, the bitVote is overwritten.
 func (r *Round) ProcessBitVote(message payload.Message) error {
 
-	bitVote, roundCheck, err := DecodeBitVoteHex(message.Payload)
+	bitVote, roundCheck, err := DecodeBitVoteBytes(message.Payload)
 
 	if err != nil {
 		return err
@@ -250,9 +380,9 @@ func (r *Round) ProcessBitVote(message payload.Message) error {
 		return fmt.Errorf("wrong round check from %s", message.From)
 	}
 
-	voter, success := r.voterSet.VoterDataMap[message.From]
+	voter, exists := r.voterSet.VoterDataMap[message.From]
 
-	if !success {
+	if !exists {
 		return fmt.Errorf("invalid voter %s", message.From)
 	}
 
@@ -263,9 +393,9 @@ func (r *Round) ProcessBitVote(message payload.Message) error {
 	}
 
 	// check if a bitVote was already submitted by the sender
-	weightedBitVote, ok := r.bitVoteCheckList[message.From]
+	weightedBitVote, exists := r.bitVoteCheckList[message.From]
 
-	if !ok {
+	if !exists {
 		// first submission
 
 		weightedBitVote = &WeightedBitVote{}
@@ -275,7 +405,7 @@ func (r *Round) ProcessBitVote(message payload.Message) error {
 		weightedBitVote.Weight = weight
 		weightedBitVote.Index = voter.Index
 		weightedBitVote.indexTx = IndexTx{message.BlockNumber, message.TransactionIndex}
-	} else if ok && earlierTx(weightedBitVote.indexTx, IndexTx{message.BlockNumber, message.TransactionIndex}) {
+	} else if exists && earlierTx(weightedBitVote.indexTx, IndexTx{message.BlockNumber, message.TransactionIndex}) {
 		// more than one submission. The later submission is considered to be valid.
 
 		weightedBitVote.BitVote = bitVote

@@ -37,10 +37,26 @@ func TestEmptyTree(t *testing.T) {
 
 func TestBuildEmpty(t *testing.T) {
 	hashes := []common.Hash{}
-	neki := merkle.Build(hashes, false)
+	tree := merkle.Build(hashes, false)
 
-	if len(neki) > 0 {
+	if len(tree) > 0 {
 		t.Error("not empty tree")
+	}
+
+	treeHashed := merkle.Build(hashes, true)
+
+	if len(treeHashed) > 0 {
+		t.Error("not empty tree")
+	}
+
+}
+
+func TestBuildOne(t *testing.T) {
+	hashes := []common.Hash{common.HexToHash("0x01")}
+	tree := merkle.Build(hashes, false)
+
+	if len(tree) != 1 {
+		t.Error("tree too big")
 	}
 }
 
