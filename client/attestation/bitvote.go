@@ -1,7 +1,6 @@
 package attestation
 
 import (
-	"context"
 	"encoding/binary"
 	"encoding/hex"
 	"flare-common/payload"
@@ -209,7 +208,7 @@ func ConsensusBitVote(input *ConsensusBitVoteInput) (BitVote, error) {
 		return BitVote{}, errors.Errorf("only %.1f%% bitVoted", percentage)
 	}
 
-	eg, ctx := errgroup.WithContext(context.Background())
+	var eg errgroup.Group
 	var mu sync.Mutex
 	tmpResult := tempBitVoteResult{
 		maxValueCapped: big.NewInt(0),
@@ -219,7 +218,7 @@ func ConsensusBitVote(input *ConsensusBitVoteInput) (BitVote, error) {
 	for i := 0; i < NumOfSamples; i++ {
 		index := i
 		eg.Go(func() error {
-			bitVoteVals, err := calcBitVoteVals(ctx, input, index)
+			bitVoteVals, err := calcBitVoteVals(input, index)
 			if err != nil {
 				return err
 			}
@@ -227,8 +226,9 @@ func ConsensusBitVote(input *ConsensusBitVoteInput) (BitVote, error) {
 			mu.Lock()
 			defer mu.Unlock()
 
-			for j := range bitVoteVals {
-				updateTmpResult(&tmpResult, &bitVoteVals[j])
+			updateTmpResult(&tmpResult, bitVoteVals[0])
+			if bv := bitVoteVals[1]; bv != nil {
+				updateTmpResult(&tmpResult, bitVoteVals[1])
 			}
 
 			return nil
@@ -250,50 +250,58 @@ func sumWeightedBitVotes(weightedBitVotes []*WeightedBitVote) (weightVoted uint1
 	return weightVoted
 }
 
-func calcBitVoteVals(ctx context.Context, input *ConsensusBitVoteInput, index int) ([]bitVoteWithValue, error) {
-	results := make([]bitVoteWithValue, 0, 2)
+func calcBitVoteVals(input *ConsensusBitVoteInput, index int) ([2]*bitVoteWithValue, error) {
+	var results [2]*bitVoteWithValue
 
 	seed := shuffle.Seed(input.RoundID, uint64(index), protocolId)
 	shuffled := shuffle.FisherYates(uint64(len(input.WeightedBitVotes)), seed)
 
-	tempBitVote, supportingWeight := bitVoteForSet(input.WeightedBitVotes, input.TotalWeight, shuffled)
-	valueCapped, value, err := Values(tempBitVote, supportingWeight, input.TotalWeight, input.Attestations, valueCap)
-	if err != nil {
-		return nil, err
-	}
+	var eg errgroup.Group
 
-	results = append(results, bitVoteWithValue{
-		index:       index,
-		bitVote:     tempBitVote,
-		valueCapped: valueCapped,
-		value:       value,
-	})
-
-	if ctx.Err() != nil {
-		return nil, ctx.Err()
-	}
-
-	tempBitVoteOpt, supportingWeightOpt := bitVoteForSetOptimistic(
-		input.WeightedBitVotes, input.TotalWeight, shuffled, divOpt,
-	)
-
-	if supportingWeightOpt > input.TotalWeight/2 {
-		valueOptimisticCapped, valueOptimistic, err := Values(
-			tempBitVoteOpt, supportingWeightOpt, input.TotalWeight, input.Attestations, valueCap,
-		)
+	eg.Go(func() error {
+		tempBitVote, supportingWeight := bitVoteForSet(input.WeightedBitVotes, input.TotalWeight, shuffled)
+		valueCapped, value, err := Values(tempBitVote, supportingWeight, input.TotalWeight, input.Attestations, valueCap)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		results = append(results, bitVoteWithValue{
+		results[0] = &bitVoteWithValue{
 			index:       index,
-			bitVote:     tempBitVoteOpt,
-			valueCapped: valueOptimisticCapped,
-			value:       valueOptimistic,
-		})
-	}
+			bitVote:     tempBitVote,
+			valueCapped: valueCapped,
+			value:       value,
+		}
 
-	return results, nil
+		return nil
+	})
+
+	eg.Go(func() error {
+		tempBitVoteOpt, supportingWeightOpt := bitVoteForSetOptimistic(
+			input.WeightedBitVotes, input.TotalWeight, shuffled, divOpt,
+		)
+
+		if supportingWeightOpt > input.TotalWeight/2 {
+			valueOptimisticCapped, valueOptimistic, err := Values(
+				tempBitVoteOpt, supportingWeightOpt, input.TotalWeight, input.Attestations, valueCap,
+			)
+			if err != nil {
+				return err
+			}
+
+			results[1] = &bitVoteWithValue{
+				index:       index,
+				bitVote:     tempBitVoteOpt,
+				valueCapped: valueOptimisticCapped,
+				value:       valueOptimistic,
+			}
+		}
+
+		return nil
+	})
+
+	err := eg.Wait()
+
+	return results, err
 }
 
 func updateTmpResult(tmpResult *tempBitVoteResult, result *bitVoteWithValue) {
