@@ -28,15 +28,15 @@ func newFDCProtocolProviderController(rounds *storage.Cyclic[*attestation.Round]
 }
 
 // Registration of routes for the FDC protocol provider
-func RegisterFDCProviderRoutes(router restServer.Router, rounds *storage.Cyclic[*attestation.Round]) {
+func RegisterFDCProviderRoutes(rounds *storage.Cyclic[*attestation.Round], router restServer.Router, securities []string) {
 	// Prepare service controller
 
 	ctrl := newFDCProtocolProviderController(rounds)
 	paramMap := map[string]string{"votingRoundId": "Voting round ID", "submitAddress": "Submit address"}
-	submit1Handler := restServer.GeneralRouteHandler(ctrl.submit1Controller, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{})
+	submit1Handler := restServer.GeneralRouteHandler(ctrl.submit1Controller, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{}, securities)
 	router.AddRoute("/submit1/{votingRoundId}/{submitAddress}", submit1Handler, "Submit1")
-	submit2Handler := restServer.GeneralRouteHandler(ctrl.submit2Controller, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{})
+	submit2Handler := restServer.GeneralRouteHandler(ctrl.submit2Controller, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{}, securities)
 	router.AddRoute("/submit2/{votingRoundId}/{submitAddress}", submit2Handler, "Submit2")
-	submitSignaturesHandler := restServer.GeneralRouteHandler(ctrl.submitSignaturesController, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{})
+	submitSignaturesHandler := restServer.GeneralRouteHandler(ctrl.submitSignaturesController, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{}, securities)
 	router.AddRoute("/submitSignatures/{votingRoundId}/{submitAddress}", submitSignaturesHandler, "SubmitSignatures")
 }

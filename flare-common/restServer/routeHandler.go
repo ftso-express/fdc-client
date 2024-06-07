@@ -31,6 +31,7 @@ func GeneralRouteHandler[Q interface{}, B interface{}, R interface{}](
 	queryObject Q,
 	bodyObject B,
 	respObject R,
+	security []string,
 ) RouteHandler {
 	routeHandler := func(w http.ResponseWriter, r *http.Request) {
 		var body B
@@ -55,6 +56,7 @@ func GeneralRouteHandler[Q interface{}, B interface{}, R interface{}](
 	pathParams := createPathParamsDescription(paramDescriptions)
 	querystring := createQueryDescription(queryObject)
 	requestBody := createRequestBodyDescription(bodyObject)
+	sec := createSecuritiesArray(security)
 
 	swaggerDefinitions := swagger.Definitions{
 		RequestBody: requestBody,
@@ -67,12 +69,27 @@ func GeneralRouteHandler[Q interface{}, B interface{}, R interface{}](
 				},
 			},
 		},
+		Security: sec,
 	}
 	return RouteHandler{
 		Handler:            routeHandler,
 		SwaggerDefinitions: swaggerDefinitions,
 		Method:             method,
 	}
+}
+
+// Create a securty object for openapi from a list of security names
+func createSecuritiesArray(security []string) swagger.SecurityRequirements {
+	if security == nil {
+		return nil
+	}
+	sec := make(swagger.SecurityRequirement)
+	for _, element := range security {
+		sec[element] = []string{}
+	}
+	ret := make(swagger.SecurityRequirements, 0)
+	ret = append(ret, sec)
+	return ret
 }
 
 // Create openapi path parameters description from a map of parameter names and descriptions

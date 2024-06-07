@@ -24,27 +24,26 @@ func New(address string, rounds *storage.Cyclic[*attestation.Round]) Server {
 	keyMiddleware := &restServer.AipKeyAuthMiddleware{
 		KeyName: "X-API-KEY",
 		Keys:    []string{"123456"},
-		ExcludeEndpoints: []restServer.ExcludeEndpointStruct{
-			{Path: "/swagger", Method: http.MethodGet},
-			{Path: "/documentation/json", Method: http.MethodGet},
-		},
 	}
 	keyMiddleware.Init()
 
-	muxRouter.Use(keyMiddleware.Middleware)
+	router := restServer.NewSwaggerRouter(muxRouter, restServer.SwaggerRouterConfig{
+		Title:           "FDC protocol data provider API",
+		Version:         "0.0.0",
+		SwaggerBasePath: "/api-doc",
+		SecuritySchemes: keyMiddleware.SecuritySchemes(),
+	})
 
-	router := restServer.NewSwaggerRouter(muxRouter, "FDC protocol data provider API", "0.0.0")
+	// create fsp sub router
+	fspSubRouter := router.WithPrefix("/fsp", "FDC protocol data provider for FSP client")
+	// Register routes for FSP
+	RegisterFDCProviderRoutes(rounds, fspSubRouter, []string{"X-API-KEY"})
+	fspSubRouter.AddMiddleware(keyMiddleware.Middleware)
 
 	// Register routes
-
-	RegisterFDCProviderRoutes(router, rounds)
 	router.Finalize()
 
-	// Bind to a port and pass our router in
-
-	// fmt.Printf("Listening on port %s\n", port)
-	// log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), r))
-
+	// Create CORS handler
 	cors := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
 	})

@@ -2,11 +2,13 @@ package restServer
 
 import (
 	"net/http"
+
+	"github.com/getkin/kin-openapi/openapi3"
 )
 
 type ExcludeEndpointStruct struct {
-	Path   string
-	Method string
+	PathPattern string
+	Method      string
 }
 
 type AipKeyAuthMiddleware struct {
@@ -24,11 +26,11 @@ func (keyMiddleware *AipKeyAuthMiddleware) Init() {
 		keyMiddleware.keyMap[key] = true
 	}
 	for _, endpoint := range keyMiddleware.ExcludeEndpoints {
-		if keyMiddleware.excludeMap[endpoint.Path] == nil {
-			keyMiddleware.excludeMap[endpoint.Path] = make(map[string]bool)
-			keyMiddleware.excludeMap[endpoint.Path][endpoint.Method] = true
+		if keyMiddleware.excludeMap[endpoint.PathPattern] == nil {
+			keyMiddleware.excludeMap[endpoint.PathPattern] = make(map[string]bool)
+			keyMiddleware.excludeMap[endpoint.PathPattern][endpoint.Method] = true
 		} else {
-			keyMiddleware.excludeMap[endpoint.Path][endpoint.Method] = true
+			keyMiddleware.excludeMap[endpoint.PathPattern][endpoint.Method] = true
 		}
 	}
 }
@@ -55,4 +57,16 @@ func (keyMiddleware *AipKeyAuthMiddleware) Middleware(next http.Handler) http.Ha
 		errorString := "Forbidden, provide valid " + keyMiddleware.KeyName + " api key"
 		http.Error(w, errorString, http.StatusForbidden)
 	})
+}
+
+func (keyMiddleware *AipKeyAuthMiddleware) SecuritySchemes() openapi3.SecuritySchemes {
+	return openapi3.SecuritySchemes{
+		keyMiddleware.KeyName: &openapi3.SecuritySchemeRef{
+			Value: &openapi3.SecurityScheme{
+				Type: "apiKey",
+				In:   "header",
+				Name: keyMiddleware.KeyName,
+			},
+		},
+	}
 }

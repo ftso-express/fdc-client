@@ -15,9 +15,14 @@ var log = logger.GetLogger()
 
 type Router interface {
 	AddRoute(path string, handler RouteHandler, description ...string)
+	AddMiddleware(middleware mux.MiddlewareFunc)
 	WithPrefix(prefix string, tag string) Router
 	Finalize()
 }
+
+////////////////////////////////////////////////////////
+//////// DEFAULT ROUTER IMPLEMENTATION /////////////////
+////////////////////////////////////////////////////////
 
 // Default router implementation using gorilla/mux
 type defaultRouter struct {
@@ -26,6 +31,10 @@ type defaultRouter struct {
 
 func (r *defaultRouter) AddRoute(path string, handler RouteHandler, description ...string) {
 	r.router.HandleFunc(path, handler.Handler).Methods(handler.Method)
+}
+
+func (r *defaultRouter) AddMiddleware(middleware mux.MiddlewareFunc) {
+	r.router.Use(middleware)
 }
 
 func (r *defaultRouter) WithPrefix(prefix string, tag string) Router {
@@ -43,26 +52,53 @@ func NewDefaultRouter(mRouter *mux.Router) Router {
 	}
 }
 
+////////////////////////////////////////////////////////
+//////// SWAGGER ROUTER IMPLEMENTATION /////////////////
+////////////////////////////////////////////////////////
+
+type SwaggerRouterConfig struct {
+	Title           string
+	Version         string
+	SwaggerBasePath string
+	SecuritySchemes openapi3.SecuritySchemes
+}
+
+func (c *SwaggerRouterConfig) JSONDocumentationPath() string {
+	return c.SwaggerBasePath + "-json"
+}
+
+func (c *SwaggerRouterConfig) YAMLDocumentationPath() string {
+	return c.SwaggerBasePath + "-yaml"
+}
+
 // Router implementation with swagger support
 type swaggerRouter struct {
 	mRouter *mux.Router
 	router  *swagger.Router[gorilla.HandlerFunc, *mux.Route]
 	tag     string
+	config  SwaggerRouterConfig
 }
 
-func NewSwaggerRouter(mRouter *mux.Router, title string, version string) Router {
+func NewSwaggerRouter(mRouter *mux.Router, config SwaggerRouterConfig) Router {
 	router, _ := swagger.NewRouter(gorilla.NewRouter(mRouter), swagger.Options{
 		Openapi: &openapi3.T{
 			Info: &openapi3.Info{
-				Title:   title,
-				Version: version,
+				Title:   config.Title,
+				Version: config.Version,
+			},
+			// Security: secReq,
+			Components: &openapi3.Components{
+				SecuritySchemes: config.SecuritySchemes,
 			},
 		},
+		JSONDocumentationPath: config.JSONDocumentationPath(),
+		YAMLDocumentationPath: config.YAMLDocumentationPath(),
 	})
 	return &swaggerRouter{
 		mRouter: mRouter,
 		router:  router,
 		tag:     "",
+		config:  config,
 	}
 }
 
@@ -85,6 +121,10 @@ func (r *swaggerRouter) AddRoute(path string, handler RouteHandler, description 
 	}
 }
 
+func (r *swaggerRouter) AddMiddleware(middleware mux.MiddlewareFunc) {
+	r.mRouter.Use(middleware)
+}
+
 func (r *swaggerRouter) WithPrefix(prefix string, tag string) Router {
 	mSubRouter := r.mRouter.NewRoute().Subrouter()
 	subRouter, _ := r.router.SubRouter(gorilla.NewRouter(mSubRouter), swagger.SubRouterOptions{
@@ -103,11 +143,13 @@ func (r *swaggerRouter) Finalize() {
 	}
 
 	config := swgui.Config{
-		Title:       "FDC protocol data provider API",
-		SwaggerJSON: "/documentation/json",
-		BasePath:    "/swagger",
+		Title:       r.config.Title,
+		SwaggerJSON: r.config.JSONDocumentationPath(),
+		BasePath:    r.config.SwaggerBasePath,
+		HideCurl:    false,
+		ShowTopBar:  false,
 	}
 
 	handler := v3.NewHandlerWithConfig(config)
-	r.mRouter.PathPrefix("/swagger").HandlerFunc(handler.ServeHTTP)
+	r.mRouter.PathPrefix(r.config.SwaggerBasePath).HandlerFunc(handler.ServeHTTP)
 }
