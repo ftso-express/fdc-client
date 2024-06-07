@@ -16,7 +16,10 @@ import (
 )
 
 const (
-	NumOfSamples int = 100000 // read from config/toml
+	NumOfSamples int     = 100000    // the actual number of samples is x2 (one normal and one optimistic for each seed)
+	divOpt       uint16  = 5         // totalWeight/divOpt is the weight of the optimistic samples
+	valueCap     float64 = 4.0 / 5.0 // bitVote support cap in factor of totalWeight
+	protocolId           = 300       // TODO get protocol id (300) from somewhere // read from config/toml
 )
 
 type BitVote struct {
@@ -50,7 +53,7 @@ type WeightedBitVote struct {
 }
 
 type bitVoteWithValue struct {
-	index       uint64
+	index       int
 	bitVote     BitVote
 	valueCapped *big.Int
 	value       *big.Int // support multiplied with fees
@@ -103,45 +106,48 @@ func bitVoteForSet(weightedBitVotes []*WeightedBitVote, totalWeight uint16, shuf
 
 	bitVote := (weightedBitVotes)[shuffled[0]].BitVote
 
-	supportingWeight := uint32(0) //supporting weight always fits into uint16. We use uint16 safe comparison.
+	supportingWeight := uint16(0)
+
+	auxBigInt := new(big.Int)
 
 	for j := range shuffled {
-		if 2*supportingWeight < uint32(totalWeight) {
+		if supportingWeight < totalWeight/2 {
 			bitVote = andBitwise(bitVote, weightedBitVotes[shuffled[j]].BitVote)
-			supportingWeight += uint32(weightedBitVotes[shuffled[j]].Weight)
-		} else if andBitwise(bitVote, weightedBitVotes[shuffled[j]].BitVote).BitVector.Cmp(bitVote.BitVector) == 0 {
-			supportingWeight += uint32(weightedBitVotes[shuffled[j]].Weight)
+			supportingWeight += weightedBitVotes[shuffled[j]].Weight
+		} else if auxBigInt.And(bitVote.BitVector, weightedBitVotes[shuffled[j]].BitVote.BitVector).Cmp(bitVote.BitVector) == 0 {
+			supportingWeight += weightedBitVotes[shuffled[j]].Weight
 		}
 
 	}
 
-	return bitVote, uint16(supportingWeight)
+	return bitVote, supportingWeight
 
 }
 
 // bitVoteForSet calculates bitwise and of the WeightedBitVote in the order defined by shuffled
-// until the added weight does not exceed 20% of the total weight.
+// until the added weight does not exceed x% of the total weight.
 // Then it adds the weight of the rest of WeightedBitVote that support the calculated BitVote.
 // Returns the BitVote that is the result of the bitwise and, and supportingWeight.
-//
-// We assume that the sum of the weights of the WeightedBitVotes is more than 50% of th totalWeight.
-func bitVoteForSetOptimistic(weightedBitVotes []*WeightedBitVote, totalWeight uint16, shuffled []uint64) (BitVote, uint16) {
+// It is assumed that len(weightedBitVotes) = len(shuffled) > 0, shuffled contains each integer from 0 to len(shuffled)- 1.
+func bitVoteForSetOptimistic(weightedBitVotes []*WeightedBitVote, totalWeight uint16, shuffled []uint64, div uint16) (BitVote, uint16) {
 
 	bitVote := (weightedBitVotes)[shuffled[0]].BitVote
 
-	supportingWeight := uint32(0) //supporting weight always fits into uint16. We use uint16 safe comparison.
+	supportingWeight := uint16(0)
+
+	auxBigInt := new(big.Int)
 
 	for j := range shuffled {
-		if 5*supportingWeight < uint32(totalWeight) {
+		if supportingWeight < totalWeight/div {
 			bitVote = andBitwise(bitVote, weightedBitVotes[shuffled[j]].BitVote)
-			supportingWeight += uint32(weightedBitVotes[shuffled[j]].Weight)
-		} else if andBitwise(bitVote, weightedBitVotes[shuffled[j]].BitVote).BitVector.Cmp(bitVote.BitVector) == 0 {
-			supportingWeight += uint32(weightedBitVotes[shuffled[j]].Weight)
+			supportingWeight += weightedBitVotes[shuffled[j]].Weight
+		} else if auxBigInt.And(bitVote.BitVector, weightedBitVotes[shuffled[j]].BitVote.BitVector).Cmp(bitVote.BitVector) == 0 {
+			supportingWeight += weightedBitVotes[shuffled[j]].Weight
 		}
 
 	}
 
-	return bitVote, uint16(supportingWeight)
+	return bitVote, supportingWeight
 
 }
 
@@ -159,38 +165,29 @@ func andBitwise(a, b BitVote) BitVote {
 
 }
 
-// Value calculates the Value of the BitVote, which is the product of the fees and supportingWeight.
-func Value(bitVote BitVote, supportingWeight uint16, attestations []*Attestation) (*big.Int, error) {
+// Value calculates the cappedValue and Value of the BitVote, which is the product of the fees and supportingWeight.
+func Values(bitVote BitVote, supportingWeight uint16, totalWeight uint16, attestations []*Attestation, capPercentage float64) (*big.Int, *big.Int, error) {
 	fees, err := bitVote.fees(attestations)
 
 	if err != nil {
-		return nil, fmt.Errorf("cannot compute value : %s", err)
+		return nil, nil, fmt.Errorf("cannot compute value : %s", err)
 	}
 
-	return fees.Mul(fees, big.NewInt(int64(supportingWeight))), nil
-}
-
-// Value calculates the Value of the BitVote, which is the product of the fees and caped supportingWeight.
-func ValueCapped(bitVote BitVote, supportingWeight, totalWeight uint16, attestations []*Attestation, capPercentage float64) (*big.Int, error) {
-	fees, err := bitVote.fees(attestations)
-
-	if err != nil {
-		return nil, fmt.Errorf("cannot compute value : %s", err)
-	}
+	auxBigInt := new(big.Int)
 
 	cap := uint16(math.Ceil(float64(totalWeight) * capPercentage))
 
 	if cap < supportingWeight {
 
-		return fees.Mul(fees, big.NewInt(int64(cap))), nil
+		return auxBigInt.Mul(fees, big.NewInt(int64(cap))), auxBigInt.Mul(fees, big.NewInt(int64(supportingWeight))), nil
 
 	}
 
-	return fees.Mul(fees, big.NewInt(int64(supportingWeight))), nil
+	return auxBigInt.Mul(fees, big.NewInt(int64(supportingWeight))), auxBigInt, nil
 }
 
 type tempBitVoteResult struct {
-	index          uint64
+	index          int
 	maxValueCapped *big.Int
 	maxValue       *big.Int
 	bitVote        BitVote
@@ -220,7 +217,7 @@ func ConsensusBitVote(input *ConsensusBitVoteInput) (BitVote, error) {
 	}
 
 	for i := 0; i < NumOfSamples; i++ {
-		index := uint64(i)
+		index := i
 		eg.Go(func() error {
 			bitVoteVals, err := calcBitVoteVals(ctx, input, index)
 			if err != nil {
@@ -253,26 +250,14 @@ func sumWeightedBitVotes(weightedBitVotes []*WeightedBitVote) (weightVoted uint1
 	return weightVoted
 }
 
-const (
-	valueCap   = 4.0 / 5.0
-	protocolID = 300 // TODO get protocol id (300) from somewhere
-)
-
-func calcBitVoteVals(ctx context.Context, input *ConsensusBitVoteInput, index uint64) ([]bitVoteWithValue, error) {
+func calcBitVoteVals(ctx context.Context, input *ConsensusBitVoteInput, index int) ([]bitVoteWithValue, error) {
 	results := make([]bitVoteWithValue, 0, 2)
 
-	seed := shuffle.Seed(input.RoundID, index, protocolID)
+	seed := shuffle.Seed(input.RoundID, uint64(index), protocolId)
 	shuffled := shuffle.FisherYates(uint64(len(input.WeightedBitVotes)), seed)
 
 	tempBitVote, supportingWeight := bitVoteForSet(input.WeightedBitVotes, input.TotalWeight, shuffled)
-	value, err := Value(tempBitVote, supportingWeight, input.Attestations)
-	if err != nil {
-		return nil, err
-	}
-
-	valueCapped, err := ValueCapped(
-		tempBitVote, supportingWeight, input.TotalWeight, input.Attestations, valueCap,
-	)
+	valueCapped, value, err := Values(tempBitVote, supportingWeight, input.TotalWeight, input.Attestations, valueCap)
 	if err != nil {
 		return nil, err
 	}
@@ -289,16 +274,11 @@ func calcBitVoteVals(ctx context.Context, input *ConsensusBitVoteInput, index ui
 	}
 
 	tempBitVoteOpt, supportingWeightOpt := bitVoteForSetOptimistic(
-		input.WeightedBitVotes, input.TotalWeight, shuffled,
+		input.WeightedBitVotes, input.TotalWeight, shuffled, divOpt,
 	)
 
 	if supportingWeightOpt > input.TotalWeight/2 {
-		valueOptimistic, err := Value(tempBitVoteOpt, supportingWeightOpt, input.Attestations)
-		if err != nil {
-			return nil, err
-		}
-
-		valueOptimisticCapped, err := ValueCapped(
+		valueOptimisticCapped, valueOptimistic, err := Values(
 			tempBitVoteOpt, supportingWeightOpt, input.TotalWeight, input.Attestations, valueCap,
 		)
 		if err != nil {
