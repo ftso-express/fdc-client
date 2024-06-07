@@ -314,7 +314,7 @@ func updateTmpResult(tmpResult *tempBitVoteResult, result *bitVoteWithValue) {
 		tmpResult.bitVote = result.bitVote
 		tmpResult.index = result.index
 		tmpResult.maxValue = result.value
-	} else if result.value.Cmp(tmpResult.maxValue) == 0 && tmpResult.index > result.index {
+	} else if result.valueCapped.Cmp(tmpResult.maxValueCapped) == 0 && result.value.Cmp(tmpResult.maxValue) == 0 && tmpResult.index > result.index {
 		tmpResult.bitVote = result.bitVote
 		tmpResult.index = result.index
 	}
