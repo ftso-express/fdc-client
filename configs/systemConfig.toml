@@ -14,3 +14,10 @@ request_interval_seconds = 2
 file = ""
 prefix = ""
 flag = 0
+
+[rest_server]
+title = "FDC protocol data provider API"
+fsp_sub_router_title = "FDC protocol data provider for FSP client"
+fsp_sub_router_path = "/fsp"
+version = "0.0.0"
+swagger_path = "/api-doc"

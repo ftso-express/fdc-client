@@ -13,22 +13,43 @@ type GlobalConfig struct {
 	System SystemConfig
 }
 
+type userConfigCommon struct {
+	DB         database.DBConfig    `toml:"db"`
+	RestServer UserRestServerConfig `toml:"rest_server"`
+}
+
 type UserConfigRaw struct {
 	Abis      AbiConfigUnparsed      `toml:"abis"`
 	Verifiers VerifierConfigUnparsed `toml:"verifiers"`
-	DB        database.DBConfig      `toml:"db"`
+	userConfigCommon
 }
 
 type UserConfig struct {
 	Abis      AbiConfig
 	Verifiers VerifierConfig
-	DB        database.DBConfig
+	userConfigCommon
 }
 
 type SystemConfig struct {
-	Logger   LoggerConfig    `toml:"logger"`
-	Timing   TimingConfig    `toml:"timing"`
-	Listener ListenersConfig `toml:"listener"`
+	Logger     LoggerConfig           `toml:"logger"`
+	Timing     TimingConfig           `toml:"timing"`
+	Listener   ListenersConfig        `toml:"listener"`
+	RestServer SystemRestServerConfig `toml:"rest_server"`
+}
+
+type SystemRestServerConfig struct {
+	Title       string `toml:"title"`
+	FSPTitle    string `toml:"fsp_sub_router_title"`
+	FSPSubpath  string `toml:"fsp_sub_router_path"`
+	Version     string `toml:"version"`
+	Addr        string `toml:"addr"`
+	SwaggerPath string `toml:"swagger_path"`
+}
+
+type UserRestServerConfig struct {
+	Addr       string   `toml:"addr"`
+	ApiKeyName string   `toml:"api_key_name"`
+	ApiKeys    []string `toml:"api_keys"`
 }
 
 type LoggerConfig struct {

@@ -5,6 +5,7 @@ import (
 	"flare-common/restServer"
 	"flare-common/storage"
 	"local/fdc/client/attestation"
+	"local/fdc/client/config"
 	"net/http"
 	"time"
 
@@ -16,28 +17,28 @@ type Server struct {
 	srv *http.Server
 }
 
-func New(address string, rounds *storage.Cyclic[*attestation.Round]) Server {
+func New(rounds *storage.Cyclic[*attestation.Round], systemServerConfig config.SystemRestServerConfig, userServerConfig config.UserRestServerConfig) Server {
 	// Create Mux router
 	muxRouter := mux.NewRouter()
 
 	// create api auth middleware
 	keyMiddleware := &restServer.AipKeyAuthMiddleware{
-		KeyName: "X-API-KEY",
-		Keys:    []string{"123456"},
+		KeyName: userServerConfig.ApiKeyName,
+		Keys:    userServerConfig.ApiKeys,
 	}
 	keyMiddleware.Init()
 
 	router := restServer.NewSwaggerRouter(muxRouter, restServer.SwaggerRouterConfig{
-		Title:           "FDC protocol data provider API",
-		Version:         "0.0.0",
-		SwaggerBasePath: "/api-doc",
+		Title:           systemServerConfig.Title,
+		Version:         systemServerConfig.Version,
+		SwaggerBasePath: systemServerConfig.SwaggerPath,
 		SecuritySchemes: keyMiddleware.SecuritySchemes(),
 	})
 
 	// create fsp sub router
-	fspSubRouter := router.WithPrefix("/fsp", "FDC protocol data provider for FSP client")
+	fspSubRouter := router.WithPrefix(systemServerConfig.FSPSubpath, systemServerConfig.FSPTitle)
 	// Register routes for FSP
-	RegisterFDCProviderRoutes(rounds, fspSubRouter, []string{"X-API-KEY"})
+	RegisterFDCProviderRoutes(rounds, fspSubRouter, []string{userServerConfig.ApiKeyName})
 	fspSubRouter.AddMiddleware(keyMiddleware.Middleware)
 
 	// Register routes
@@ -50,7 +51,7 @@ func New(address string, rounds *storage.Cyclic[*attestation.Round]) Server {
 	corsMuxRouter := cors.Handler(muxRouter)
 	srv := &http.Server{
 		Handler: corsMuxRouter,
-		Addr:    address,
+		Addr:    userServerConfig.Addr,
 		// Good practice: enforce timeouts for servers you create -- config?
 		// WriteTimeout: 15 * time.Second,
 		// ReadTimeout:  15 * time.Second,

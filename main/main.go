@@ -14,7 +14,6 @@ import (
 const (
 	USER_FILE   string = "configs/userConfig.toml"   //relative to project root
 	SYSTEM_FILE string = "configs/systemConfig.toml" //relative to project root
-	SERVER_ADDR        = ":8080"
 )
 
 var log = logger.GetLogger()
@@ -44,7 +43,7 @@ func main() {
 
 	// run server
 	log.Info("Running server")
-	srv := server.New(SERVER_ADDR, &collector.RoundManager.Rounds)
+	srv := server.New(&collector.RoundManager.Rounds, systemConfig.RestServer, userConfigRaw.RestServer)
 	go srv.Run(ctx)
 
 	// Block until a termination signal is received.
