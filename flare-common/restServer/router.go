@@ -127,9 +127,13 @@ func (r *swaggerRouter) AddMiddleware(middleware mux.MiddlewareFunc) {
 
 func (r *swaggerRouter) WithPrefix(prefix string, tag string) Router {
 	mSubRouter := r.mRouter.NewRoute().Subrouter()
-	subRouter, _ := r.router.SubRouter(gorilla.NewRouter(mSubRouter), swagger.SubRouterOptions{
+	subRouter, err := r.router.SubRouter(gorilla.NewRouter(mSubRouter), swagger.SubRouterOptions{
 		PathPrefix: prefix,
 	})
+	if err != nil {
+		log.Panic(err)
+	}
+
 	return &swaggerRouter{
 		mRouter: mSubRouter,
 		router:  subRouter,

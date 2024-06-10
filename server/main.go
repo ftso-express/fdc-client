@@ -17,7 +17,11 @@ type Server struct {
 	srv *http.Server
 }
 
-func New(rounds *storage.Cyclic[*attestation.Round], systemServerConfig config.SystemRestServerConfig, userServerConfig config.UserRestServerConfig) Server {
+func New(
+	rounds *storage.Cyclic[*attestation.Round],
+	systemServerConfig config.SystemRestServerConfig,
+	userServerConfig config.UserRestServerConfig,
+) Server {
 	// Create Mux router
 	muxRouter := mux.NewRouter()
 
