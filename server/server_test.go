@@ -20,6 +20,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	votingRoundID = 1
+	submitAddress = "0xf4Bf90cf71F52b4e0369a356D1F871A6237AD0C4"
+)
+
 func TestServer(t *testing.T) {
 	rounds := storage.NewCyclic[*attestation.Round](10)
 	systemServerConfig := config.SystemRestServerConfig{
@@ -44,9 +49,6 @@ func TestServer(t *testing.T) {
 	go s.Run(ctx)
 	defer s.Shutdown()
 
-	votingRoundID := uint64(1)
-	submitAddress := "0xf4Bf90cf71F52b4e0369a356D1F871A6237AD0C4"
-
 	round := attestation.CreateRound(votingRoundID, policy.NewVoterSet(nil, nil))
 	round.Attestations = append(round.Attestations, &attestation.Attestation{
 		RoundId:   uint32(votingRoundID),
@@ -56,15 +58,7 @@ func TestServer(t *testing.T) {
 	rounds.Store(votingRoundID, round)
 
 	t.Run("submit1", func(t *testing.T) {
-		p, err := url.JoinPath(
-			systemServerConfig.FSPSubpath,
-			"submit1",
-			strconv.FormatUint(votingRoundID, 10),
-			submitAddress,
-		)
-		require.NoError(t, err)
-
-		rspData, err := makeGetRequest(p, userServerConfig.ApiKeys[0])
+		rspData, err := makeGetRequest("submit1", &systemServerConfig, &userServerConfig)
 		require.NoError(t, err)
 
 		t.Log(rspData)
@@ -73,15 +67,7 @@ func TestServer(t *testing.T) {
 	})
 
 	t.Run("submit2", func(t *testing.T) {
-		p, err := url.JoinPath(
-			systemServerConfig.FSPSubpath,
-			"submit2",
-			strconv.FormatUint(votingRoundID, 10),
-			submitAddress,
-		)
-		require.NoError(t, err)
-
-		rspData, err := makeGetRequest(p, userServerConfig.ApiKeys[0])
+		rspData, err := makeGetRequest("submit2", &systemServerConfig, &userServerConfig)
 		require.NoError(t, err)
 
 		t.Log(rspData)
@@ -90,15 +76,7 @@ func TestServer(t *testing.T) {
 	})
 
 	t.Run("submitSignatures", func(t *testing.T) {
-		p, err := url.JoinPath(
-			systemServerConfig.FSPSubpath,
-			"submitSignatures",
-			strconv.FormatUint(votingRoundID, 10),
-			submitAddress,
-		)
-		require.NoError(t, err)
-
-		rspData, err := makeGetRequest(p, userServerConfig.ApiKeys[0])
+		rspData, err := makeGetRequest("submitSignatures", &systemServerConfig, &userServerConfig)
 		require.NoError(t, err)
 
 		t.Log(rspData)
@@ -107,11 +85,23 @@ func TestServer(t *testing.T) {
 	})
 }
 
-func makeGetRequest(path, apiKey string) (*server.PDPResponse, error) {
+func makeGetRequest(
+	apiName string, sysCfg *config.SystemRestServerConfig, userCfg *config.UserRestServerConfig,
+) (*server.PDPResponse, error) {
+	p, err := url.JoinPath(
+		sysCfg.FSPSubpath,
+		apiName,
+		strconv.FormatUint(votingRoundID, 10),
+		submitAddress,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	u := url.URL{
 		Scheme: "http",
 		Host:   "localhost:8080",
-		Path:   path,
+		Path:   p,
 	}
 
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
@@ -119,7 +109,7 @@ func makeGetRequest(path, apiKey string) (*server.PDPResponse, error) {
 		return nil, err
 	}
 
-	req.Header.Add("X-API-KEY", apiKey)
+	req.Header.Add("X-API-KEY", userCfg.ApiKeys[0])
 
 	var client http.Client
 	rsp, err := client.Do(req)
