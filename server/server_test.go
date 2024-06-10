@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/bradleyjkemp/cupaloy"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -63,31 +64,7 @@ func TestServer(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		u := url.URL{
-			Scheme: "http",
-			Host:   "localhost:8080",
-			Path:   p,
-		}
-
-		t.Log(u.String())
-
-		req, err := http.NewRequest(http.MethodGet, u.String(), nil)
-		require.NoError(t, err)
-
-		req.Header.Add("X-API-KEY", userServerConfig.ApiKeys[0])
-
-		var client http.Client
-		rsp, err := client.Do(req)
-		require.NoError(t, err)
-
-		defer rsp.Body.Close()
-		require.Equal(t, http.StatusOK, rsp.StatusCode)
-
-		body, err := io.ReadAll(rsp.Body)
-		require.NoError(t, err)
-
-		var rspData server.PDPResponse
-		err = json.Unmarshal(body, &rspData)
+		rspData, err := makeGetRequest(p, userServerConfig.ApiKeys[0])
 		require.NoError(t, err)
 
 		t.Log(rspData)
@@ -104,35 +81,66 @@ func TestServer(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		u := url.URL{
-			Scheme: "http",
-			Host:   "localhost:8080",
-			Path:   p,
-		}
-
-		t.Log(u.String())
-
-		req, err := http.NewRequest(http.MethodGet, u.String(), nil)
-		require.NoError(t, err)
-
-		req.Header.Add("X-API-KEY", userServerConfig.ApiKeys[0])
-
-		var client http.Client
-		rsp, err := client.Do(req)
-		require.NoError(t, err)
-
-		defer rsp.Body.Close()
-		require.Equal(t, http.StatusOK, rsp.StatusCode)
-
-		body, err := io.ReadAll(rsp.Body)
-		require.NoError(t, err)
-
-		var rspData server.PDPResponse
-		err = json.Unmarshal(body, &rspData)
+		rspData, err := makeGetRequest(p, userServerConfig.ApiKeys[0])
 		require.NoError(t, err)
 
 		t.Log(rspData)
 		require.Equal(t, rspData.Status, server.OK)
 		cupaloy.SnapshotT(t, rspData)
 	})
+
+	t.Run("submitSignatures", func(t *testing.T) {
+		p, err := url.JoinPath(
+			systemServerConfig.FSPSubpath,
+			"submitSignatures",
+			strconv.FormatUint(votingRoundID, 10),
+			submitAddress,
+		)
+		require.NoError(t, err)
+
+		rspData, err := makeGetRequest(p, userServerConfig.ApiKeys[0])
+		require.NoError(t, err)
+
+		t.Log(rspData)
+		require.Equal(t, rspData.Status, server.OK)
+		cupaloy.SnapshotT(t, rspData)
+	})
+}
+
+func makeGetRequest(path, apiKey string) (*server.PDPResponse, error) {
+	u := url.URL{
+		Scheme: "http",
+		Host:   "localhost:8080",
+		Path:   path,
+	}
+
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("X-API-KEY", apiKey)
+
+	var client http.Client
+	rsp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rsp.Body.Close()
+	if rsp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("unexpected status code: %s", rsp.Status)
+	}
+
+	body, err := io.ReadAll(rsp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	rspData := new(server.PDPResponse)
+	if err = json.Unmarshal(body, rspData); err != nil {
+		return nil, err
+	}
+
+	return rspData, nil
 }

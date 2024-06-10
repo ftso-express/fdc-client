@@ -1,5 +1,5 @@
-(server.PDPResponse) {
+(*server.PDPResponse)({
   Status: (server.PDPResponseStatus) (len=2) "OK",
   Data: (string) (len=8) "01000101",
   AdditionalData: (string) ""
-}
+})
