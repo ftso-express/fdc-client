@@ -11,7 +11,7 @@ const (
 	t0 = 1658429955
 )
 
-func RoundIDForTimestamp(t uint64) uint32 {
+func RoundIdForTimestamp(t uint64) uint32 {
 
 	roundID := uint32((t - t0 + 30) / 90)
 
@@ -49,7 +49,7 @@ func NextChoosePhaseEndPointers(t uint64) (*int, *uint64) {
 }
 
 func LastCollectPhaseStart(t uint64) (int, uint64) {
-	roundID := RoundIDForTimestamp(t)
+	roundID := RoundIdForTimestamp(t)
 
 	startTimestamp := t0 + uint64(roundID)*90 - 30
 

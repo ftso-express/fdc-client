@@ -4,6 +4,7 @@ import (
 	"context"
 	"flare-common/contracts/relay"
 	"flare-common/database"
+	"flare-common/events"
 	"flare-common/logger"
 	"flare-common/payload"
 	"flare-common/policy"
@@ -108,18 +109,18 @@ func (m *Manager) Run(ctx context.Context) {
 				log.Infof("deleted signing policy for epoch %d", deleted[j])
 			}
 
-		case round := <-m.BitVotes:
+		case bitVotesForRound := <-m.BitVotes:
 
-			log.Debugf("Received %d bitVotes for round %d", len(round.Messages), round.Id)
+			log.Debugf("Received %d bitVotes for round %d", len(bitVotesForRound.Messages), bitVotesForRound.Id)
 
-			for i := range round.Messages {
+			for i := range bitVotesForRound.Messages {
 
-				if err := m.OnBitVote(round.Messages[i]); err != nil {
+				if err := m.OnBitVote(bitVotesForRound.Messages[i]); err != nil {
 					log.Error("bit vote error:", err)
 				}
 			}
 
-			r, ok := m.Rounds.Get(round.Id)
+			r, ok := m.Rounds.Get(bitVotesForRound.Id)
 			if !ok {
 				break
 			}
@@ -127,9 +128,9 @@ func (m *Manager) Run(ctx context.Context) {
 			err := r.ComputeConsensusBitVote()
 
 			if err != nil {
-				log.Warnf("Failed bitVote in round %d: %s", round.Id, err)
+				log.Warnf("Failed bitVote in round %d: %s", bitVotesForRound.Id, err)
 			} else {
-				log.Debugf("Consensus bitVote %s for round %d computed.", r.ConsensusBitVote.EncodeBitVoteHex(round.Id), round.Id)
+				log.Debugf("Consensus bitVote %s for round %d computed.", r.ConsensusBitVote.EncodeBitVoteHex(bitVotesForRound.Id), bitVotesForRound.Id)
 			}
 
 		case requests := <-m.Requests:
@@ -174,8 +175,6 @@ func (m *Manager) GetOrCreateRound(roundId uint32) (*Round, error) {
 	return round, nil
 }
 
-// Store stores round in to the cyclic cache
-
 // OnBitVote process payload message that is assumed to be a bitVote and adds it to the correct round.
 func (m *Manager) OnBitVote(message payload.Message) error {
 
@@ -208,11 +207,7 @@ func (m *Manager) OnBitVote(message payload.Message) error {
 // The request is sent to verifier server and the verifier's response is validated.
 func (m *Manager) OnRequest(request database.Log) error {
 
-	roundID := timing.RoundIDForTimestamp(request.Timestamp)
-
-	attestation := Attestation{}
-
-	attestation.RoundId = roundID
+	roundId := timing.RoundIdForTimestamp(request.Timestamp)
 
 	data, err := ParseAttestationRequestLog(request)
 
@@ -220,16 +215,11 @@ func (m *Manager) OnRequest(request database.Log) error {
 		return fmt.Errorf("OnRequest, parsing log: %w", err)
 	}
 
-	attestation.Request = data.Data
+	index := IndexLog{request.BlockNumber, request.LogIndex}
 
-	attestation.Fee = data.Fee
+	attestation := Attestation{RoundId: roundId, Request: data.Data, Fee: data.Fee, Status: Waiting, Index: index}
 
-	attestation.Status = Waiting
-
-	attestation.Index.BlockNumber = request.BlockNumber
-	attestation.Index.LogIndex = request.LogIndex
-
-	round, err := m.GetOrCreateRound(roundID)
+	round, err := m.GetOrCreateRound(roundId)
 
 	if err != nil {
 		return err
@@ -245,59 +235,6 @@ func (m *Manager) OnRequest(request database.Log) error {
 
 	return nil
 
-}
-
-func (m *Manager) handleAttestation(attestation *Attestation) error {
-	attTypeAndSource, err := attestation.Request.AttestationTypeAndSource()
-	if err != nil {
-		attestation.Status = ProcessError
-		return err
-	}
-
-	attType, err := attestation.Request.AttestationType()
-	if err != nil {
-		attestation.Status = ProcessError
-		return err
-	}
-
-	var ok bool
-
-	attestation.abi, ok = m.abiConfig.ResponseArguments[attType]
-
-	if !ok {
-		attestation.Status = UnsupportedPair
-		return fmt.Errorf("handle attestation: no abi for: %s", string(attType[:]))
-
-	}
-
-	verifier, ok := m.VerifierServer(attTypeAndSource)
-
-	if !ok {
-		attestation.Status = UnsupportedPair
-		return fmt.Errorf("handle attestation: no verifier for pair %s %s", string(attTypeAndSource[0:32]), string(attTypeAndSource[32:64]))
-
-	}
-
-	attestation.lutLimit = verifier.LutLimit
-	attestation.Status = Processing
-
-	err = ResolveAttestationRequest(attestation, verifier)
-
-	if err != nil {
-		attestation.Status = ProcessError
-
-		return fmt.Errorf("handleAttestation, resolve request: %w", err)
-	} else {
-		err := attestation.validateResponse()
-
-		if err != nil {
-
-			return fmt.Errorf("handelAttestation, validate response: %w", err)
-
-		}
-
-		return nil
-	}
 }
 
 // OnSigningPolicy parsed SigningPolicyInitialized log and stores it into the signingPolicyStorage.
@@ -317,4 +254,13 @@ func (m *Manager) OnSigningPolicy(initializedPolicy database.Log) error {
 
 	return err
 
+}
+
+// ParseSigningPolicyInitializedLog tries to parse SigningPolicyInitialized log as stored in the database.
+func ParseSigningPolicyInitializedLog(dbLog database.Log) (*relay.RelaySigningPolicyInitialized, error) {
+	contractLog, err := events.ConvertDatabaseLogToChainLog(dbLog)
+	if err != nil {
+		return nil, err
+	}
+	return relayFilterer.ParseSigningPolicyInitialized(*contractLog)
 }

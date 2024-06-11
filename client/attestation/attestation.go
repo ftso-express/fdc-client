@@ -2,9 +2,9 @@ package attestation
 
 import (
 	"errors"
-	"flare-common/contracts/relay"
 	"flare-common/database"
 	"flare-common/events"
+	"fmt"
 	"local/fdc/client/timing"
 	hub "local/fdc/contracts/FDC"
 	"math/big"
@@ -29,7 +29,7 @@ const (
 
 type IndexLog struct {
 	BlockNumber uint64
-	LogIndex    uint64
+	LogIndex    uint64 // consecutive number of log in block
 }
 
 // earlierLog returns true if a has lower blockNumber as b or the same blockNumber and lower LogIndex. Otherwise, it returns false.
@@ -58,9 +58,64 @@ type Attestation struct {
 	lutLimit  uint64
 }
 
-// validateResponse check the MIC of the response against the MIC of the request. If the check is successful, attestation status is set to success and attestation hash is computed and set.
+// handleAttestation sends the attestation request to the correct verifier server and validates the response.
+func (m *Manager) handleAttestation(attestation *Attestation) error {
+	attTypeAndSource, err := attestation.Request.AttestationTypeAndSource()
+	if err != nil {
+		attestation.Status = ProcessError
+		return err
+	}
+
+	attType, err := attestation.Request.AttestationType()
+	if err != nil {
+		attestation.Status = ProcessError
+		return err
+	}
+
+	var ok bool
+
+	attestation.abi, ok = m.abiConfig.ResponseArguments[attType]
+
+	if !ok {
+		attestation.Status = UnsupportedPair
+		return fmt.Errorf("handle attestation: no abi for: %s", string(attType[:]))
+
+	}
+
+	verifier, ok := m.VerifierServer(attTypeAndSource)
+
+	if !ok {
+		attestation.Status = UnsupportedPair
+		return fmt.Errorf("handle attestation: no verifier for pair %s %s", string(attTypeAndSource[0:32]), string(attTypeAndSource[32:64]))
+
+	}
+
+	attestation.lutLimit = verifier.LutLimit
+	attestation.Status = Processing
+
+	err = ResolveAttestationRequest(attestation, verifier)
+
+	if err != nil {
+		attestation.Status = ProcessError
+
+		return fmt.Errorf("handleAttestation, resolve request: %w", err)
+	} else {
+		err := attestation.validateResponse()
+
+		if err != nil {
+
+			return fmt.Errorf("handelAttestation, validate response: %w", err)
+
+		}
+
+		return nil
+	}
+}
+
+// validateResponse checks the MIC and LUT of the attestation. If both conditions pass, hash is computed and added to the attestation.
 func (a *Attestation) validateResponse() error {
 
+	// MIC
 	micReq, err := a.Request.Mic()
 
 	if err != nil {
@@ -82,6 +137,7 @@ func (a *Attestation) validateResponse() error {
 		return errors.New("wrong mic")
 	}
 
+	// LUT
 	lut, err := a.Response.LUT()
 
 	if err != nil {
@@ -97,6 +153,7 @@ func (a *Attestation) validateResponse() error {
 		return errors.New("lut too old")
 	}
 
+	// HASH
 	a.Hash, err = a.Response.Hash(a.RoundId)
 
 	if err != nil {
@@ -116,13 +173,4 @@ func ParseAttestationRequestLog(dbLog database.Log) (*hub.HubAttestationRequest,
 		return nil, err
 	}
 	return hubFilterer.ParseAttestationRequest(*contractLog)
-}
-
-// ParseSigningPolicyInitializedLog tries to parse SigningPolicyInitialized log as stored in the database.
-func ParseSigningPolicyInitializedLog(dbLog database.Log) (*relay.RelaySigningPolicyInitialized, error) {
-	contractLog, err := events.ConvertDatabaseLogToChainLog(dbLog)
-	if err != nil {
-		return nil, err
-	}
-	return relayFilterer.ParseSigningPolicyInitialized(*contractLog)
 }

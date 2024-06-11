@@ -69,7 +69,7 @@ func (controller *FDCProtocolProviderController) submit2Service(roundId uint64, 
 		return "", false, nil
 	}
 
-	root, err := votingRound.GetMerkleRootCachedHex()
+	root, err := votingRound.MerkleRootHex()
 
 	if err != nil {
 		log.Infof("submit2: Merkle root for round %d not available: %s", roundId, err)
