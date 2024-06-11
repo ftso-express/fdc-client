@@ -7,6 +7,5 @@
 To run all tests locally and generate a coverage report:
 
 ```
-$ go test -v -coverpkg=./... -coverprofile=coverage.out ./...
-$ go tool cover -html=coverage.out
+$ ./gencover.sh
 ```
