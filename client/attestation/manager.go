@@ -2,9 +2,7 @@ package attestation
 
 import (
 	"context"
-	"flare-common/contracts/relay"
 	"flare-common/database"
-	"flare-common/events"
 	"flare-common/logger"
 	"flare-common/payload"
 	"flare-common/policy"
@@ -26,14 +24,12 @@ var log = logger.GetLogger()
 var hubFilterer *hub.HubFilterer
 
 // relayFilterer is only used for SigningPolicyInitialized logs parsing. Set in init()
-var relayFilterer *relay.RelayFilterer
 
 // init sets the hubFilterer and relayFilterer.
 func init() {
 
 	hubFilterer, _ = hub.NewHubFilterer(common.Address{}, nil)
 
-	relayFilterer, _ = relay.NewRelayFilterer(common.Address{}, nil)
 }
 
 type Manager struct {
@@ -207,19 +203,13 @@ func (m *Manager) OnBitVote(message payload.Message) error {
 // The request is sent to verifier server and the verifier's response is validated.
 func (m *Manager) OnRequest(request database.Log) error {
 
-	roundId := timing.RoundIdForTimestamp(request.Timestamp)
-
-	data, err := ParseAttestationRequestLog(request)
+	attestation, err := attestationFromDatabaseLog(request)
 
 	if err != nil {
-		return fmt.Errorf("OnRequest, parsing log: %w", err)
+		return fmt.Errorf("OnRequest: %w", err)
 	}
 
-	index := IndexLog{request.BlockNumber, request.LogIndex}
-
-	attestation := Attestation{RoundId: roundId, Request: data.Data, Fee: data.Fee, Status: Waiting, Index: index}
-
-	round, err := m.GetOrCreateRound(roundId)
+	round, err := m.GetOrCreateRound(attestation.RoundId)
 
 	if err != nil {
 		return err
@@ -237,10 +227,33 @@ func (m *Manager) OnRequest(request database.Log) error {
 
 }
 
+func attestationFromDatabaseLog(request database.Log) (Attestation, error) {
+
+	requestLog, err := ParseAttestationRequestLog(request)
+
+	if err != nil {
+		return Attestation{}, fmt.Errorf("parsing attestation, parsing log: %w", err)
+	}
+
+	roundId := timing.RoundIdForTimestamp(request.Timestamp)
+
+	index := IndexLog{request.BlockNumber, request.LogIndex}
+
+	attestation := Attestation{
+		Index:   index,
+		RoundId: roundId,
+		Request: requestLog.Data,
+		Fee:     requestLog.Fee,
+		Status:  Waiting,
+	}
+
+	return attestation, nil
+}
+
 // OnSigningPolicy parsed SigningPolicyInitialized log and stores it into the signingPolicyStorage.
 func (m *Manager) OnSigningPolicy(initializedPolicy database.Log) error {
 
-	data, err := ParseSigningPolicyInitializedLog(initializedPolicy)
+	data, err := policy.ParseSigningPolicyInitializedEvent(initializedPolicy)
 
 	if err != nil {
 		return err
@@ -254,13 +267,4 @@ func (m *Manager) OnSigningPolicy(initializedPolicy database.Log) error {
 
 	return err
 
-}
-
-// ParseSigningPolicyInitializedLog tries to parse SigningPolicyInitialized log as stored in the database.
-func ParseSigningPolicyInitializedLog(dbLog database.Log) (*relay.RelaySigningPolicyInitialized, error) {
-	contractLog, err := events.ConvertDatabaseLogToChainLog(dbLog)
-	if err != nil {
-		return nil, err
-	}
-	return relayFilterer.ParseSigningPolicyInitialized(*contractLog)
 }

@@ -17,6 +17,8 @@ const (
 	ListenerInterval   time.Duration = 2 * time.Second
 )
 
+var RelayFilterer *relay.RelayFilterer
+
 type SigningPolicyListenerResponse struct {
 	policyData *relay.RelaySigningPolicyInitialized
 	timestamp  int64
@@ -31,6 +33,11 @@ type relayContractClient struct {
 	topic0PMR common.Hash // for ProtocolMessageRelayed event
 }
 
+func init() {
+
+	RelayFilterer, _ = relay.NewRelayFilterer(common.Address{}, nil)
+}
+
 func (r *relayContractClient) FetchSigningPolicies(
 	ctx context.Context, db *gorm.DB, from, to int64,
 ) ([]SigningPolicyListenerResponse, error) {
@@ -41,7 +48,7 @@ func (r *relayContractClient) FetchSigningPolicies(
 
 	result := make([]SigningPolicyListenerResponse, 0, len(logs))
 	for _, log := range logs {
-		policyData, err := events.ParseSigningPolicyInitializedEvent(r.relay, log)
+		policyData, err := ParseSigningPolicyInitializedEvent(log)
 		if err != nil {
 			return nil, err
 		}
@@ -65,7 +72,7 @@ func (r *relayContractClient) SigningPolicyInitializedListener(
 				continue
 			}
 			for _, log := range logs {
-				policyData, err := events.ParseSigningPolicyInitializedEvent(r.relay, log)
+				policyData, err := ParseSigningPolicyInitializedEvent(log)
 				if err != nil {
 					break
 				}
@@ -77,4 +84,12 @@ func (r *relayContractClient) SigningPolicyInitializedListener(
 		}
 	}()
 	return out
+}
+
+func ParseSigningPolicyInitializedEvent(dbLog database.Log) (*relay.RelaySigningPolicyInitialized, error) {
+	contractLog, err := events.ConvertDatabaseLogToChainLog(dbLog)
+	if err != nil {
+		return nil, err
+	}
+	return RelayFilterer.ParseSigningPolicyInitialized(*contractLog)
 }

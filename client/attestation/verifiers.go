@@ -20,15 +20,6 @@ type AbiEncodedResponseBody struct {
 	AbiEncodedResponse string `json:"abiEncodedResponse"`
 }
 
-// VerifierServer retrieves url and credentials for the verifier's server for the pair of attType and source.
-func (m *Manager) VerifierServer(attTypeAndSource [64]byte) (config.VerifierCredentials, bool) {
-
-	cred, ok := m.verifierServers[attTypeAndSource]
-
-	return cred, ok
-
-}
-
 // ResolveAttestationRequest sends the attestation request to the verifier server with verifierCred and stores the response.
 func ResolveAttestationRequest(att *Attestation, verifierCred config.VerifierCredentials) error {
 	client := &http.Client{}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"flare-common/database"
-	"local/fdc/client/attestation"
+	"flare-common/policy"
 	"local/fdc/client/timing"
 	"time"
 
@@ -68,7 +68,7 @@ func spiTargetedListener(
 	latestQuery time.Time,
 	out chan<- []database.Log,
 ) {
-	lastSigningPolicy, err := attestation.ParseSigningPolicyInitializedLog(lastLog)
+	lastSigningPolicy, err := policy.ParseSigningPolicyInitializedEvent(lastLog)
 	if err != nil {
 		log.Panic("error parsing initial logs:", err)
 	}

@@ -82,7 +82,7 @@ func (m *Manager) handleAttestation(attestation *Attestation) error {
 
 	}
 
-	verifier, ok := m.VerifierServer(attTypeAndSource)
+	typeSourceConfig, ok := m.verifierServers[attTypeAndSource]
 
 	if !ok {
 		attestation.Status = UnsupportedPair
@@ -90,10 +90,10 @@ func (m *Manager) handleAttestation(attestation *Attestation) error {
 
 	}
 
-	attestation.lutLimit = verifier.LutLimit
+	attestation.lutLimit = typeSourceConfig.LutLimit
 	attestation.Status = Processing
 
-	err = ResolveAttestationRequest(attestation, verifier)
+	err = ResolveAttestationRequest(attestation, typeSourceConfig)
 
 	if err != nil {
 		attestation.Status = ProcessError
