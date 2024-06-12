@@ -9,21 +9,20 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"gorm.io/gorm"
 )
 
 // SigningPolicyInitializedListener returns a channel that serves signingPolicyInitialized events emitted by relayContractAddress.
 func SigningPolicyInitializedListener(
 	ctx context.Context,
-	db *gorm.DB,
+	db collectorDB,
 	relayContractAddress common.Address,
 	bufferSize int,
 ) <-chan []database.Log {
 	out := make(chan []database.Log, bufferSize)
 
 	go func() {
-		logs, err := database.FetchLatestLogsByAddressAndTopic0(
-			ctx, db, relayContractAddress, signingPolicyInitializedEventSel, 3,
+		logs, err := db.FetchLatestLogsByAddressAndTopic0(
+			ctx, relayContractAddress, signingPolicyInitializedEventSel, 3,
 		)
 
 		latestQuery := time.Now()
@@ -63,7 +62,7 @@ func SigningPolicyInitializedListener(
 // spiTargetedListener that only starts aggressive queries for new signingPolicyInitialized events a bit before the expected emission and stops once it get one and waits until the next window.
 func spiTargetedListener(
 	ctx context.Context,
-	db *gorm.DB,
+	db collectorDB,
 	relayContractAddress common.Address,
 	lastLog database.Log,
 	latestQuery time.Time,
@@ -112,7 +111,7 @@ func spiTargetedListener(
 
 func queryNextSPI(
 	ctx context.Context,
-	db *gorm.DB,
+	db collectorDB,
 	relayContractAddress common.Address,
 	latestQuery time.Time,
 	out chan<- []database.Log,
@@ -122,8 +121,8 @@ func queryNextSPI(
 	for {
 		now := time.Now()
 
-		logs, err := database.FetchLogsByAddressAndTopic0Timestamp(
-			ctx, db, relayContractAddress, signingPolicyInitializedEventSel, latestQuery.Unix(), now.Unix(),
+		logs, err := db.FetchLogsByAddressAndTopic0Timestamp(
+			ctx, relayContractAddress, signingPolicyInitializedEventSel, latestQuery.Unix(), now.Unix(),
 		)
 
 		latestQuery = now

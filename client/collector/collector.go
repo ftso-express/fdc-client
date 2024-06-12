@@ -118,8 +118,32 @@ func parseFuncSel(sigInput string) ([4]byte, error) {
 	return ret, err
 }
 
-func (r *Collector) Run(ctx context.Context) {
+type collectorDB interface {
+	FetchLatestLogsByAddressAndTopic0(
+		context.Context, common.Address, common.Hash, int,
+	) ([]database.Log, error)
+	FetchLogsByAddressAndTopic0Timestamp(
+		context.Context, common.Address, common.Hash, int64, int64,
+	) ([]database.Log, error)
+}
 
+type collectorDBGorm struct {
+	db *gorm.DB
+}
+
+func (c collectorDBGorm) FetchLatestLogsByAddressAndTopic0(
+	ctx context.Context, addr common.Address, topic0 common.Hash, num int,
+) ([]database.Log, error) {
+	return database.FetchLatestLogsByAddressAndTopic0(ctx, c.db, addr, topic0, num)
+}
+
+func (c collectorDBGorm) FetchLogsByAddressAndTopic0Timestamp(
+	ctx context.Context, addr common.Address, topic0 common.Hash, from, to int64,
+) ([]database.Log, error) {
+	return database.FetchLogsByAddressAndTopic0Timestamp(ctx, c.db, addr, topic0, from, to)
+}
+
+func (r *Collector) Run(ctx context.Context) {
 	state, err := database.FetchState(ctx, r.DB)
 	if err != nil {
 		log.Panic("database error:", err)
@@ -131,7 +155,9 @@ func (r *Collector) Run(ctx context.Context) {
 
 	chooseTrigger := make(chan uint64)
 
-	r.RoundManager.SigningPolicies = SigningPolicyInitializedListener(ctx, r.DB, r.RelayContractAddress, 3)
+	db := collectorDBGorm{db: r.DB}
+
+	r.RoundManager.SigningPolicies = SigningPolicyInitializedListener(ctx, db, r.RelayContractAddress, 3)
 
 	r.RoundManager.BitVotes = BitVoteListener(ctx, r.DB, r.FdcContractAddress, r.submit1Sel, r.Protocol, bitVoteBufferSize, chooseTrigger)
 
