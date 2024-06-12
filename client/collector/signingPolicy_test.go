@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"flare-common/contracts/relay"
 	"flare-common/database"
-	"fmt"
 	"local/fdc/client/collector"
 	"math/big"
 	"testing"
@@ -73,12 +72,6 @@ func newTestLog() (*database.Log, error) {
 	if len(indexedArgs) != 1 {
 		return nil, errors.Errorf("unexpected number of indexed args: %d %+v", len(indexedArgs), indexedArgs)
 	}
-
-	if !indexedArgs[0].Indexed {
-		return nil, errors.Errorf("arg %s is not marked as indexed", indexedArgs[0].Name)
-	}
-
-	fmt.Printf("%+v\n", indexedArgs[0])
 
 	topic1, err := indexedArgs.Pack(big.NewInt(rewardEpochID))
 	if err != nil {
