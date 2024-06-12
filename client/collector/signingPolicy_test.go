@@ -16,29 +16,38 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type mockCollectorDB struct {
+type mockCollectorDBSigningPolicy struct {
 	logs []database.Log
 }
 
-func (c mockCollectorDB) FetchLatestLogsByAddressAndTopic0(
+func (c mockCollectorDBSigningPolicy) FetchLatestLogsByAddressAndTopic0(
 	ctx context.Context, addr common.Address, topic0 common.Hash, num int,
 ) ([]database.Log, error) {
 	return c.logs, nil
 }
 
-func (c mockCollectorDB) FetchLogsByAddressAndTopic0Timestamp(
+func (c mockCollectorDBSigningPolicy) FetchLogsByAddressAndTopic0Timestamp(
 	ctx context.Context, addr common.Address, topic0 common.Hash, from, to int64,
 ) ([]database.Log, error) {
 	return c.logs, nil
 }
 
-func newMockCollectorDB() (*mockCollectorDB, error) {
+func (c mockCollectorDBSigningPolicy) FetchTransactionsByAddressAndSelectorTimestamp(
+	ctx context.Context,
+	toAddress common.Address,
+	functionSel [4]byte,
+	from, to int64,
+) ([]database.Transaction, error) {
+	return nil, errors.New("no implemented")
+}
+
+func newMockCollectorDBSigningPolicy() (*mockCollectorDBSigningPolicy, error) {
 	log, err := newTestLog()
 	if err != nil {
 		return nil, err
 	}
 
-	return &mockCollectorDB{logs: []database.Log{*log}}, nil
+	return &mockCollectorDBSigningPolicy{logs: []database.Log{*log}}, nil
 }
 
 const (
@@ -110,10 +119,10 @@ const (
 )
 
 func TestSPIListener(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	db, err := newMockCollectorDB()
+	db, err := newMockCollectorDBSigningPolicy()
 	require.NoError(t, err)
 
 	relayContractAddr := common.HexToAddress(relayContractAddrHex)

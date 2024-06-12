@@ -122,9 +122,14 @@ type collectorDB interface {
 	FetchLatestLogsByAddressAndTopic0(
 		context.Context, common.Address, common.Hash, int,
 	) ([]database.Log, error)
+
 	FetchLogsByAddressAndTopic0Timestamp(
 		context.Context, common.Address, common.Hash, int64, int64,
 	) ([]database.Log, error)
+
+	FetchTransactionsByAddressAndSelectorTimestamp(
+		context.Context, common.Address, [4]byte, int64, int64,
+	) ([]database.Transaction, error)
 }
 
 type collectorDBGorm struct {
@@ -143,6 +148,17 @@ func (c collectorDBGorm) FetchLogsByAddressAndTopic0Timestamp(
 	return database.FetchLogsByAddressAndTopic0Timestamp(ctx, c.db, addr, topic0, from, to)
 }
 
+func (c collectorDBGorm) FetchTransactionsByAddressAndSelectorTimestamp(
+	ctx context.Context,
+	toAddress common.Address,
+	functionSel [4]byte,
+	from, to int64,
+) ([]database.Transaction, error) {
+	return database.FetchTransactionsByAddressAndSelectorTimestamp(
+		ctx, c.db, toAddress, functionSel, from, to,
+	)
+}
+
 func (r *Collector) Run(ctx context.Context) {
 	state, err := database.FetchState(ctx, r.DB)
 	if err != nil {
@@ -159,7 +175,7 @@ func (r *Collector) Run(ctx context.Context) {
 
 	r.RoundManager.SigningPolicies = SigningPolicyInitializedListener(ctx, db, r.RelayContractAddress, 3)
 
-	r.RoundManager.BitVotes = BitVoteListener(ctx, r.DB, r.FdcContractAddress, r.submit1Sel, r.Protocol, bitVoteBufferSize, chooseTrigger)
+	r.RoundManager.BitVotes = BitVoteListener(ctx, db, r.FdcContractAddress, r.submit1Sel, r.Protocol, bitVoteBufferSize, chooseTrigger)
 
 	r.RoundManager.Requests = AttestationRequestListener(ctx, r.DB, r.FdcContractAddress, requestsBufferSize, requestListenerInterval)
 

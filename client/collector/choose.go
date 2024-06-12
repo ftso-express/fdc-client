@@ -15,7 +15,7 @@ import (
 // Payload for roundId is served whenever a trigger provides a roundId.
 func BitVoteListener(
 	ctx context.Context,
-	db *gorm.DB,
+	db collectorDB,
 	submitContractAddress common.Address,
 	funcSel [4]byte,
 	protocol uint8,
@@ -39,9 +39,8 @@ func BitVoteListener(
 				return
 			}
 
-			txs, err := database.FetchTransactionsByAddressAndSelectorTimestamp(
+			txs, err := db.FetchTransactionsByAddressAndSelectorTimestamp(
 				ctx,
-				db,
 				submitContractAddress,
 				funcSel,
 				int64(timing.ChooseStartTimestamp(int(roundId))),
