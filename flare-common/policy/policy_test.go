@@ -111,7 +111,7 @@ func TestNewSiginigPolicyLogs(t *testing.T) {
 
 		require.Equal(t, test.totalWeight, siginingPolicy.Voters.TotalWeight, fmt.Sprintf("error total weight test %d", i))
 
-		require.Equal(t, test.noOfVoters, len(siginingPolicy.Voters.VoterDataMap), fmt.Sprintf("error number of voters test %d", i))
+		require.Len(t, siginingPolicy.Voters.VoterDataMap, test.noOfVoters, fmt.Sprintf("error number of voters test %d", i))
 
 		voterData, ok := siginingPolicy.Voters.VoterDataMap[common.HexToAddress(test.voter)]
 
@@ -166,5 +166,13 @@ func TestStorage(t *testing.T) {
 	require.True(t, ok)
 
 	require.Equal(t, uint16(65529), policyFromStorage.Voters.TotalWeight)
+
+	removeEmpty := storage.RemoveBeforeVotingRound(12)
+
+	require.Len(t, removeEmpty, 0)
+
+	removeOne := storage.RemoveBeforeVotingRound(667080)
+
+	require.Len(t, removeOne, 1)
 
 }
