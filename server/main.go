@@ -25,6 +25,11 @@ func New(
 	// Create Mux router
 	muxRouter := mux.NewRouter()
 
+	// Register a healthcheck endpoint at the top level.
+	muxRouter.HandleFunc("/health", func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
 	// create api auth middleware
 	keyMiddleware := &restServer.AipKeyAuthMiddleware{
 		KeyName: userServerConfig.ApiKeyName,

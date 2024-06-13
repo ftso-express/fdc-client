@@ -57,6 +57,24 @@ func TestServer(t *testing.T) {
 	})
 	rounds.Store(votingRoundID, round)
 
+	//Wait for the server to be ready.
+	u := url.URL{Scheme: "http", Host: "localhost:8080", Path: "/health"}
+	healthURL := u.String()
+
+	require.Eventually(
+		t,
+		func() bool {
+			rsp, err := http.Get(healthURL)
+			if err != nil {
+				return false
+			}
+
+			return rsp.StatusCode == http.StatusOK
+		},
+		10*time.Second,
+		100*time.Millisecond,
+	)
+
 	t.Run("submit1", func(t *testing.T) {
 		rspData, err := makeGetRequest("submit1", &systemServerConfig, &userServerConfig)
 		require.NoError(t, err)
