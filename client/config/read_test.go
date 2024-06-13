@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"fmt"
 	"local/fdc/client/config"
 	"testing"
 )
@@ -19,7 +18,6 @@ func TestReadUserRaw(t *testing.T) {
 		t.Errorf("error: %s", err)
 	}
 
-	fmt.Printf("cfg.Verifiers: %v\n", cfg.Verifiers)
 	_, err = config.ParseAbi(cfg.Abis)
 
 	if err != nil {
