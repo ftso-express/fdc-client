@@ -119,12 +119,26 @@ func parseFuncSel(sigInput string) ([4]byte, error) {
 }
 
 type collectorDB interface {
+	FetchState(context.Context) (database.State, error)
+
 	FetchLatestLogsByAddressAndTopic0(
 		context.Context, common.Address, common.Hash, int,
 	) ([]database.Log, error)
 
 	FetchLogsByAddressAndTopic0Timestamp(
 		context.Context, common.Address, common.Hash, int64, int64,
+	) ([]database.Log, error)
+
+	FetchLogsByAddressAndTopic0BlockNumber(
+		context.Context, common.Address, common.Hash, int64, int64,
+	) ([]database.Log, error)
+
+	FetchLogsByAddressAndTopic0TimestampToBlockNumber(
+		context.Context,
+		common.Address,
+		common.Hash,
+		int64,
+		int64,
 	) ([]database.Log, error)
 
 	FetchTransactionsByAddressAndSelectorTimestamp(
@@ -136,6 +150,9 @@ type collectorDBGorm struct {
 	db *gorm.DB
 }
 
+func (c collectorDBGorm) FetchState(ctx context.Context) (database.State, error) {
+	return database.FetchState(ctx, c.db)
+}
 func (c collectorDBGorm) FetchLatestLogsByAddressAndTopic0(
 	ctx context.Context, addr common.Address, topic0 common.Hash, num int,
 ) ([]database.Log, error) {
@@ -146,6 +163,26 @@ func (c collectorDBGorm) FetchLogsByAddressAndTopic0Timestamp(
 	ctx context.Context, addr common.Address, topic0 common.Hash, from, to int64,
 ) ([]database.Log, error) {
 	return database.FetchLogsByAddressAndTopic0Timestamp(ctx, c.db, addr, topic0, from, to)
+}
+
+func (c collectorDBGorm) FetchLogsByAddressAndTopic0BlockNumber(
+	ctx context.Context,
+	address common.Address,
+	topic0 common.Hash,
+	from, to int64,
+) ([]database.Log, error) {
+	return database.FetchLogsByAddressAndTopic0BlockNumber(ctx, c.db, address, topic0, from, to)
+}
+
+func (c collectorDBGorm) FetchLogsByAddressAndTopic0TimestampToBlockNumber(
+	ctx context.Context,
+	address common.Address,
+	topic0 common.Hash,
+	from, to int64,
+) ([]database.Log, error) {
+	return database.FetchLogsByAddressAndTopic0TimestampToBlockNumber(
+		ctx, c.db, address, topic0, from, to,
+	)
 }
 
 func (c collectorDBGorm) FetchTransactionsByAddressAndSelectorTimestamp(
@@ -177,7 +214,7 @@ func (r *Collector) Run(ctx context.Context) {
 
 	r.RoundManager.BitVotes = BitVoteListener(ctx, db, r.FdcContractAddress, r.submit1Sel, r.Protocol, bitVoteBufferSize, chooseTrigger)
 
-	r.RoundManager.Requests = AttestationRequestListener(ctx, r.DB, r.FdcContractAddress, requestsBufferSize, requestListenerInterval)
+	r.RoundManager.Requests = AttestationRequestListener(ctx, db, r.FdcContractAddress, requestsBufferSize, requestListenerInterval)
 
 	go r.RoundManager.Run(ctx)
 
