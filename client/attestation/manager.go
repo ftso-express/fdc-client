@@ -44,25 +44,23 @@ type Manager struct {
 }
 
 // NewManager initializes attestation round manager
-func NewManager(configs config.UserConfigRaw) *Manager {
+func NewManager(configs config.UserConfigRaw) (*Manager, error) {
 	rounds := storage.NewCyclic[*Round](roundBuffer)
 	signingPolicyStorage := policy.NewSigningPolicyStorage()
 
 	abiConfig, err := config.ParseAbi(configs.Abis)
 
 	if err != nil {
-		log.Panic("parsing abis:", err)
-
+		return nil, fmt.Errorf("error new manger, abis: %w", err)
 	}
 
 	verifierServers, err := config.ParseVerifiers(configs.Verifiers)
 
 	if err != nil {
-		log.Panic("parsing verifiers:", err)
-
+		return nil, fmt.Errorf("error new manger, verifier servers: %w", err)
 	}
 
-	return &Manager{Rounds: rounds, signingPolicyStorage: signingPolicyStorage, abiConfig: abiConfig, verifierServers: verifierServers}
+	return &Manager{Rounds: rounds, signingPolicyStorage: signingPolicyStorage, abiConfig: abiConfig, verifierServers: verifierServers}, nil
 }
 
 // Run starts processing data received through the manager's channels.

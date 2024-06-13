@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	USER_FILE   string = "../../testFiles/configs/userConfig.toml"   //relative to test
-	SYSTEM_FILE string = "../../testFiles/configs/systemConfig.toml" //relative to test
+	USER_FILE   = "../../testFiles/configs/userConfig.toml"   //relative to test
+	SYSTEM_FILE = "../../testFiles/configs/systemConfig.toml" //relative to test
 )
 
 func TestReadUserRaw(t *testing.T) {

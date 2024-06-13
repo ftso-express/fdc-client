@@ -81,7 +81,11 @@ func New(user config.UserConfigRaw, system config.SystemConfig) *Collector {
 	// requestEventSignature := "251377668af6553101c9bb094ba89c0c536783e005e203625e6cd57345918cc9"
 	// signingPolicySignature := "91d0280e969157fc6c5b8f952f237b03d934b18534dafcac839075bbc33522f8"
 
-	roundManager := attestation.NewManager(user)
+	roundManager, err := attestation.NewManager(user)
+
+	if err != nil {
+		log.Panic("Cannot create manager:", err)
+	}
 
 	db, err := database.Connect(&user.DB)
 	if err != nil {
