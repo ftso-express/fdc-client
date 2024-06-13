@@ -15,12 +15,13 @@ import (
 )
 
 type mockCollectorDB struct {
-	logs []database.Log
-	txs  []database.Transaction
+	logs  []database.Log
+	txs   []database.Transaction
+	state database.State
 }
 
 func (c mockCollectorDB) FetchState(ctx context.Context) (database.State, error) {
-	return database.State{Index: lastQueriedBlock}, nil
+	return c.state, nil
 }
 
 func (c mockCollectorDB) FetchLatestLogsByAddressAndTopic0(
@@ -89,7 +90,11 @@ func newMockCollectorDB() (*mockCollectorDB, error) {
 		return nil, err
 	}
 
-	return &mockCollectorDB{logs: []database.Log{*log}, txs: []database.Transaction{*tx}}, nil
+	state := database.State{Index: lastQueriedBlock}
+
+	return &mockCollectorDB{
+		logs: []database.Log{*log}, txs: []database.Transaction{*tx}, state: state,
+	}, nil
 }
 
 func newTestLog() (*database.Log, error) {

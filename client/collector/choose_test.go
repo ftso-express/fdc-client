@@ -3,6 +3,7 @@ package collector_test
 import (
 	"context"
 	"local/fdc/client/collector"
+	"sync"
 	"testing"
 	"time"
 
@@ -15,6 +16,8 @@ const (
 	submitContractAddrHex = "0x90C6423ec3Ea40591bAdb177171B64c7e6556028"
 	protocol              = 0xff
 	roundID               = 1
+	t0                    = 1658429955
+	roundLengthSeconds    = 90
 )
 
 var (
@@ -60,4 +63,32 @@ func TestBitVoteListener(t *testing.T) {
 		t.Fatal("context cancelled")
 	}
 
+}
+
+func TestPrepareChooseTriggers(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	db, err := newMockCollectorDB()
+	require.NoError(t, err)
+
+	db.state.BlockTimestamp = t0 + roundLengthSeconds
+
+	trigger := make(chan uint64)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		collector.PrepareChooseTriggers(ctx, trigger, db)
+		wg.Done()
+	}()
+
+	select {
+	case roundID := <-trigger:
+		require.Equal(t, uint64(1), roundID)
+
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
 }

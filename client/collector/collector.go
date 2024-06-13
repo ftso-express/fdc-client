@@ -218,6 +218,5 @@ func (r *Collector) Run(ctx context.Context) {
 
 	go r.RoundManager.Run(ctx)
 
-	prepareChooseTriggers(ctx, chooseTrigger, r.DB)
-
+	PrepareChooseTriggers(ctx, chooseTrigger, db)
 }

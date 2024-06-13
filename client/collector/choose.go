@@ -2,13 +2,11 @@ package collector
 
 import (
 	"context"
-	"flare-common/database"
 	"flare-common/payload"
 	"local/fdc/client/timing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"gorm.io/gorm"
 )
 
 // BitVoteListener returns a channel that servers payload data submitted do submitContractAddress to method with funcSig for protocol.
@@ -90,9 +88,9 @@ func BitVoteListener(
 
 }
 
-// prepareChooseTriggers tracks chain timestamps and makes sure that roundId of the round whose choose phase has just ended to the trigger chanel.
-func prepareChooseTriggers(ctx context.Context, trigger chan uint64, db *gorm.DB) {
-	state, err := database.FetchState(ctx, db)
+// PrepareChooseTriggers tracks chain timestamps and makes sure that roundId of the round whose choose phase has just ended to the trigger chanel.
+func PrepareChooseTriggers(ctx context.Context, trigger chan uint64, db collectorDB) {
+	state, err := db.FetchState(ctx)
 	if err != nil {
 		log.Panic("database error:", err)
 	}
@@ -104,11 +102,10 @@ func prepareChooseTriggers(ctx context.Context, trigger chan uint64, db *gorm.DB
 	go configureTicker(ctx, bitVoteTicker, time.Unix(int64(*nextChoosePhaseEndTimestamp), 0), bitVoteHeadStart)
 
 	for {
-
 		ticker := time.NewTicker(databasePollTime)
 
 		for {
-			state, err := database.FetchState(ctx, db)
+			state, err := db.FetchState(ctx)
 			if err != nil {
 				log.Error("database error:", err)
 			} else {
