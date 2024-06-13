@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"local/fdc/client/attestation"
+	"local/fdc/client/config"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
@@ -66,13 +66,9 @@ func TestResponse(t *testing.T) {
 
 		require.NoError(t, err)
 
-		var arg abi.Argument
-
-		err = arg.UnmarshalJSON(abiFile)
+		abi, err := config.ArgumentsFromAbi(abiFile)
 
 		require.NoError(t, err)
-
-		abi := abi.Arguments{arg}
 
 		//isStaticType
 		isStaticType, err := attestation.IsStaticType(resp)

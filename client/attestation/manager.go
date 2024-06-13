@@ -227,29 +227,6 @@ func (m *Manager) OnRequest(request database.Log) error {
 
 }
 
-func attestationFromDatabaseLog(request database.Log) (Attestation, error) {
-
-	requestLog, err := ParseAttestationRequestLog(request)
-
-	if err != nil {
-		return Attestation{}, fmt.Errorf("parsing attestation, parsing log: %w", err)
-	}
-
-	roundId := timing.RoundIdForTimestamp(request.Timestamp)
-
-	index := IndexLog{request.BlockNumber, request.LogIndex}
-
-	attestation := Attestation{
-		Index:   index,
-		RoundId: roundId,
-		Request: requestLog.Data,
-		Fee:     requestLog.Fee,
-		Status:  Waiting,
-	}
-
-	return attestation, nil
-}
-
 // OnSigningPolicy parsed SigningPolicyInitialized log and stores it into the signingPolicyStorage.
 func (m *Manager) OnSigningPolicy(initializedPolicy database.Log) error {
 

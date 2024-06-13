@@ -24,21 +24,17 @@ func ParseAbi(config AbiConfigUnparsed) (AbiConfig, error) {
 			return AbiConfig{}, err
 		}
 
-		var arg abi.Argument
-
 		file, err := os.ReadFile(v)
 
 		if err != nil {
 			return AbiConfig{}, errorf.ReadingFile(v, err)
 		}
 
-		err = arg.UnmarshalJSON(file)
+		args, err := ArgumentsFromAbi(file)
 
 		if err != nil {
-			return AbiConfig{}, errorf.Unmarshal(v, err)
+			return AbiConfig{}, fmt.Errorf("retrieving arguments form %s", v)
 		}
-
-		args := abi.Arguments{arg}
 
 		arguments[attType] = args
 
@@ -47,6 +43,20 @@ func ParseAbi(config AbiConfigUnparsed) (AbiConfig, error) {
 	}
 
 	return AbiConfig{arguments, abis}, nil
+
+}
+
+func ArgumentsFromAbi(abiBytes []byte) (abi.Arguments, error) {
+
+	var arg abi.Argument
+
+	err := arg.UnmarshalJSON(abiBytes)
+
+	if err != nil {
+		return abi.Arguments{}, err
+	}
+
+	return abi.Arguments{arg}, nil
 
 }
 

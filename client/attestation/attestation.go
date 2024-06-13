@@ -54,8 +54,31 @@ type Attestation struct {
 	Status    Status
 	Consensus bool
 	Hash      common.Hash
-	abi       abi.Arguments
-	lutLimit  uint64
+	Abi       abi.Arguments
+	LutLimit  uint64
+}
+
+func attestationFromDatabaseLog(request database.Log) (Attestation, error) {
+
+	requestLog, err := ParseAttestationRequestLog(request)
+
+	if err != nil {
+		return Attestation{}, fmt.Errorf("parsing attestation, parsing log: %w", err)
+	}
+
+	roundId := timing.RoundIdForTimestamp(request.Timestamp)
+
+	index := IndexLog{request.BlockNumber, request.LogIndex}
+
+	attestation := Attestation{
+		Index:   index,
+		RoundId: roundId,
+		Request: requestLog.Data,
+		Fee:     requestLog.Fee,
+		Status:  Waiting,
+	}
+
+	return attestation, nil
 }
 
 // handleAttestation sends the attestation request to the correct verifier server and validates the response.
@@ -74,7 +97,7 @@ func (m *Manager) handleAttestation(attestation *Attestation) error {
 
 	var ok bool
 
-	attestation.abi, ok = m.abiConfig.ResponseArguments[attType]
+	attestation.Abi, ok = m.abiConfig.ResponseArguments[attType]
 
 	if !ok {
 		attestation.Status = UnsupportedPair
@@ -90,7 +113,7 @@ func (m *Manager) handleAttestation(attestation *Attestation) error {
 
 	}
 
-	attestation.lutLimit = typeSourceConfig.LutLimit
+	attestation.LutLimit = typeSourceConfig.LutLimit
 	attestation.Status = Processing
 
 	err = ResolveAttestationRequest(attestation, typeSourceConfig)
@@ -124,12 +147,12 @@ func (a *Attestation) validateResponse() error {
 		return errors.New("no mic in request")
 	}
 
-	micRes, err := a.Response.ComputeMic(a.abi)
+	micRes, err := a.Response.ComputeMic(a.Abi)
 
 	if err != nil {
 		a.Status = ProcessError
 
-		return errors.New("cannot compute mic")
+		return fmt.Errorf("cannot compute mic %w", err)
 	}
 
 	if micReq != micRes {
@@ -148,7 +171,7 @@ func (a *Attestation) validateResponse() error {
 
 	roundStart := timing.ChooseStartTimestamp(int(a.RoundId))
 
-	if !validLUT(lut, a.lutLimit, roundStart) {
+	if !validLUT(lut, a.LutLimit, roundStart) {
 		a.Status = InvalidLUT
 		return errors.New("lut too old")
 	}
