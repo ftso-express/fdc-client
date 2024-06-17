@@ -2,6 +2,7 @@ package attestation_test
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"local/fdc/client/attestation"
 	"math/big"
@@ -407,30 +408,28 @@ func TestConsensusMissingAttestation(t *testing.T) {
 
 }
 
-func TestConsensusMixed(t *testing.T) {
+func createWeightedBitVotes(honestWeightPct, noOfAttestations int) (*attestation.ConsensusBitVoteInput, error) {
+
+	if honestWeightPct > 100 {
+		return nil, errors.New("honestWeightPct to high")
+	}
 
 	weightedBitvotes := []*attestation.WeightedBitVote{}
 
 	totalWeight := uint16(0)
 
-	for j := 0; j < 100; j++ {
+	attsHonest := setAttestations(noOfAttestations, []int{2, 3})
+	for i := 0; i < honestWeightPct; i++ {
 
-		var atts []*attestation.Attestation
+		bitVote, err := attestation.BitVoteFromAttestations(attsHonest)
 
-		if 65 > j {
+		if err != nil {
+			return nil, err
 
-			atts = setAttestations(100, []int{2, 3})
-		} else {
-
-			atts = setAttestations(100, []int{2, 7})
 		}
 
-		bitVote, err := attestation.BitVoteFromAttestations(atts)
-
-		require.NoError(t, err)
-
 		c := new(attestation.WeightedBitVote)
-		c.Index = j
+		c.Index = i
 		c.Weight = uint16(1)
 		totalWeight += c.Weight
 		c.BitVote = bitVote
@@ -439,26 +438,54 @@ func TestConsensusMixed(t *testing.T) {
 
 	}
 
-	atts := setAttestations(100, []int{2, 3})
-	start := time.Now()
-	bv, err := attestation.ConsensusBitVote(&attestation.ConsensusBitVoteInput{
+	for i := honestWeightPct; i < 100; i++ {
+
+		attsFaulty := setAttestations(noOfAttestations, []int{2, i})
+
+		bitVote, err := attestation.BitVoteFromAttestations(attsFaulty)
+
+		if err != nil {
+			return nil, err
+
+		}
+
+		c := new(attestation.WeightedBitVote)
+		c.Index = i
+		c.Weight = uint16(1)
+		totalWeight += c.Weight
+		c.BitVote = bitVote
+
+		weightedBitvotes = append(weightedBitvotes, c)
+
+	}
+
+	return &attestation.ConsensusBitVoteInput{
 		RoundID:          1,
 		WeightedBitVotes: weightedBitvotes,
 		TotalWeight:      totalWeight,
-		Attestations:     atts,
-	})
+		Attestations:     attsHonest,
+	}, nil
+
+}
+
+func TestConsensusMixed(t *testing.T) {
+
+	data, err := createWeightedBitVotes(75, 100)
+
+	require.NoError(t, err)
+
+	start := time.Now()
+	bv, err := attestation.ConsensusBitVote(data)
 
 	fmt.Printf("time passed: %v\n", time.Since(start).Seconds())
 
 	require.NoError(t, err)
 
-	fmt.Printf("bitVote 1: %v\n", bv.BitVector.Text(10))
-
-	bitVote, err := attestation.BitVoteFromAttestations(atts)
-
-	fmt.Printf("bitVote 2: %v\n", bitVote.BitVector.Text(10))
+	bitVote, err := attestation.BitVoteFromAttestations(data.Attestations)
 
 	require.NoError(t, err)
+
+	require.Equal(t, bitVote, bv)
 
 }
 
