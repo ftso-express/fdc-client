@@ -59,7 +59,7 @@ func SigningPolicyInitializedListener(
 
 }
 
-// spiTargetedListener that only starts aggressive queries for new signingPolicyInitialized events a bit before the expected emission and stops once it get one and waits until the next window.
+// spiTargetedListener that only starts aggressive queries for new signingPolicyInitialized events a bit before the expected emission and stops once it gets one and waits until the next window.
 func spiTargetedListener(
 	ctx context.Context,
 	db collectorDB,

@@ -9,8 +9,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// BitVoteListener returns a channel that servers payload data submitted do submitContractAddress to method with funcSig for protocol.
-// Payload for roundId is served whenever a trigger provides a roundId.
+// BitVoteListener returns a channel that servers payloads data submitted do submitContractAddress to method with funcSig for protocol.
+// Payloads for roundId are served whenever a trigger provides a roundId.
 func BitVoteListener(
 	ctx context.Context,
 	db collectorDB,
@@ -88,7 +88,7 @@ func BitVoteListener(
 
 }
 
-// PrepareChooseTriggers tracks chain timestamps and makes sure that roundId of the round whose choose phase has just ended to the trigger chanel.
+// PrepareChooseTriggers tracks chain timestamps and passes roundId of the round whose choose phase has just ended to the trigger channel.
 func PrepareChooseTriggers(ctx context.Context, trigger chan uint64, db collectorDB) {
 	state, err := db.FetchState(ctx)
 	if err != nil {
@@ -152,8 +152,8 @@ func configureTicker(ctx context.Context, ticker *time.Ticker, start time.Time, 
 	}
 }
 
-// tryTriggerBitVote checks whether the blockchain timestamp has surpassed end of choose phase or local time has surpassed it for more than bitVoteOffChainTriggerSeconds.
-// If conditions are met, roundId is passed to the chanel c.
+// tryTriggerBitVote checks whether the blockchain timestamp has surpassed the end of choose phase or local time has surpassed it for more than bitVoteOffChainTriggerSeconds.
+// If conditions are met, roundId is passed to the channel c.
 func tryTriggerBitVote(
 	ctx context.Context,
 	nextChoosePhaseRoundIDEnd *int,
