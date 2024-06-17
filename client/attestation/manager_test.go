@@ -2,10 +2,13 @@ package attestation_test
 
 import (
 	"flare-common/database"
+	"flare-common/payload"
+	"fmt"
 	"local/fdc/client/attestation"
 	"local/fdc/client/config"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,6 +27,56 @@ var policyLog = database.Log{
 	BlockNumber:     16542520,
 }
 
+var bitVoteMessageTooSoon = payload.Message{
+	From:             common.HexToAddress("0x8fe15e1048f90bc028a60007c7d5b55d9d20de66"),
+	Selector:         "6c532fae",
+	VotingRound:      664082,
+	Timestamp:        1718192013,
+	BlockNumber:      16542630,
+	TransactionIndex: 10,
+	Payload:          []byte{664082 % 256, 0, 10, 2, 93},
+}
+
+var bitVoteMessageTooLate = payload.Message{
+	From:             common.HexToAddress("0x8fe15e1048f90bc028a60007c7d5b55d9d20de66"),
+	Selector:         "6c532fae",
+	VotingRound:      664082,
+	Timestamp:        1718197455,
+	BlockNumber:      16542630,
+	TransactionIndex: 10,
+	Payload:          []byte{664082 % 256, 0, 10, 2, 93},
+}
+
+var bitVoteMessageWrongRoundCheck = payload.Message{
+	From:             common.HexToAddress("0x8fe15e1048f90bc028a60007c7d5b55d9d20de66"),
+	Selector:         "6c532fae",
+	VotingRound:      664082,
+	Timestamp:        1718197455,
+	BlockNumber:      16542630,
+	TransactionIndex: 10,
+	Payload:          []byte{664081 % 256, 0, 10, 2, 93},
+}
+
+var bitVoteMessageBadVoter = payload.Message{
+	From:             common.HexToAddress("0x8fe15e1048f90bc028a60007c7d5b55d9d20de60"),
+	Selector:         "6c532fae",
+	VotingRound:      664082,
+	Timestamp:        1718197405,
+	BlockNumber:      16542630,
+	TransactionIndex: 10,
+	Payload:          []byte{664082 % 256, 0, 10, 2, 93},
+}
+
+var bitVoteMessage = payload.Message{
+	From:             common.HexToAddress("0x8fe15e1048f90bc028a60007c7d5b55d9d20de66"),
+	Selector:         "6c532fae",
+	VotingRound:      664082,
+	Timestamp:        1718197405,
+	BlockNumber:      16542630,
+	TransactionIndex: 10,
+	Payload:          []byte{664082 % 256, 0, 10, 2, 93},
+}
+
 func TestManager(t *testing.T) {
 
 	cfg, err := config.ReadUserRaw(USER_FILE)
@@ -37,5 +90,26 @@ func TestManager(t *testing.T) {
 	err = mngr.OnSigningPolicy(policyLog)
 
 	require.NoError(t, err)
+
+	for i, badBitVote := range []payload.Message{
+		bitVoteMessageTooLate,
+		bitVoteMessageTooSoon,
+		bitVoteMessageWrongRoundCheck,
+		bitVoteMessageBadVoter,
+	} {
+
+		err = mngr.OnBitVote(badBitVote)
+
+		require.Error(t, err, fmt.Sprintf("error in bad bitVote %d", i))
+
+	}
+
+	err = mngr.OnBitVote(bitVoteMessage)
+
+	require.NoError(t, err)
+
+	_, ok := mngr.Rounds.Get(664082)
+
+	require.True(t, ok)
 
 }
