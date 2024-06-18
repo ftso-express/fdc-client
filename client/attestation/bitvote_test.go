@@ -426,7 +426,7 @@ func TestConsensusMixed(t *testing.T) {
 		}
 
 		bitVote, err := attestation.BitVoteFromAttestations(atts)
-
+		fmt.Println(bitVote)
 		require.NoError(t, err)
 
 		c := new(attestation.WeightedBitVote)
@@ -579,7 +579,7 @@ func BenchmarkConsensusMixed(b *testing.B) {
 
 			atts = setAttestations(20, []int{2, 7})
 		}
-
+		fmt.Println()
 		bitVote, err := attestation.BitVoteFromAttestations(atts)
 
 		require.NoError(b, err)
