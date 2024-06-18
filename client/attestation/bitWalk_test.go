@@ -10,30 +10,37 @@ import (
 )
 
 func TestBitWalk(t *testing.T) {
-	numBits := 100
+	numAttestations := 100
 	numVoters := 100
+	weightedBitvotes := []*attestation.WeightedBitVote{}
 
-	bitvotes := []*attestation.BitVote{}
 	for j := 0; j < numVoters; j++ {
-
 		var atts []*attestation.Attestation
 
 		if 0.65*float64(numVoters) > float64(j) {
-
-			atts = setAttestations(numBits, []int{2, 3})
+			atts = setAttestations(numAttestations, []int{2, 3})
 		} else {
-
-			atts = setAttestations(numBits, []int{2, 7})
+			atts = setAttestations(numAttestations, []int{2, 7})
 		}
 
 		bitVote, err := attestation.BitVoteFromAttestations(atts)
 		require.NoError(t, err)
 
-		bitvotes = append(bitvotes, &bitVote)
+		c := new(attestation.WeightedBitVote)
+		c.Index = j
+		c.Weight = uint16(1)
+		c.BitVote = bitVote
+
+		weightedBitvotes = append(weightedBitvotes, c)
+	}
+
+	fees := make([]int, numAttestations)
+	for j := 0; j < numAttestations; j++ {
+		fees[j] = 10
 	}
 
 	start := time.Now()
-	solution := attestation.RandomWalk(bitvotes, 100000, numBits)
+	solution := attestation.MetropolisHastingsSampling(weightedBitvotes, fees, 100000)
 
 	fmt.Println("time passed:", time.Since(start).Seconds())
 	fmt.Println("solution", solution)
