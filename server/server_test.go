@@ -51,7 +51,7 @@ func TestServer(t *testing.T) {
 
 	round := attestation.CreateRound(votingRoundID, policy.NewVoterSet(nil, nil))
 	round.Attestations = append(round.Attestations, &attestation.Attestation{
-		RoundId:   uint32(votingRoundID),
+		RoundId:   votingRoundID,
 		Consensus: true,
 		Status:    attestation.Success,
 	})

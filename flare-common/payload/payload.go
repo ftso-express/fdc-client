@@ -21,7 +21,7 @@ type Message struct {
 	From             common.Address
 	Selector         string // function selector
 	Protocol         uint8  // id of the protocol
-	VotingRound      uint32
+	VotingRound      uint64
 	Timestamp        uint64
 	BlockNumber      uint64
 	TransactionIndex uint64
@@ -64,7 +64,7 @@ func ExtractPayloads(tx *database.Transaction) (map[uint8]Message, error) {
 
 		payload := data[7:end]
 
-		message := Message{common.HexToAddress(tx.FromAddress), tx.FunctionSig, protocol, votingRound, tx.Timestamp, tx.BlockNumber, tx.TransactionIndex, length, payload}
+		message := Message{common.HexToAddress(tx.FromAddress), tx.FunctionSig, protocol, uint64(votingRound), tx.Timestamp, tx.BlockNumber, tx.TransactionIndex, length, payload}
 
 		messages[protocol] = message
 

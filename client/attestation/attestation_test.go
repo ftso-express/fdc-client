@@ -79,7 +79,7 @@ func TestValidateResponse(t *testing.T) {
 		response string
 		abiFile  string
 		lutLimit uint64
-		roundId  uint32
+		roundId  uint64
 		fee      int64
 	}{
 		{
@@ -145,7 +145,7 @@ func TestValidateResponseFail(t *testing.T) {
 		response string
 		abiFile  string
 		lutLimit uint64
-		roundId  uint32
+		roundId  uint64
 		fee      int64
 		status   attestation.Status
 	}{

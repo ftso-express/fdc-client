@@ -41,8 +41,8 @@ func BitVoteListener(
 				ctx,
 				submitContractAddress,
 				funcSel,
-				int64(timing.ChooseStartTimestamp(int(roundId))),
-				int64(timing.ChooseEndTimestamp(int(roundId))),
+				int64(timing.ChooseStartTimestamp(roundId)),
+				int64(timing.ChooseEndTimestamp(roundId)),
 			)
 			if err != nil {
 				log.Error("fetch txs error:", err)
@@ -156,7 +156,7 @@ func configureTicker(ctx context.Context, ticker *time.Ticker, start time.Time, 
 // If conditions are met, roundId is passed to the channel c.
 func tryTriggerBitVote(
 	ctx context.Context,
-	nextChoosePhaseRoundIDEnd *int,
+	nextChoosePhaseRoundIDEnd *uint64,
 	nextChoosePhaseEndTimestamp *uint64,
 	currentBlockTime uint64,
 	c chan uint64,
@@ -173,7 +173,7 @@ func tryTriggerBitVote(
 			return false
 		}
 
-		*nextChoosePhaseRoundIDEnd, *nextChoosePhaseEndTimestamp = timing.NextChoosePhaseEnd(currentBlockTime)
+		*nextChoosePhaseRoundIDEnd, *nextChoosePhaseEndTimestamp = timing.NextChooseEnd(currentBlockTime)
 
 		return true
 	}

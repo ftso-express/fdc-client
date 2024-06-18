@@ -24,7 +24,11 @@ func AttestationRequestListener(
 
 		trigger := time.NewTicker(ListenerInterval)
 
-		_, startTimestamp := timing.LastCollectPhaseStart(uint64(time.Now().Unix()))
+		_, startTimestamp, err := timing.LastCollectPhaseStart(uint64(time.Now().Unix()))
+
+		if err != nil {
+			log.Panic("time:", err)
+		}
 
 		state, err := db.FetchState(ctx)
 		if err != nil {

@@ -47,7 +47,7 @@ func earlierLog(a, b IndexLog) bool {
 
 type Attestation struct {
 	Index     IndexLog
-	RoundId   uint32
+	RoundId   uint64
 	Request   Request
 	Response  Response
 	Fee       *big.Int
@@ -66,7 +66,11 @@ func attestationFromDatabaseLog(request database.Log) (Attestation, error) {
 		return Attestation{}, fmt.Errorf("parsing attestation, parsing log: %w", err)
 	}
 
-	roundId := timing.RoundIdForTimestamp(request.Timestamp)
+	roundId, err := timing.RoundIdForTimestamp(request.Timestamp)
+
+	if err != nil {
+		return Attestation{}, fmt.Errorf("parsing attestation: %w", err)
+	}
 
 	index := IndexLog{request.BlockNumber, request.LogIndex}
 
@@ -169,7 +173,7 @@ func (a *Attestation) validateResponse() error {
 		return errors.New("cannot read lut")
 	}
 
-	roundStart := timing.ChooseStartTimestamp(int(a.RoundId))
+	roundStart := timing.ChooseStartTimestamp(uint64(a.RoundId))
 
 	if !validLUT(lut, a.LutLimit, roundStart) {
 		a.Status = InvalidLUT
