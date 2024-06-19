@@ -4,6 +4,8 @@ import (
 	"flare-common/database"
 	"flare-common/payload"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 var tx = &database.Transaction{
@@ -26,9 +28,7 @@ func TestExtractPayloads(t *testing.T) {
 
 	payloadsOne, err := payload.ExtractPayloads(tx)
 
-	if err != nil {
-		t.Errorf("unexpected error: %s", err)
-	}
+	require.NoError(t, err)
 
 	if len(payloadsOne) != 1 {
 		t.Errorf("to many payloads")
@@ -140,33 +140,21 @@ func TestExtractPayloadsError(t *testing.T) {
 
 	_, err := payload.ExtractPayloads(txError1)
 
-	if err == nil {
-		t.Errorf("no error 1: %s", err)
-	}
+	require.NoError(t, err)
 
 	_, err = payload.ExtractPayloads(txError2)
 
-	if err == nil {
-		t.Errorf("no error 2: %s", err)
-	}
-
+	require.NoError(t, err)
 	_, err = payload.ExtractPayloads(txError3)
 
-	if err == nil {
-		t.Errorf("no error 3: %s", err)
-	}
-
+	require.NoError(t, err)
 	_, err = payload.ExtractPayloads(txError4)
 
-	if err == nil {
-		t.Errorf("no error 4: %s", err)
-	}
+	require.NoError(t, err)
 
 	_, err = payload.ExtractPayloads(txError5)
 
-	if err == nil {
-		t.Errorf("no error 5: %s", err)
-	}
+	require.NoError(t, err)
 }
 
 var txMultiple = &database.Transaction{
@@ -189,10 +177,7 @@ func TestExtractPayloadsMultiple(t *testing.T) {
 
 	payloadsMultiple, err := payload.ExtractPayloads(txMultiple)
 
-	if err != nil {
-		t.Errorf("unexpected error: %s", err)
-	}
-
+	require.NoError(t, err)
 	if len(payloadsMultiple) != 2 {
 		t.Errorf("to many payloads")
 	}

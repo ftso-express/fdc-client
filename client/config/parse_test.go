@@ -1,9 +1,12 @@
 package config_test
 
 import (
+	"fmt"
 	"local/fdc/client/config"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestStringToByte32(t *testing.T) {
@@ -12,30 +15,19 @@ func TestStringToByte32(t *testing.T) {
 
 	bytes, err := config.StringToByte32(a)
 
-	if err != nil {
-		t.Errorf("unexpected error %s", err)
-	}
+	require.NoError(t, err)
 
 	result := [32]byte{49, 50, 33, 65, 98, 40, 32, 41}
 
-	if bytes != result {
-		t.Errorf("bytes %v do not match the expected result %v", bytes, result)
-
-	}
+	require.Equal(t, result, bytes, fmt.Sprintf("bytes %v do not match expectation, %v", bytes, result))
 
 	c := strings.Repeat("A", 33)
 
 	bytes, err = config.StringToByte32(c)
 
-	if err == nil {
-		t.Errorf("unexpected fail error %s", err)
-	}
+	require.Error(t, err)
 
-	if bytes != [32]byte{} {
-
-		t.Errorf("bytes %v do not match the expected result %v", bytes, [32]byte{})
-
-	}
+	require.Equal(t, [32]byte{}, bytes, fmt.Sprintf("bytes %v do not match expectation, %v", bytes, result))
 
 }
 
@@ -46,9 +38,7 @@ func TestTwoStringsToByte64(t *testing.T) {
 
 	bytes, err := config.TwoStringsToByte64(a, b)
 
-	if err != nil {
-		t.Errorf("unexpected error %s", err)
-	}
+	require.NoError(t, err)
 
 	result := [64]byte{49, 50, 33, 65, 98, 40, 32, 41}
 	result[32] = 49
@@ -63,12 +53,33 @@ func TestTwoStringsToByte64(t *testing.T) {
 
 func TestWhiteSpaceStrip(t *testing.T) {
 
-	const a = "a s\vd \t ad \f\n YY \n"
+	tests := []struct {
+		input  string
+		output string
+	}{
+		{
+			input:  "a s\vd \t ad \f\n YY \n",
+			output: "asdadYY",
+		},
+		{
+			input:  "    ",
+			output: "",
+		},
+		{
+			input:  "  1  ",
+			output: "1",
+		},
+		{
+			input:  "  \n\f  ",
+			output: "",
+		},
+	}
 
-	aStriped := config.WhiteSpaceStrip(a)
+	for i, test := range tests {
 
-	if aStriped != "asdadYY" {
-		t.Errorf("expected %s, got %s", "asdadYY", aStriped)
+		output := config.WhiteSpaceStrip(test.input)
+
+		require.Equal(t, test.output, output, fmt.Sprintf("wrong output test %d", i))
 	}
 
 }
