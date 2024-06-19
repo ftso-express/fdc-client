@@ -95,7 +95,7 @@ func PrepareChooseTriggers(ctx context.Context, trigger chan uint64, db collecto
 		log.Panic("database error:", err)
 	}
 
-	nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp := timing.NextChoosePhaseEndPointers(state.BlockTimestamp)
+	nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp := timing.NextChoosePhasePtr(state.BlockTimestamp)
 
 	bitVoteTicker := time.NewTicker(time.Hour) // timer will be reset to 90 seconds
 

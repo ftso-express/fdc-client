@@ -64,7 +64,7 @@ func init() {
 	err = godotenv.Load(envPath)
 
 	if err != nil {
-		log.Panicf("timing: error reading .env: %w", err)
+		log.Error("timing: error reading .env: %w", err)
 
 	}
 
@@ -122,9 +122,9 @@ func NextChooseEnd(t uint64) (uint64, uint64) {
 	return roundId, endTimestamp
 }
 
-func NextChoosePhaseEndPointers(t uint64) (*uint64, *uint64) {
-	roundId := (t - ChainConstants.T0 + OffsetSec - ChooseDurationSec) / CollectDurationSec
-	endTimestamp := ChooseEndTimestamp(roundId)
+func NextChoosePhasePtr(t uint64) (*uint64, *uint64) {
+
+	roundId, endTimestamp := NextChooseEnd(t)
 
 	return &roundId, &endTimestamp
 }
