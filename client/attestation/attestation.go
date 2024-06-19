@@ -187,7 +187,7 @@ func (a *Attestation) validateResponse() error {
 		return errors.New("cannot read lut")
 	}
 
-	roundStart := timing.ChooseStartTimestamp(uint64(a.RoundId))
+	roundStart := timing.ChooseStartTimestamp(a.RoundId)
 
 	if !validLUT(lut, a.LutLimit, roundStart) {
 		a.Status = InvalidLUT

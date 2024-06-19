@@ -64,7 +64,17 @@ func ExtractPayloads(tx *database.Transaction) (map[uint8]Message, error) {
 
 		payload := data[7:end]
 
-		message := Message{common.HexToAddress(tx.FromAddress), tx.FunctionSig, protocol, uint64(votingRound), tx.Timestamp, tx.BlockNumber, tx.TransactionIndex, length, payload}
+		message := Message{
+			From:             common.HexToAddress(tx.FromAddress),
+			Selector:         tx.FunctionSig,
+			Protocol:         protocol,
+			VotingRound:      uint64(votingRound),
+			Timestamp:        tx.Timestamp,
+			BlockNumber:      tx.BlockNumber,
+			TransactionIndex: tx.TransactionIndex,
+			Length:           length,
+			Payload:          payload,
+		}
 
 		messages[protocol] = message
 
