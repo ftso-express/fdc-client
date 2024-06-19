@@ -39,7 +39,7 @@ type Manager struct {
 	BitVotes             <-chan payload.Round
 	SigningPolicies      <-chan []database.Log
 	signingPolicyStorage *policy.SigningPolicyStorage
-	verifierServers      map[[64]byte]config.VerifierCredentials // the keys are AttestationTypeAndSource
+	verifierServers      config.VerifierConfig // the keys are AttestationTypeAndSource
 	abiConfig            config.AbiConfig
 }
 

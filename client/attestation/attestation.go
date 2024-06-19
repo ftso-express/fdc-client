@@ -5,6 +5,7 @@ import (
 	"flare-common/database"
 	"flare-common/events"
 	"fmt"
+	"local/fdc/client/config"
 	"local/fdc/client/timing"
 	hub "local/fdc/contracts/FDC"
 	"math/big"
@@ -87,38 +88,13 @@ func attestationFromDatabaseLog(request database.Log) (Attestation, error) {
 
 // handleAttestation sends the attestation request to the correct verifier server and validates the response.
 func (m *Manager) handleAttestation(attestation *Attestation) error {
-	attTypeAndSource, err := attestation.Request.AttestationTypeAndSource()
+
+	typeSourceConfig, err := attestation.prepareRequest(m.verifierServers, m.abiConfig.ResponseArguments)
+
 	if err != nil {
-		attestation.Status = ProcessError
-		return err
-	}
-
-	attType, err := attestation.Request.AttestationType()
-	if err != nil {
-		attestation.Status = ProcessError
-		return err
-	}
-
-	var ok bool
-
-	attestation.Abi, ok = m.abiConfig.ResponseArguments[attType]
-
-	if !ok {
-		attestation.Status = UnsupportedPair
-		return fmt.Errorf("handle attestation: no abi for: %s", string(attType[:]))
+		return fmt.Errorf("handleAttestation: %w", err)
 
 	}
-
-	typeSourceConfig, ok := m.verifierServers[attTypeAndSource]
-
-	if !ok {
-		attestation.Status = UnsupportedPair
-		return fmt.Errorf("handle attestation: no verifier for pair %s %s", string(attTypeAndSource[0:32]), string(attTypeAndSource[32:64]))
-
-	}
-
-	attestation.LutLimit = typeSourceConfig.LutLimit
-	attestation.Status = Processing
 
 	err = ResolveAttestationRequest(attestation, typeSourceConfig)
 
@@ -137,6 +113,44 @@ func (m *Manager) handleAttestation(attestation *Attestation) error {
 
 		return nil
 	}
+}
+
+func (a *Attestation) prepareRequest(verifierServers config.VerifierConfig, responseArguments map[[32]byte]abi.Arguments) (config.VerifierCredentials, error) {
+
+	attTypeAndSource, err := a.Request.AttestationTypeAndSource()
+	if err != nil {
+		a.Status = ProcessError
+		return config.VerifierCredentials{}, err
+	}
+
+	attType, err := a.Request.AttestationType()
+	if err != nil {
+		a.Status = ProcessError
+		return config.VerifierCredentials{}, err
+	}
+	var ok bool
+
+	a.Abi, ok = responseArguments[attType]
+
+	if !ok {
+		a.Status = UnsupportedPair
+		return config.VerifierCredentials{}, fmt.Errorf("prepare request: no abi for: %s", string(attType[:]))
+
+	}
+
+	typeSourceConfig, ok := verifierServers[attTypeAndSource]
+
+	if !ok {
+		a.Status = UnsupportedPair
+		return config.VerifierCredentials{}, fmt.Errorf("prepare request: no verifier for pair %s %s", string(attTypeAndSource[0:32]), string(attTypeAndSource[32:64]))
+
+	}
+
+	a.LutLimit = typeSourceConfig.LutLimit
+	a.Status = Processing
+
+	return typeSourceConfig, nil
+
 }
 
 // validateResponse checks the MIC and LUT of the attestation. If both conditions pass, hash is computed and added to the attestation.
