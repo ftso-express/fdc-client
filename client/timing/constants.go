@@ -2,10 +2,7 @@ package timing
 
 import (
 	"flare-common/logger"
-	"flare-common/paths"
-	"os"
-
-	"github.com/joho/godotenv"
+	"strings"
 )
 
 const (
@@ -23,7 +20,7 @@ const (
 
 var log = logger.GetLogger()
 
-var ChainConstants Constants
+var ChainConstants Constants = costonTiming
 
 type Constants struct {
 	T0                uint64
@@ -50,32 +47,19 @@ var flareTiming = Constants{
 	T0:                t0SGB,
 }
 
-func init() {
+func Set(chain string) {
 
-	envPath, err := paths.LocalToAbsolute("../../.env")
-
-	if err != nil {
-		log.Panicf("timing: error getting path to .env: %w", err)
-
-	}
-
-	err = godotenv.Load(envPath)
-
-	if err != nil {
-		log.Error("timing: error reading .env: %w", err)
-
-	}
-
-	switch chain := os.Getenv("CHAIN"); chain {
-	case "COSTON":
+	switch chainLC := strings.ToLower(chain); chainLC {
+	case "coston":
 		ChainConstants = costonTiming
-	case "COSTON2":
+	case "coston2":
 		ChainConstants = coston2Timing
-	case "SONGBIRD":
+	case "songbird":
 		ChainConstants = songbirdTiming
-	case "FLARE":
+	case "flare":
 		ChainConstants = flareTiming
 	default:
+		log.Warnf("No timing for chain %s. Switching to coston timing", chainLC)
 		ChainConstants = costonTiming
 
 	}

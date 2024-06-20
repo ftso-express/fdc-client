@@ -1,3 +1,8 @@
+
+# options are: "coston", "songbird", "coston2", "flare"
+chain = "coston"
+
+
 [db]
 host = "localhost"
 port = 3306
@@ -5,6 +10,13 @@ database = "flare_ftso_indexer"
 username = "root"
 password = "root"
 log_queries = false
+
+
+[rest_server]
+# Addr optionally specifies the TCP address for the server to listen on, in the form "host:port". If empty, ":http" (port 80) is used. The service names are defined in RFC 6335 and assigned by IANA. See net.Dial for details of the address format.
+addr = ":8080"
+api_key_name = "X-API-KEY"
+api_keys = ["12345", "123456"]
 
 
 # # Verifiers for BTC

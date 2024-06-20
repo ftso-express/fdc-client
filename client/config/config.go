@@ -14,6 +14,7 @@ type GlobalConfig struct {
 }
 
 type userConfigCommon struct {
+	Chain      string               `toml:"chain"`
 	DB         database.DBConfig    `toml:"db"`
 	RestServer UserRestServerConfig `toml:"rest_server"`
 }

@@ -25,6 +25,8 @@ func TestReadUserRaw(t *testing.T) {
 
 	require.NoError(t, err)
 
+	require.Equal(t, "coston", cfg.Chain)
+
 }
 
 func TestReadSystem(t *testing.T) {
