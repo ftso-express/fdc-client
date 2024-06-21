@@ -34,12 +34,12 @@ func init() {
 
 type Manager struct {
 	Rounds               storage.Cyclic[*Round] // cyclically cached rounds with buffer roundBuffer.
-	lastRoundCreated     uint32
+	lastRoundCreated     uint64
 	Requests             <-chan []database.Log
 	BitVotes             <-chan payload.Round
 	SigningPolicies      <-chan []database.Log
 	signingPolicyStorage *policy.SigningPolicyStorage
-	verifierServers      map[[64]byte]config.VerifierCredentials // the keys are AttestationTypeAndSource
+	verifierServers      config.VerifierConfig // the keys are AttestationTypeAndSource
 	abiConfig            config.AbiConfig
 }
 
@@ -147,15 +147,15 @@ func (m *Manager) Run(ctx context.Context) {
 }
 
 // GetOrCreateRound returns a round for roundId either from manager if a round is already stored or creates a new one and stores it.
-func (m *Manager) GetOrCreateRound(roundId uint32) (*Round, error) {
+func (m *Manager) GetOrCreateRound(roundId uint64) (*Round, error) {
 
-	round, ok := m.Rounds.Get(uint64(roundId))
+	round, ok := m.Rounds.Get(roundId)
 
 	if ok {
 		return round, nil
 	}
 
-	policy, _ := m.signingPolicyStorage.GetForVotingRound(roundId)
+	policy, _ := m.signingPolicyStorage.GetForVotingRound(uint32(roundId))
 
 	if policy == nil {
 		return nil, fmt.Errorf("creating round: no signing policy for round %d", roundId)
@@ -172,11 +172,11 @@ func (m *Manager) GetOrCreateRound(roundId uint32) (*Round, error) {
 // OnBitVote process payload message that is assumed to be a bitVote and adds it to the correct round.
 func (m *Manager) OnBitVote(message payload.Message) error {
 
-	if message.Timestamp < timing.ChooseStartTimestamp(int(message.VotingRound)) {
+	if message.Timestamp < timing.ChooseStartTimestamp(uint64(message.VotingRound)) {
 		return fmt.Errorf("bitvote from %s too soon", message.From)
 	}
 
-	if message.Timestamp > timing.ChooseEndTimestamp(int(message.VotingRound)) {
+	if message.Timestamp > timing.ChooseEndTimestamp(uint64(message.VotingRound)) {
 		return fmt.Errorf("bitvote from %s too late", message.From)
 	}
 

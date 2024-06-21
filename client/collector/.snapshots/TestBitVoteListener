@@ -2,7 +2,7 @@
   From: (common.Address) (len=20) 0x0000000000000000000000000000000000000000,
   Selector: (string) "",
   Protocol: (uint8) 255,
-  VotingRound: (uint32) 1,
+  VotingRound: (uint64) 1,
   Timestamp: (uint64) 0,
   BlockNumber: (uint64) 0,
   TransactionIndex: (uint64) 0,

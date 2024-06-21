@@ -3,6 +3,8 @@ package config_test
 import (
 	"local/fdc/client/config"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -14,21 +16,16 @@ func TestReadUserRaw(t *testing.T) {
 
 	cfg, err := config.ReadUserRaw(USER_FILE)
 
-	if err != nil {
-		t.Errorf("error: %s", err)
-	}
-
+	require.NoError(t, err)
 	_, err = config.ParseAbi(cfg.Abis)
 
-	if err != nil {
-		t.Errorf("error: %s", err)
-	}
+	require.NoError(t, err)
 
 	_, err = config.ParseVerifiers(cfg.Verifiers)
 
-	if err != nil {
-		t.Errorf("error: %s", err)
-	}
+	require.NoError(t, err)
+
+	require.Equal(t, "coston", cfg.Chain)
 
 }
 
@@ -36,8 +33,6 @@ func TestReadSystem(t *testing.T) {
 
 	_, err := config.ReadSystem(SYSTEM_FILE)
 
-	if err != nil {
-		t.Errorf("error: %s", err)
-	}
+	require.NoError(t, err)
 
 }

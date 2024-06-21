@@ -11,3 +11,5 @@ var EarlierLog = earlierLog
 var AttestationFromDatabaseLog = attestationFromDatabaseLog
 
 var ValidateResponse = (*Attestation).validateResponse
+
+var PrepareRequest = (*Attestation).prepareRequest

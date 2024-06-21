@@ -24,8 +24,8 @@ func GetLogger() *zap.SugaredLogger {
 		// For local development set the DEBUG environment variable to any
 		// non-empty value, this will enable terminal-formatted output
 		// and debug level logs will be included.
-		if os.Getenv("DEBUG") != "" {
-			logger, err = zap.NewDevelopment()
+		if os.Getenv("PRODUCTION") != "" {
+			logger, err = zap.NewProduction()
 		} else {
 			logger, err = zap.NewDevelopment()
 		}

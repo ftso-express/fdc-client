@@ -5,6 +5,7 @@ import (
 	"flare-common/logger"
 	"local/fdc/client/collector"
 	"local/fdc/client/config"
+	"local/fdc/client/timing"
 	"local/fdc/server"
 	"os"
 	"os/signal"
@@ -25,6 +26,8 @@ func main() {
 	if err != nil {
 		log.Panicf("cannot read user config: %s", err)
 	}
+
+	timing.Set(userConfigRaw.Chain)
 
 	systemConfig, err := config.ReadSystem(SYSTEM_FILE)
 
