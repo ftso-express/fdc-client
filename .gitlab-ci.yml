@@ -51,3 +51,12 @@ test:
         coverage_format: cobertura
         path: ${COBERTURA_FILE}
   coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
+
+test-common:
+  stage: test
+  image: golang:${GOLANG_VERSION}
+  needs: [build]
+  extends: .gocache
+  script:
+    - cd flare-common
+    - go test -v ./...
