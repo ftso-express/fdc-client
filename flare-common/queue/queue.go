@@ -19,19 +19,29 @@ type PriorityQueue[T any] struct {
 	workersSem      chan struct{}
 }
 
-func NewPriority[T any](size int, maxDequeuesPerSecond int, maxWorkers int) PriorityQueue[T] {
-	q := PriorityQueue[T]{
-		regular:  make(chan T, size),
-		priority: make(chan T, size),
+type PriorityQueueInput struct {
+	Size                 int
+	MaxDequeuesPerSecond int
+	MaxWorkers           int
+}
+
+func NewPriority[T any](input *PriorityQueueInput) PriorityQueue[T] {
+	if input == nil {
+		input = new(PriorityQueueInput)
 	}
 
-	if maxDequeuesPerSecond > 0 {
-		q.minDequeueDelta = time.Second / time.Duration(maxDequeuesPerSecond)
+	q := PriorityQueue[T]{
+		regular:  make(chan T, input.Size),
+		priority: make(chan T, input.Size),
+	}
+
+	if input.MaxDequeuesPerSecond > 0 {
+		q.minDequeueDelta = time.Second / time.Duration(input.MaxDequeuesPerSecond)
 		log.Info("minDequeueDelta:", q.minDequeueDelta)
 	}
 
-	if maxWorkers > 0 {
-		q.workersSem = make(chan struct{}, maxWorkers)
+	if input.MaxWorkers > 0 {
+		q.workersSem = make(chan struct{}, input.MaxWorkers)
 	}
 
 	return q
@@ -58,7 +68,7 @@ func (q *PriorityQueue[T]) EnqueuePriority(ctx context.Context, item T) error {
 }
 
 func (q *PriorityQueue[T]) Dequeue(ctx context.Context, handler func(context.Context, T) error) error {
-	result, err := q.dequeue(ctx)
+	result, err := q.dequeueWithRateLimit(ctx)
 	if err != nil {
 		return err
 	}
@@ -89,7 +99,7 @@ func (q *PriorityQueue[T]) Dequeue(ctx context.Context, handler func(context.Con
 	return nil
 }
 
-func (q *PriorityQueue[T]) dequeue(ctx context.Context) (result T, err error) {
+func (q *PriorityQueue[T]) dequeueWithRateLimit(ctx context.Context) (result T, err error) {
 	if q.minDequeueDelta > 0 {
 		if err = q.enforceRateLimit(ctx); err != nil {
 			return result, err
@@ -101,6 +111,14 @@ func (q *PriorityQueue[T]) dequeue(ctx context.Context) (result T, err error) {
 			}
 		}()
 	}
+
+	// Set the err variable so that the deferred function can read it.
+	result, err = q.dequeue(ctx)
+	return result, err
+}
+
+func (q *PriorityQueue[T]) dequeue(ctx context.Context) (T, error) {
+	var result T
 
 	select {
 	case result = <-q.priority:
@@ -115,9 +133,7 @@ func (q *PriorityQueue[T]) dequeue(ctx context.Context) (result T, err error) {
 			return result, nil
 
 		case <-ctx.Done():
-			// Set the err variable so the deferred function can read it.
-			err = ctx.Err()
-			return result, err
+			return result, ctx.Err()
 		}
 	}
 }

@@ -25,7 +25,7 @@ func TestEnqueueDequeue(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel()
 
-	q := queue.NewPriority[int](size, 0, 0)
+	q := queue.NewPriority[int](&queue.PriorityQueueInput{Size: size})
 
 	for i := 0; i < size; i++ {
 		err := q.Enqueue(ctx, i)
@@ -43,7 +43,7 @@ func TestEnqueuePriority(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel()
 
-	q := queue.NewPriority[int](size, 0, 0)
+	q := queue.NewPriority[int](&queue.PriorityQueueInput{Size: size})
 
 	err := q.Enqueue(ctx, 1)
 	require.NoError(t, err)
@@ -62,7 +62,7 @@ func TestBlockingDequeue(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel()
 
-	q := queue.NewPriority[int](size, 0, 0)
+	q := queue.NewPriority[int](&queue.PriorityQueueInput{Size: size})
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -81,7 +81,7 @@ func TestBlockingDequeuePriority(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel()
 
-	q := queue.NewPriority[int](size, 0, 0)
+	q := queue.NewPriority[int](&queue.PriorityQueueInput{Size: size})
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -104,7 +104,9 @@ func TestRateLimit(t *testing.T) {
 	maxRate := int(time.Second / minDelta)
 	t.Log("maxRate:", maxRate)
 
-	q := queue.NewPriority[int](size, maxRate, 0)
+	q := queue.NewPriority[int](&queue.PriorityQueueInput{
+		Size: size, MaxDequeuesPerSecond: maxRate,
+	})
 
 	for i := 0; i < size; i++ {
 		err := q.Enqueue(ctx, i)
@@ -127,7 +129,7 @@ func TestRateLimit(t *testing.T) {
 }
 
 func TestEnqueueTimeout(t *testing.T) {
-	q := queue.NewPriority[int](0, 0, 0)
+	q := queue.NewPriority[int](nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Nanosecond)
 	defer cancel()
@@ -138,7 +140,7 @@ func TestEnqueueTimeout(t *testing.T) {
 }
 
 func TestEnqueuePriorityTimeout(t *testing.T) {
-	q := queue.NewPriority[int](0, 0, 0)
+	q := queue.NewPriority[int](nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Nanosecond)
 	defer cancel()
@@ -149,7 +151,7 @@ func TestEnqueuePriorityTimeout(t *testing.T) {
 }
 
 func TestDequeueTimeout(t *testing.T) {
-	q := queue.NewPriority[int](0, 0, 0)
+	q := queue.NewPriority[int](nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Nanosecond)
 	defer cancel()
@@ -162,7 +164,10 @@ func TestDequeueTimeout(t *testing.T) {
 func TestDequeueRateLimitTimeout(t *testing.T) {
 	ctx := context.Background()
 
-	q := queue.NewPriority[int](2, 1, 0)
+	q := queue.NewPriority[int](&queue.PriorityQueueInput{
+		Size:                 2,
+		MaxDequeuesPerSecond: 1,
+	})
 
 	for i := 0; i < 2; i++ {
 		err := q.Enqueue(ctx, i)
@@ -194,7 +199,10 @@ func TestWorkersLimit(t *testing.T) {
 	ctx, cancel1 := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel1()
 
-	q := queue.NewPriority[int](size, 0, numWorkers)
+	q := queue.NewPriority[int](&queue.PriorityQueueInput{
+		Size:       size,
+		MaxWorkers: numWorkers,
+	})
 
 	require.Less(t, numWorkers, size)
 	for i := 0; i < numWorkers+1; i++ {
@@ -253,7 +261,7 @@ func itemCheckCallback(expected int) func(context.Context, int) error {
 func BenchmarkPriorityQueue(b *testing.B) {
 	ctx := context.Background()
 
-	q := queue.NewPriority[int](size, 0, 0)
+	q := queue.NewPriority[int](&queue.PriorityQueueInput{Size: size})
 
 	for n := 0; n < b.N; n++ {
 		_ = q.Enqueue(ctx, 1)
