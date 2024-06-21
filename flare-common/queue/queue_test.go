@@ -239,6 +239,9 @@ func TestWorkersLimit(t *testing.T) {
 	defer cancel2()
 
 	err := q.Dequeue(ctx, func(ctx context.Context, item int) error {
+		t.Log("shouldn't reach here")
+		t.Fail()
+
 		return errors.New("shouldn't reach here")
 	})
 	require.Error(t, err)
