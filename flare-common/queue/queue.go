@@ -19,12 +19,14 @@ type PriorityQueue[T any] struct {
 	workersSem      chan struct{}
 }
 
+// PriorityQueueInput values are used to construct a new PriorityQueue.
 type PriorityQueueInput struct {
 	Size                 int
-	MaxDequeuesPerSecond int
-	MaxWorkers           int
+	MaxDequeuesPerSecond int // Set to 0 to disable rate-limiting
+	MaxWorkers           int // Set to 0 for unlimited workers
 }
 
+// NewPriority constructs a new PriorityQueue.
 func NewPriority[T any](input *PriorityQueueInput) PriorityQueue[T] {
 	if input == nil {
 		input = new(PriorityQueueInput)
@@ -47,6 +49,7 @@ func NewPriority[T any](input *PriorityQueueInput) PriorityQueue[T] {
 	return q
 }
 
+// Enqueue adds an item to the queue with regular priority.
 func (q *PriorityQueue[T]) Enqueue(ctx context.Context, item T) error {
 	select {
 	case q.regular <- item:
@@ -57,6 +60,7 @@ func (q *PriorityQueue[T]) Enqueue(ctx context.Context, item T) error {
 	}
 }
 
+// EnqueuePriority adds an item to the queue with high priority.
 func (q *PriorityQueue[T]) EnqueuePriority(ctx context.Context, item T) error {
 	select {
 	case q.priority <- item:
@@ -67,6 +71,13 @@ func (q *PriorityQueue[T]) EnqueuePriority(ctx context.Context, item T) error {
 	}
 }
 
+// Dequeue removes an item from the queue and processes it using the provided handler
+// function. If configured, rate limits and concurrent worker limits will be enforced.
+// This function will block if an item is not immediately available for
+// processing or if necessary to enforce limits.
+//
+// If the handler function returns a non-nil error, the item will be returned
+// to the queue to be retried later.
 func (q *PriorityQueue[T]) Dequeue(ctx context.Context, handler func(context.Context, T) error) error {
 	result, err := q.dequeueWithRateLimit(ctx)
 	if err != nil {
