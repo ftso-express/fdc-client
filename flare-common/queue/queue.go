@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"context"
 	"flare-common/logger"
 	"time"
 )
@@ -31,45 +32,74 @@ func NewPriority[T any](size int, maxDequeuesPerSecond int) PriorityQueue[T] {
 	return q
 }
 
-func (q *PriorityQueue[T]) Enqueue(item T) {
-	q.regular <- item
+func (q *PriorityQueue[T]) Enqueue(ctx context.Context, item T) error {
+	select {
+	case q.regular <- item:
+		return nil
+
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
-func (q *PriorityQueue[T]) EnqueuePriority(item T) {
-	q.priority <- item
+func (q *PriorityQueue[T]) EnqueuePriority(ctx context.Context, item T) error {
+	select {
+	case q.priority <- item:
+		return nil
+
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
-func (q *PriorityQueue[T]) Dequeue() T {
+func (q *PriorityQueue[T]) Dequeue(ctx context.Context) (result T, err error) {
 	if q.minDequeueDelta > 0 {
-		q.enforceRateLimit()
+		if err = q.enforceRateLimit(ctx); err != nil {
+			return result, err
+		}
 
 		defer func() {
-			q.lastDequeue = time.Now()
+			if err == nil {
+				q.lastDequeue = time.Now()
+			}
 		}()
 	}
 
 	select {
-	case item := <-q.priority:
-		return item
+	case result = <-q.priority:
+		return result, nil
 
 	default:
 		select {
-		case item := <-q.priority:
-			return item
+		case result = <-q.priority:
+			return result, nil
 
-		case item := <-q.regular:
-			return item
+		case result = <-q.regular:
+			return result, nil
+
+		case <-ctx.Done():
+			// Set the err variable so the deferred function can read it.
+			err = ctx.Err()
+			return result, err
 		}
 	}
 }
 
-func (q *PriorityQueue[T]) enforceRateLimit() {
+func (q *PriorityQueue[T]) enforceRateLimit(ctx context.Context) error {
 	now := time.Now()
 	delta := now.Sub(q.lastDequeue)
-	if delta < q.minDequeueDelta {
-		sleepDuration := q.minDequeueDelta - delta
-		log.Infof("enforcing rate limit - sleeping for %s", sleepDuration)
+	if delta >= q.minDequeueDelta {
+		return nil
+	}
 
-		time.Sleep(sleepDuration)
+	sleepDuration := q.minDequeueDelta - delta
+	log.Debugf("enforcing rate limit - sleeping for %s", sleepDuration)
+
+	select {
+	case <-time.After(sleepDuration):
+		return nil
+
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
