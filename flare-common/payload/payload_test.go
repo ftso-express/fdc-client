@@ -137,6 +137,7 @@ var txError5 = &database.Transaction{
 }
 
 func TestExtractPayloadsError(t *testing.T) {
+
 	_, err := payload.ExtractPayloads(txError1)
 	require.Error(t, err)
 
