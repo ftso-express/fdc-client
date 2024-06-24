@@ -4,6 +4,8 @@ import (
 	"context"
 	"flare-common/logger"
 	"time"
+
+	"github.com/cenkalti/backoff/v4"
 )
 
 var log = logger.GetLogger()
@@ -17,21 +19,27 @@ type PriorityQueue[T any] struct {
 	minDequeueDelta time.Duration
 	lastDequeue     time.Time
 	workersSem      chan struct{}
-	maxAttempts     int
+	maxAttempts     uint64
 	deadLetterQueue chan T
+	backoff         func() backoff.BackOff
 }
 
 type priorityQueueItem[T any] struct {
 	value   T
-	attempt int
+	backoff backoff.BackOff
 }
 
 // PriorityQueueInput values are used to construct a new PriorityQueue.
 type PriorityQueueParams struct {
 	Size                 int
-	MaxDequeuesPerSecond int // Set to 0 to disable rate-limiting
-	MaxWorkers           int // Set to 0 for unlimited workers
-	MaxAttempts          int // Set to 0 for unlimited retry attempts
+	MaxDequeuesPerSecond int    // Set to 0 to disable rate-limiting
+	MaxWorkers           int    // Set to 0 for unlimited workers
+	MaxAttempts          uint64 // Set to 0 for unlimited retry attempts
+
+	// Pass a callback to specify the backoff policy which affects when items
+	// are returned to the queue after an error. By default, items are
+	// re-queued immediately.
+	Backoff func() backoff.BackOff
 }
 
 // NewPriority constructs a new PriorityQueue.
@@ -43,6 +51,7 @@ func NewPriority[T any](input *PriorityQueueParams) PriorityQueue[T] {
 	q := PriorityQueue[T]{
 		regular:  make(chan priorityQueueItem[T], input.Size),
 		priority: make(chan priorityQueueItem[T], input.Size),
+		backoff:  input.Backoff,
 	}
 
 	if input.MaxDequeuesPerSecond > 0 {
@@ -68,7 +77,7 @@ func (q PriorityQueue[T]) DeadLetterQueue() <-chan T {
 
 // Enqueue adds an item to the queue with regular priority.
 func (q *PriorityQueue[T]) Enqueue(ctx context.Context, item T) error {
-	return q.enqueue(ctx, priorityQueueItem[T]{value: item, attempt: 1})
+	return q.enqueue(ctx, priorityQueueItem[T]{value: item, backoff: q.newBackoff()})
 }
 
 func (q *PriorityQueue[T]) enqueue(ctx context.Context, item priorityQueueItem[T]) error {
@@ -84,12 +93,26 @@ func (q *PriorityQueue[T]) enqueue(ctx context.Context, item priorityQueueItem[T
 // EnqueuePriority adds an item to the queue with high priority.
 func (q *PriorityQueue[T]) EnqueuePriority(ctx context.Context, item T) error {
 	select {
-	case q.priority <- priorityQueueItem[T]{value: item}:
+	case q.priority <- priorityQueueItem[T]{value: item, backoff: q.newBackoff()}:
 		return nil
 
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+func (q *PriorityQueue[T]) newBackoff() (bOff backoff.BackOff) {
+	if q.backoff == nil {
+		bOff = backoff.NewConstantBackOff(0)
+	} else {
+		bOff = q.backoff()
+	}
+
+	if q.maxAttempts > 0 {
+		bOff = backoff.WithMaxRetries(bOff, q.maxAttempts-1)
+	}
+
+	return bOff
 }
 
 // Dequeue removes an item from the queue and processes it using the provided handler
@@ -118,18 +141,17 @@ func (q *PriorityQueue[T]) Dequeue(ctx context.Context, handler func(context.Con
 
 	// If there was any error we re-queue the item for processing again.
 	if err != nil {
-		if handlerErr := q.handleError(ctx, result); handlerErr != nil {
-			return handlerErr
-		}
-
+		q.handleError(ctx, result)
 		return err
 	}
 
 	return nil
 }
 
-func (q *PriorityQueue[T]) handleError(ctx context.Context, item priorityQueueItem[T]) error {
-	if q.maxAttempts > 0 && item.attempt >= q.maxAttempts {
+func (q *PriorityQueue[T]) handleError(ctx context.Context, item priorityQueueItem[T]) {
+	waitDuration := item.backoff.NextBackOff()
+
+	if waitDuration == backoff.Stop {
 		// Attempt to send the item to the dead letter queue, but do not block if it is full -
 		// in that case the item will be discarded.
 		select {
@@ -141,7 +163,24 @@ func (q *PriorityQueue[T]) handleError(ctx context.Context, item priorityQueueIt
 		}
 	}
 
-	return q.enqueue(ctx, priorityQueueItem[T]{value: item.value, attempt: item.attempt + 1})
+	go func() {
+		if waitDuration > 0 {
+			log.Debugf("sleeping for %v before retrying", waitDuration)
+
+			select {
+			case <-time.After(waitDuration):
+
+			case <-ctx.Done():
+				log.Errorf("context cancelled while waiting to retry item %v", item.value)
+				return
+			}
+		}
+
+		if err := q.enqueue(ctx, item); err != nil {
+			log.Errorf("error enqueing item %v for retry: %v", item.value, err)
+		}
+	}()
+
 }
 
 func (q *PriorityQueue[T]) dequeueWithRateLimit(ctx context.Context) (result priorityQueueItem[T], err error) {

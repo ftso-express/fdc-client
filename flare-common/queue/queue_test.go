@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,7 +21,10 @@ const (
 	maxAttempts   = 3
 )
 
-var defaultTimeout = 10 * time.Second
+var (
+	defaultTimeout = 10 * time.Second
+	backoffTime    = 10 * time.Millisecond
+)
 
 func TestEnqueueDequeue(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
@@ -279,6 +283,32 @@ func TestMaxAttempts(t *testing.T) {
 	case <-ctx.Done():
 		t.Fatal("timed out while reading from dead letter queue")
 	}
+}
+
+func TestConstantBackOff(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+	defer cancel()
+
+	q := queue.NewPriority[int](&queue.PriorityQueueInput{Size: size, Backoff: func() backoff.BackOff {
+		return backoff.NewConstantBackOff(backoffTime)
+	}})
+
+	err := q.Enqueue(ctx, 1)
+	require.NoError(t, err)
+
+	handlerErr := errors.New("handler error")
+	start := time.Now()
+
+	for i := 0; i < maxAttempts; i++ {
+		err := q.Dequeue(ctx, func(ctx context.Context, item int) error {
+			return handlerErr
+		})
+		require.ErrorIs(t, err, handlerErr)
+	}
+
+	elapsed := time.Since(start)
+
+	require.GreaterOrEqual(t, elapsed, (maxAttempts-1)*backoffTime)
 }
 
 func itemCheckCallback(expected int) func(context.Context, int) error {
