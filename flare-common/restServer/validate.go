@@ -2,32 +2,14 @@ package restServer
 
 import (
 	"encoding/hex"
-	"fmt"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
 )
 
-var (
-	validate *validator.Validate
-)
+var validate = validator.New(validator.WithRequiredStructEnabled())
 
-const (
-	hexPrefix = "0x"
-)
-
-func init() {
-	validate = validator.New(validator.WithRequiredStructEnabled())
-	// if err := validate.RegisterValidation("submitAddress", validateEVMAddress); err != nil {
-	// 	log.Fatal(err)
-	// }
-}
-
-func validateEVMAddress(fl validator.FieldLevel) bool {
-	fmt.Println("Validating EVM address")
-	val := fl.Field().String()
-	return ValidateEVMAddressString(val)
-}
+const hexPrefix = "0x"
 
 func ValidateEVMAddressString(address string) bool {
 	address = strings.TrimPrefix(address, hexPrefix)
@@ -35,8 +17,10 @@ func ValidateEVMAddressString(address string) bool {
 	if err != nil {
 		return false
 	}
+
 	if len(dec) != 20 {
 		return false
 	}
+
 	return err == nil
 }
