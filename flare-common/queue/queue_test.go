@@ -17,6 +17,7 @@ const (
 	size          = 10
 	benchmarkSize = 100000
 	numWorkers    = 4
+	maxAttempts   = 3
 )
 
 var defaultTimeout = 10 * time.Second
@@ -249,6 +250,35 @@ func TestWorkersLimit(t *testing.T) {
 
 	cancel1()
 	finishedGroup.Wait()
+}
+
+func TestMaxAttempts(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+	defer cancel()
+
+	q := queue.NewPriority[int](&queue.PriorityQueueInput{Size: size, MaxAttempts: maxAttempts})
+
+	dlq := q.DeadLetterQueue()
+
+	err := q.Enqueue(ctx, 1)
+	require.NoError(t, err)
+
+	handlerErr := errors.New("handler error")
+
+	for i := 0; i < maxAttempts; i++ {
+		err := q.Dequeue(ctx, func(ctx context.Context, item int) error {
+			return handlerErr
+		})
+		require.ErrorIs(t, err, handlerErr)
+	}
+
+	select {
+	case item := <-dlq:
+		require.Equal(t, 1, item)
+
+	case <-ctx.Done():
+		t.Fatal("timed out while reading from dead letter queue")
+	}
 }
 
 func itemCheckCallback(expected int) func(context.Context, int) error {

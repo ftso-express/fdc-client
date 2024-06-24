@@ -12,18 +12,26 @@ var log = logger.GetLogger()
 // higher priority. Items can be enqueued in either queue and when dequeueing
 // items from the priority queue are returned first.
 type PriorityQueue[T any] struct {
-	regular         chan T
-	priority        chan T
+	regular         chan priorityQueueItem[T]
+	priority        chan priorityQueueItem[T]
 	minDequeueDelta time.Duration
 	lastDequeue     time.Time
 	workersSem      chan struct{}
+	maxAttempts     int
+	deadLetterQueue chan T
 }
 
-// PriorityQueueParams values are used to construct a new PriorityQueue.
+type priorityQueueItem[T any] struct {
+	value   T
+	attempt int
+}
+
+// PriorityQueueInput values are used to construct a new PriorityQueue.
 type PriorityQueueParams struct {
-	Size                 int `toml:"size"`
-	MaxDequeuesPerSecond int `toml:"max_dequeues_per_second"` // Set to 0 to disable rate-limiting
-	MaxWorkers           int `toml:"max_workers"`             // Set to 0 for unlimited workers
+	Size                 int
+	MaxDequeuesPerSecond int // Set to 0 to disable rate-limiting
+	MaxWorkers           int // Set to 0 for unlimited workers
+	MaxAttempts          int // Set to 0 for unlimited retry attempts
 }
 
 // NewPriority constructs a new PriorityQueue.
@@ -33,8 +41,8 @@ func NewPriority[T any](input *PriorityQueueParams) PriorityQueue[T] {
 	}
 
 	q := PriorityQueue[T]{
-		regular:  make(chan T, input.Size),
-		priority: make(chan T, input.Size),
+		regular:  make(chan priorityQueueItem[T], input.Size),
+		priority: make(chan priorityQueueItem[T], input.Size),
 	}
 
 	if input.MaxDequeuesPerSecond > 0 {
@@ -46,11 +54,24 @@ func NewPriority[T any](input *PriorityQueueParams) PriorityQueue[T] {
 		q.workersSem = make(chan struct{}, input.MaxWorkers)
 	}
 
+	if input.MaxAttempts > 0 {
+		q.maxAttempts = input.MaxAttempts
+		q.deadLetterQueue = make(chan T, input.Size)
+	}
+
 	return q
+}
+
+func (q PriorityQueue[T]) DeadLetterQueue() <-chan T {
+	return q.deadLetterQueue
 }
 
 // Enqueue adds an item to the queue with regular priority.
 func (q *PriorityQueue[T]) Enqueue(ctx context.Context, item T) error {
+	return q.enqueue(ctx, priorityQueueItem[T]{value: item, attempt: 1})
+}
+
+func (q *PriorityQueue[T]) enqueue(ctx context.Context, item priorityQueueItem[T]) error {
 	select {
 	case q.regular <- item:
 		return nil
@@ -63,7 +84,7 @@ func (q *PriorityQueue[T]) Enqueue(ctx context.Context, item T) error {
 // EnqueuePriority adds an item to the queue with high priority.
 func (q *PriorityQueue[T]) EnqueuePriority(ctx context.Context, item T) error {
 	select {
-	case q.priority <- item:
+	case q.priority <- priorityQueueItem[T]{value: item}:
 		return nil
 
 	case <-ctx.Done():
@@ -93,12 +114,12 @@ func (q *PriorityQueue[T]) Dequeue(ctx context.Context, handler func(context.Con
 		return nil
 	}
 
-	err = handler(ctx, result)
+	err = handler(ctx, result.value)
 
 	// If there was any error we re-queue the item for processing again.
 	if err != nil {
-		if enqueueErr := q.Enqueue(ctx, result); enqueueErr != nil {
-			return enqueueErr
+		if handlerErr := q.handleError(ctx, result); handlerErr != nil {
+			return handlerErr
 		}
 
 		return err
@@ -107,7 +128,23 @@ func (q *PriorityQueue[T]) Dequeue(ctx context.Context, handler func(context.Con
 	return nil
 }
 
-func (q *PriorityQueue[T]) dequeueWithRateLimit(ctx context.Context) (result T, err error) {
+func (q *PriorityQueue[T]) handleError(ctx context.Context, item priorityQueueItem[T]) error {
+	if q.maxAttempts > 0 && item.attempt >= q.maxAttempts {
+		// Attempt to send the item to the dead letter queue, but do not block if it is full -
+		// in that case the item will be discarded.
+		select {
+		case q.deadLetterQueue <- item.value:
+			log.Errorf("max retry attempts reached, sent item to dead letter queue: %v", item.value)
+
+		default:
+			log.Errorf("max retry attempts reached, discarding as dead letter queue is full: %v", item.value)
+		}
+	}
+
+	return q.enqueue(ctx, priorityQueueItem[T]{value: item.value, attempt: item.attempt + 1})
+}
+
+func (q *PriorityQueue[T]) dequeueWithRateLimit(ctx context.Context) (result priorityQueueItem[T], err error) {
 	if q.minDequeueDelta > 0 {
 		if err = q.enforceRateLimit(ctx); err != nil {
 			return result, err
@@ -125,8 +162,8 @@ func (q *PriorityQueue[T]) dequeueWithRateLimit(ctx context.Context) (result T, 
 	return result, err
 }
 
-func (q *PriorityQueue[T]) dequeue(ctx context.Context) (T, error) {
-	var result T
+func (q *PriorityQueue[T]) dequeue(ctx context.Context) (priorityQueueItem[T], error) {
+	var result priorityQueueItem[T]
 
 	select {
 	case result = <-q.priority:
