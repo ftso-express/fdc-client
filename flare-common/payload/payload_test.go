@@ -137,26 +137,20 @@ var txError5 = &database.Transaction{
 }
 
 func TestExtractPayloadsError(t *testing.T) {
-	// TODO: skipping for now, re-enable when fixed
-	return
-
 	_, err := payload.ExtractPayloads(txError1)
-
-	require.NoError(t, err)
+	require.Error(t, err)
 
 	_, err = payload.ExtractPayloads(txError2)
+	require.Error(t, err)
 
-	require.NoError(t, err)
 	_, err = payload.ExtractPayloads(txError3)
+	require.Error(t, err)
 
-	require.NoError(t, err)
 	_, err = payload.ExtractPayloads(txError4)
-
-	require.NoError(t, err)
+	require.Error(t, err)
 
 	_, err = payload.ExtractPayloads(txError5)
-
-	require.NoError(t, err)
+	require.Error(t, err)
 }
 
 var txMultiple = &database.Transaction{
