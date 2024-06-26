@@ -11,7 +11,7 @@ var base1 = float64(1.2)
 var base2 = float64(20)
 var constantFactor = float64(100)
 
-type Solution struct {
+type RandomWalkState struct {
 	CurrentBitVoteCount []int
 	SubsetDict          map[int]bool
 	Value               int
@@ -22,8 +22,8 @@ type Solution struct {
 	TotalFee            int
 }
 
-func (sol *Solution) Copy() *Solution {
-	newSol := &Solution{CurrentBitVoteCount: make([]int, len(sol.CurrentBitVoteCount)), SubsetDict: map[int]bool{},
+func (sol *RandomWalkState) Copy() *RandomWalkState {
+	newSol := &RandomWalkState{CurrentBitVoteCount: make([]int, len(sol.CurrentBitVoteCount)), SubsetDict: map[int]bool{},
 		Value: sol.Value, Weight: sol.Weight, ModValue: sol.ModValue, Fees: sol.Fees, TotalWeight: sol.TotalWeight,
 		TotalFee: sol.TotalFee}
 
@@ -38,7 +38,7 @@ func (sol *Solution) Copy() *Solution {
 	return newSol
 }
 
-func (sol *Solution) CalcValue() int {
+func (sol *RandomWalkState) CalcValue() int {
 	val := 0
 
 	for i, e := range sol.CurrentBitVoteCount {
@@ -52,7 +52,7 @@ func (sol *Solution) CalcValue() int {
 	return val * weightCaped
 }
 
-func (sol *Solution) CalcModValue() float64 {
+func (sol *RandomWalkState) CalcModValue() float64 {
 	val := float64(0)
 
 	for i, e := range sol.CurrentBitVoteCount {
@@ -63,7 +63,7 @@ func (sol *Solution) CalcModValue() float64 {
 	return math.Pow(base2, val)
 }
 
-func (sol *Solution) CalcNewModValue(bitVote *BitVote) float64 {
+func (sol *RandomWalkState) CalcNewModValue(bitVote *BitVote) float64 {
 	val := float64(0)
 
 	for i, e := range sol.CurrentBitVoteCount {
@@ -78,7 +78,7 @@ func (sol *Solution) CalcNewModValue(bitVote *BitVote) float64 {
 	return math.Pow(base2, val)
 }
 
-func (currentSolution *Solution) BitVotesAdd(bitVote *WeightedBitVote, chosen int, newModValue float64) {
+func (currentSolution *RandomWalkState) BitVotesAdd(bitVote *WeightedBitVote, chosen int, newModValue float64) {
 	for i := range currentSolution.CurrentBitVoteCount {
 		if bitVote.BitVote.BitVector.Bit(i) == 0 {
 			currentSolution.CurrentBitVoteCount[i] += 1
@@ -90,7 +90,7 @@ func (currentSolution *Solution) BitVotesAdd(bitVote *WeightedBitVote, chosen in
 	currentSolution.ModValue = newModValue
 }
 
-func (currentSolution *Solution) BitVotesRemove(bitVote *WeightedBitVote, chosen int) {
+func (currentSolution *RandomWalkState) BitVotesRemove(bitVote *WeightedBitVote, chosen int) {
 	for i := range currentSolution.CurrentBitVoteCount {
 		if bitVote.BitVote.BitVector.Bit(i) == 0 {
 			currentSolution.CurrentBitVoteCount[i] -= 1
@@ -113,9 +113,9 @@ func toString(m map[int]bool) string {
 	return s
 }
 
-func MetropolisHastingsSampling(allBitVotes []*WeightedBitVote, fees []int, numIterations int) *Solution {
-	var currentSolution *Solution
-	var maxSolution *Solution
+func MetropolisHastingsSampling(allBitVotes []*WeightedBitVote, fees []int, numIterations int) *RandomWalkState {
+	var currentSolution *RandomWalkState
+	var maxSolution *RandomWalkState
 
 	numVoters := len(allBitVotes)
 	numAttestations := len(fees)
@@ -127,7 +127,7 @@ func MetropolisHastingsSampling(allBitVotes []*WeightedBitVote, fees []int, numI
 		totalFee += fee
 	}
 
-	currentSolution = &Solution{CurrentBitVoteCount: currentBitVoteCount, SubsetDict: subsetMap, Weight: 0, Fees: fees, TotalFee: totalFee}
+	currentSolution = &RandomWalkState{CurrentBitVoteCount: currentBitVoteCount, SubsetDict: subsetMap, Weight: 0, Fees: fees, TotalFee: totalFee}
 
 	for i := 0; i < numVoters; i++ {
 		newModValue := currentSolution.CalcNewModValue(&allBitVotes[i].BitVote)
