@@ -21,7 +21,7 @@ type AbiEncodedResponseBody struct {
 }
 
 // ResolveAttestationRequest sends the attestation request to the verifier server with verifierCred and stores the response.
-func ResolveAttestationRequest(att *Attestation, verifierCred config.VerifierCredentials) error {
+func ResolveAttestationRequest(att *Attestation, verifierCred config.Source) error {
 	client := &http.Client{}
 	requestBytes := att.Request
 	encoded := hex.EncodeToString(requestBytes)

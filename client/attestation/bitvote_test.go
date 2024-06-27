@@ -331,7 +331,8 @@ func TestConsensusAllEqual(t *testing.T) {
 		WeightedBitVotes: weightedBitvotes,
 		TotalWeight:      totalWeight,
 		Attestations:     atts,
-	})
+	},
+		300)
 
 	require.NoError(t, err)
 
@@ -366,7 +367,9 @@ func TestConsensusNotMoreThanHalf(t *testing.T) {
 		WeightedBitVotes: weightedBitvotes,
 		TotalWeight:      2 * totalWeight,
 		Attestations:     atts,
-	})
+	},
+		300,
+	)
 
 	require.Error(t, err)
 
@@ -400,7 +403,9 @@ func TestConsensusMissingAttestation(t *testing.T) {
 		WeightedBitVotes: weightedBitvotes,
 		TotalWeight:      totalWeight,
 		Attestations:     atts[:3],
-	})
+	},
+		300,
+	)
 
 	t.Log("err:", err)
 
@@ -475,7 +480,7 @@ func TestConsensusMixed(t *testing.T) {
 	require.NoError(t, err)
 
 	start := time.Now()
-	bv, err := attestation.ConsensusBitVote(data)
+	bv, err := attestation.ConsensusBitVote(data, 300)
 
 	fmt.Printf("time passed: %v\n", time.Since(start).Seconds())
 
@@ -630,7 +635,9 @@ func BenchmarkConsensusMixed(b *testing.B) {
 			WeightedBitVotes: weightedBitvotes,
 			TotalWeight:      totalWeight,
 			Attestations:     atts,
-		})
+		},
+			300,
+		)
 	}
 
 }

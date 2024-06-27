@@ -27,21 +27,18 @@ const (
 
 func TestServer(t *testing.T) {
 	rounds := storage.NewCyclic[*attestation.Round](10)
-	systemServerConfig := config.SystemRestServerConfig{
+	serverConfig := config.RestServer{
 		Title:       "FDC protocol data provider API",
 		FSPTitle:    "FDC protocol data provider for FSP client",
 		FSPSubpath:  "/fsp",
 		Version:     "0.0.0",
 		SwaggerPath: "/api-doc",
+		Addr:        "localhost:8080",
+		ApiKeyName:  "X-API-KEY",
+		ApiKeys:     []string{"12345", "123456"},
 	}
 
-	userServerConfig := config.UserRestServerConfig{
-		Addr:       "localhost:8080",
-		ApiKeyName: "X-API-KEY",
-		ApiKeys:    []string{"12345", "123456"},
-	}
-
-	s := server.New(&rounds, systemServerConfig, userServerConfig)
+	s := server.New(&rounds, serverConfig)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -76,7 +73,7 @@ func TestServer(t *testing.T) {
 	)
 
 	t.Run("submit1", func(t *testing.T) {
-		rspData, err := makeGetRequest("submit1", &systemServerConfig, &userServerConfig)
+		rspData, err := makeGetRequest("submit1", &serverConfig)
 		require.NoError(t, err)
 
 		t.Log(rspData)
@@ -85,7 +82,7 @@ func TestServer(t *testing.T) {
 	})
 
 	t.Run("submit2", func(t *testing.T) {
-		rspData, err := makeGetRequest("submit2", &systemServerConfig, &userServerConfig)
+		rspData, err := makeGetRequest("submit2", &serverConfig)
 		require.NoError(t, err)
 
 		t.Log(rspData)
@@ -94,7 +91,7 @@ func TestServer(t *testing.T) {
 	})
 
 	t.Run("submitSignatures", func(t *testing.T) {
-		rspData, err := makeGetRequest("submitSignatures", &systemServerConfig, &userServerConfig)
+		rspData, err := makeGetRequest("submitSignatures", &serverConfig)
 		require.NoError(t, err)
 
 		t.Log(rspData)
@@ -104,10 +101,10 @@ func TestServer(t *testing.T) {
 }
 
 func makeGetRequest(
-	apiName string, sysCfg *config.SystemRestServerConfig, userCfg *config.UserRestServerConfig,
+	apiName string, cfg *config.RestServer,
 ) (*server.PDPResponse, error) {
 	p, err := url.JoinPath(
-		sysCfg.FSPSubpath,
+		cfg.FSPSubpath,
 		apiName,
 		strconv.FormatUint(votingRoundID, 10),
 		submitAddress,
@@ -127,7 +124,7 @@ func makeGetRequest(
 		return nil, err
 	}
 
-	req.Header.Add("X-API-KEY", userCfg.ApiKeys[0])
+	req.Header.Add("X-API-KEY", cfg.ApiKeys[0])
 
 	var client http.Client
 	rsp, err := client.Do(req)

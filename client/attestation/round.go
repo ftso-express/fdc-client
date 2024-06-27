@@ -70,7 +70,7 @@ func (r *Round) BitVoteHex() (string, error) {
 }
 
 // ComputeConsensusBitVote computes the consensus BitVote according to the collected bitVotes and sets consensus status to the attestations.
-func (r *Round) ComputeConsensusBitVote() error {
+func (r *Round) ComputeConsensusBitVote(protocolId uint64) error {
 
 	r.sortBitVotes()
 
@@ -81,7 +81,8 @@ func (r *Round) ComputeConsensusBitVote() error {
 		WeightedBitVotes: r.bitVotes,
 		TotalWeight:      r.voterSet.TotalWeight,
 		Attestations:     r.Attestations,
-	})
+	},
+		protocolId)
 	if err != nil {
 		return err
 

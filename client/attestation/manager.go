@@ -33,34 +33,34 @@ func init() {
 }
 
 type Manager struct {
-	Rounds               storage.Cyclic[*Round] // cyclically cached rounds with buffer roundBuffer.
-	lastRoundCreated     uint64
-	Requests             <-chan []database.Log
-	BitVotes             <-chan payload.Round
-	SigningPolicies      <-chan []database.Log
-	signingPolicyStorage *policy.SigningPolicyStorage
-	verifierServers      config.VerifierConfig // the keys are AttestationTypeAndSource
-	abiConfig            config.AbiConfig
+	protocolId            uint64
+	Rounds                storage.Cyclic[*Round] // cyclically cached rounds with buffer roundBuffer.
+	lastRoundCreated      uint64
+	Requests              <-chan []database.Log
+	BitVotes              <-chan payload.Round
+	SigningPolicies       <-chan []database.Log
+	signingPolicyStorage  *policy.SigningPolicyStorage
+	attestationTypeConfig config.AttestationTypes
 }
 
-// NewManager initializes attestation round manager
-func NewManager(configs config.UserConfigRaw) (*Manager, error) {
+// NewManager initializes attestation round manager from raw user configurations.
+func NewManager(configs config.UserRaw) (*Manager, error) {
 	rounds := storage.NewCyclic[*Round](roundBuffer)
 	signingPolicyStorage := policy.NewSigningPolicyStorage()
 
-	abiConfig, err := config.ParseAbi(configs.Abis)
+	attestationTypeConfig, err := config.ParseAttestationTypesConfig(configs.AttestationTypeConfig)
 
 	if err != nil {
-		return nil, fmt.Errorf("error new manger, abis: %w", err)
+		return nil, fmt.Errorf("error new manger, att types: %w", err)
 	}
 
-	verifierServers, err := config.ParseVerifiers(configs.Verifiers)
-
-	if err != nil {
-		return nil, fmt.Errorf("error new manger, verifier servers: %w", err)
-	}
-
-	return &Manager{Rounds: rounds, signingPolicyStorage: signingPolicyStorage, abiConfig: abiConfig, verifierServers: verifierServers}, nil
+	return &Manager{
+			protocolId:            uint64(configs.ProtocolId),
+			Rounds:                rounds,
+			signingPolicyStorage:  signingPolicyStorage,
+			attestationTypeConfig: attestationTypeConfig,
+		},
+		nil
 }
 
 // Run starts processing data received through the manager's channels.
@@ -110,7 +110,7 @@ func (m *Manager) Run(ctx context.Context) {
 			for i := range bitVotesForRound.Messages {
 
 				if err := m.OnBitVote(bitVotesForRound.Messages[i]); err != nil {
-					log.Error("bit vote error:", err)
+					log.Errorf("bit vote error: %w", err)
 				}
 			}
 
@@ -119,7 +119,7 @@ func (m *Manager) Run(ctx context.Context) {
 				break
 			}
 
-			err := r.ComputeConsensusBitVote()
+			err := r.ComputeConsensusBitVote(m.protocolId)
 
 			if err != nil {
 				log.Warnf("Failed bitVote in round %d: %s", bitVotesForRound.Id, err)
@@ -183,7 +183,6 @@ func (m *Manager) OnBitVote(message payload.Message) error {
 	round, err := m.GetOrCreateRound(message.VotingRound)
 
 	if err != nil {
-		log.Errorf("could not get round %d: %s", message.VotingRound, err)
 		return err
 	}
 

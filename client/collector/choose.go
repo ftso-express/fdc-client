@@ -121,7 +121,6 @@ func PrepareChooseTriggers(ctx context.Context, trigger chan uint64, db collecto
 
 			select {
 			case <-ticker.C:
-				log.Debug("starting next prepareChooseTriggers inner iteration")
 
 			case <-ctx.Done():
 				log.Info("prepareChooseTriggers exiting:", ctx.Err())
@@ -141,11 +140,11 @@ func PrepareChooseTriggers(ctx context.Context, trigger chan uint64, db collecto
 
 }
 
-// configureTicker resets the ticker at headStart before start to roundLength
+// configureTicker resets the ticker at headStart before start to collect phase duration.
 func configureTicker(ctx context.Context, ticker *time.Ticker, start time.Time, headStart time.Duration) {
 	select {
 	case <-time.After(time.Until(start) - headStart):
-		ticker.Reset(roundLength)
+		ticker.Reset(timing.CollectDurationSec * time.Second)
 
 	case <-ctx.Done():
 		return

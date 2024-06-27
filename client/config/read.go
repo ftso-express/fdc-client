@@ -3,19 +3,27 @@ package config
 import (
 	"flare-common/errorf"
 	"os"
+	"path"
+	"strconv"
 
 	"github.com/BurntSushi/toml"
 )
 
-func ReadUserRaw(filePath string) (UserConfigRaw, error) {
+func ReadUserRaw(filePath string) (UserRaw, error) {
 
-	return readToml[UserConfigRaw](filePath)
+	return readToml[UserRaw](filePath)
 
 }
 
-func ReadSystem(filePath string) (SystemConfig, error) {
+func ReadSystem(directory, chain string, protocolId uint8) (System, error) {
 
-	return readToml[SystemConfig](filePath)
+	chain = chain + ".toml"
+
+	protocolStr := strconv.FormatUint(uint64(protocolId), 10)
+
+	filePath := path.Join(directory, protocolStr, chain)
+
+	return readToml[System](filePath)
 
 }
 

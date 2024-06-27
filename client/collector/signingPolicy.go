@@ -78,8 +78,6 @@ func spiTargetedListener(
 	for {
 		expectedStartOfTheNextSigningPolicyInitialized := timing.ExpectedRewardEpochStartTimestamp(lastInitializedRewardEpochID + 1)
 
-		log.Info(expectedStartOfTheNextSigningPolicyInitialized)
-
 		untilStart := time.Until(time.Unix(int64(expectedStartOfTheNextSigningPolicyInitialized)-90*15, 0)) //use const for headStart 90*15
 
 		log.Infof("next signing policy expected in %.1fh", untilStart.Hours())

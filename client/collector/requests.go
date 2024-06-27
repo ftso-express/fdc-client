@@ -57,7 +57,6 @@ func AttestationRequestListener(
 		for {
 			select {
 			case <-trigger.C:
-				log.Debug("starting next AttestationRequestListener iteration")
 
 			case <-ctx.Done():
 				log.Info("AttestationRequestListener exiting:", ctx.Err())

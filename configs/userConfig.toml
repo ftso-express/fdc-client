@@ -2,6 +2,8 @@
 # options are: "coston", "songbird", "coston2", "flare"
 chain = "coston"
 
+protocolId = 200
+
 [db]
 host = "localhost"
 port = 3306
@@ -15,125 +17,61 @@ log_queries = false
 addr = ":8080"
 api_key_name = "X-API-KEY"
 api_keys = ["12345", "123456"]
+title = "FDC protocol data provider API"
+fsp_sub_router_title = "FDC protocol data provider for FSP client"
+fsp_sub_router_path = "/fsp"
+version = "0.0.0"
+swagger_path = "/api-doc"
 
 
-# # Verifiers for BTC
-# [verifiers.BTC.Payment]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
+[logger]
+file = ""
+prefix = ""
+flag = 0
 
 
-# [verifiers.BTC.BalanceDecreasingTransaction]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
+# # Payment
+# [types.Payment]
+# abi_path = ""
+
+# ## BTC
+# [types.Payment.Sources.BTC]
+# url = ""
+# api_key = "12345"
+# lut_limit = "18446744073709551615"
+
+# ## DOGE
+# [types.Payment.Sources.DOGE]
+# url = ""
+# api_key = ""
+# lut_limit = "18446744073709551615"
+
+# ## XRP
+# [types.Payment.Sources.XRP]
+# url = ""
+# api_key = ""
+# lut_limit = "18446744073709551615"
 
 
-# [verifiers.BTC.ConfirmedBlockHeightExists]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
+# EVMTransaction
+[types.EVMTransaction]
+abi_path = "configs/abis/EVMTransaction.json"
 
+## ETH
+[types.EVMTransaction.Sources.ETH]
+url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
+api_key = "12345"
+lut_limit = "18446744073709551615"
 
-# [verifiers.BTC.ReferencedPaymentNonexistence]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.BTC.AddressValidity]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# # Verifiers for DOGE
-# [verifiers.DOGE.Payment]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.DOGE.BalanceDecreasingTransaction]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.DOGE.ConfirmedBlockHeightExists]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.DOGE.ReferencedPaymentNonexistence]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.DOGE.AddressValidity]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# # Verifiers for XRP
-# [verifiers.XRP.Payment]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.XRP.BalanceDecreasingTransaction]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.XRP.ConfirmedBlockHeightExists]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.XRP.ReferencedPaymentNonexistence]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.XRP.AddressValidity]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# Verifiers for ETH
-[verifiers.ETH.EVMTransaction]
+##SGB
+[types.EVMTransaction.Sources.testSGB]
 url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
 api_key = "12345"
 lut_limit = "18446744073709551615"
 
 
-[verifiers.testSGB.EVMTransaction]
+##FLR
+[types.EVMTransaction.Sources.testFLR]
 url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
 api_key = "12345"
 lut_limit = "18446744073709551615"
-
-
-[verifiers.testFLR.EVMTransaction]
-url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
-api_key = "12345"
-lut_limit = "18446744073709551615"
-
-
-#ABIs
-[abis]
-# Payment = ""
-# BalanceDecreasingTransaction = ""
-# ConfirmedBlockHeightExists = ""
-# ReferencedPaymentNonexistence = ""
-# AddressValidity = ""
-EVMTransaction = "configs/abis/EVMTransaction.json" #relative to project root

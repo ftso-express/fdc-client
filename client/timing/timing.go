@@ -6,18 +6,18 @@ import (
 
 func RoundIdForTimestamp(t uint64) (uint64, error) {
 
-	if t+OffsetSec < ChainConstants.T0 {
-		return 0, fmt.Errorf("timestamp: %d before first round : %d", t, ChainConstants.T0-OffsetSec)
+	if t+OffsetSec < Chain.T0 {
+		return 0, fmt.Errorf("timestamp: %d before first round : %d", t, Chain.T0-OffsetSec)
 	}
 
-	roundId := (t + OffsetSec - ChainConstants.T0) / CollectDurationSec
+	roundId := (t + OffsetSec - Chain.T0) / CollectDurationSec
 
 	return roundId, nil
 }
 
 func RoundStartTime(n uint64) uint64 {
 
-	return ChainConstants.T0 + n*CollectDurationSec - OffsetSec
+	return Chain.T0 + n*CollectDurationSec - OffsetSec
 }
 
 func ChooseStartTimestamp(n uint64) uint64 {
@@ -31,11 +31,11 @@ func ChooseEndTimestamp(n uint64) uint64 {
 // NextChoosePhaseEnd returns the roundId of the round whose choose phase is next in line to end and the timestamp of the end.
 func NextChooseEnd(t uint64) (uint64, uint64) {
 
-	if t+OffsetSec < ChainConstants.T0+ChooseDurationSec {
+	if t+OffsetSec < Chain.T0+ChooseDurationSec {
 		return 0, ChooseEndTimestamp(0)
 	}
 
-	roundId := (t - ChainConstants.T0 + OffsetSec - ChooseDurationSec) / CollectDurationSec
+	roundId := (t - Chain.T0 + OffsetSec - ChooseDurationSec) / CollectDurationSec
 
 	endTimestamp := ChooseEndTimestamp(roundId)
 
@@ -64,5 +64,5 @@ func LastCollectPhaseStart(t uint64) (uint64, uint64, error) {
 
 // ExpectedRewardEpochStartTimestamp returns the expected timestamp of the rewardEpoch with rewardEpochId.
 func ExpectedRewardEpochStartTimestamp(rewardEpochId uint64) uint64 {
-	return ChainConstants.T0 + ChainConstants.RewardEpochLength*ChooseDurationSec*rewardEpochId
+	return Chain.T0 + Chain.RewardEpochLength*CollectDurationSec*rewardEpochId
 }

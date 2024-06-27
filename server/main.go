@@ -19,8 +19,7 @@ type Server struct {
 
 func New(
 	rounds *storage.Cyclic[*attestation.Round],
-	systemServerConfig config.SystemRestServerConfig,
-	userServerConfig config.UserRestServerConfig,
+	serverConfig config.RestServer,
 ) Server {
 	// Create Mux router
 	muxRouter := mux.NewRouter()
@@ -32,22 +31,22 @@ func New(
 
 	// create api auth middleware
 	keyMiddleware := &restServer.AipKeyAuthMiddleware{
-		KeyName: userServerConfig.ApiKeyName,
-		Keys:    userServerConfig.ApiKeys,
+		KeyName: serverConfig.ApiKeyName,
+		Keys:    serverConfig.ApiKeys,
 	}
 	keyMiddleware.Init()
 
 	router := restServer.NewSwaggerRouter(muxRouter, restServer.SwaggerRouterConfig{
-		Title:           systemServerConfig.Title,
-		Version:         systemServerConfig.Version,
-		SwaggerBasePath: systemServerConfig.SwaggerPath,
+		Title:           serverConfig.Title,
+		Version:         serverConfig.Version,
+		SwaggerBasePath: serverConfig.SwaggerPath,
 		SecuritySchemes: keyMiddleware.SecuritySchemes(),
 	})
 
 	// create fsp sub router
-	fspSubRouter := router.WithPrefix(systemServerConfig.FSPSubpath, systemServerConfig.FSPTitle)
+	fspSubRouter := router.WithPrefix(serverConfig.FSPSubpath, serverConfig.FSPTitle)
 	// Register routes for FSP
-	RegisterFDCProviderRoutes(rounds, fspSubRouter, []string{userServerConfig.ApiKeyName})
+	RegisterFDCProviderRoutes(rounds, fspSubRouter, []string{serverConfig.ApiKeyName})
 	fspSubRouter.AddMiddleware(keyMiddleware.Middleware)
 
 	// Register routes
@@ -60,7 +59,7 @@ func New(
 	corsMuxRouter := cors.Handler(muxRouter)
 	srv := &http.Server{
 		Handler: corsMuxRouter,
-		Addr:    userServerConfig.Addr,
+		Addr:    serverConfig.Addr,
 		// Good practice: enforce timeouts for servers you create -- config?
 		// WriteTimeout: 15 * time.Second,
 		// ReadTimeout:  15 * time.Second,

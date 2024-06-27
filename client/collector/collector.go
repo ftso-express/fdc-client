@@ -17,18 +17,19 @@ import (
 )
 
 const (
-	bitVoteBufferSize             = 10
+	bitVoteBufferSize       = 2
+	requestsBufferSize      = 10
+	signingPolicyBufferSize = 3
+
 	bitVoteOffChainTriggerSeconds = 15
-	requestsBufferSize            = 10
-	requestListenerInterval       = 2 * time.Second
-	signingPolicyBufferSize       = 3
+)
+const (
+	requestListenerInterval = 2 * time.Second
+	databasePollTime        = 2 * time.Second
+	bitVoteHeadStart        = 5 * time.Second
 )
 
-const (
-	roundLength      = 90 * time.Second
-	databasePollTime = 2 * time.Second
-	bitVoteHeadStart = 5 * time.Second
-)
+const submit1FuncSelHex = "6c532fae"
 
 var signingPolicyInitializedEventSel common.Hash
 var attestationRequestEventSel common.Hash
@@ -74,9 +75,8 @@ type Collector struct {
 	RoundManager          *attestation.Manager
 }
 
-const submit1FuncSelHex = "6c532fae"
-
-func New(user config.UserConfigRaw, system config.SystemConfig) *Collector {
+// New creates new Collector from user and system configs.
+func New(user config.UserRaw, system config.System) *Collector {
 	// CONSTANTS
 	// requestEventSignature := "251377668af6553101c9bb094ba89c0c536783e005e203625e6cd57345918cc9"
 	// signingPolicySignature := "91d0280e969157fc6c5b8f952f237b03d934b18534dafcac839075bbc33522f8"
@@ -98,10 +98,10 @@ func New(user config.UserConfigRaw, system config.SystemConfig) *Collector {
 	}
 
 	runner := Collector{
-		Protocol:              system.Listener.Protocol,
-		SubmitContractAddress: system.Listener.SubmitContractAddress,
-		FdcContractAddress:    system.Listener.FdcContractAddress,
-		RelayContractAddress:  system.Listener.RelayContractAddress,
+		Protocol:              user.ProtocolId,
+		SubmitContractAddress: system.Addresses.SubmitContract,
+		FdcContractAddress:    system.Addresses.FdcContract,
+		RelayContractAddress:  system.Addresses.RelayContract,
 		DB:                    db,
 		submit1Sel:            submit1FuncSel,
 		RoundManager:          roundManager,

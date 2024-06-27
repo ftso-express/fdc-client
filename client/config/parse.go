@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"flare-common/errorf"
 	"fmt"
 	"os"
@@ -10,42 +11,54 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 )
 
-// ParseAbi maps each key with StringToByte32 and parses the file indicated by value into abi.Arguments and abi in string.
-func ParseAbi(config AbiConfigUnparsed) (AbiConfig, error) {
+// ParseAttestationTypesConfig parses AttestationTypesUnparsed as read from toml file into AttestationTypes.
+func ParseAttestationTypesConfig(attTypesConfigUnparsed AttestationTypesUnparsed) (AttestationTypes, error) {
 
-	arguments := make(map[[32]byte]abi.Arguments)
-	abis := make(map[[32]byte]string)
+	attTypesConfig := make(AttestationTypes)
 
-	for k, v := range config {
+	for k := range attTypesConfigUnparsed {
 
 		attType, err := StringToByte32(k)
 
 		if err != nil {
-			return AbiConfig{}, err
+			return nil, fmt.Errorf("reading type %w", err)
 		}
 
-		file, err := os.ReadFile(v)
+		attTypeConfig, err := ParseAttestationTypeConfig(attTypesConfigUnparsed[k])
 
 		if err != nil {
-			return AbiConfig{}, errorf.ReadingFile(v, err)
+			return nil, fmt.Errorf("parsing type %s: %w", k, err)
 		}
 
-		args, err := ArgumentsFromAbi(file)
-
-		if err != nil {
-			return AbiConfig{}, fmt.Errorf("retrieving arguments form %s", v)
-		}
-
-		arguments[attType] = args
-
-		abis[attType] = WhiteSpaceStrip(string(file))
-
+		attTypesConfig[attType] = attTypeConfig
 	}
 
-	return AbiConfig{arguments, abis}, nil
+	return attTypesConfig, nil
 
 }
 
+// getAbi reads abi of a struct from a JSON file and converts it into abi.Arguments and string representation.
+func getAbi(path string) (abi.Arguments, string, error) {
+
+	file, err := os.ReadFile(path)
+
+	if err != nil {
+		return abi.Arguments{}, "", errorf.ReadingFile(path, err)
+	}
+
+	args, err := ArgumentsFromAbi(file)
+
+	if err != nil {
+		return abi.Arguments{}, "", fmt.Errorf("retrieving arguments from %s with %w", path, err)
+	}
+
+	abiString := WhiteSpaceStrip(string(file))
+
+	return args, abiString, nil
+
+}
+
+// ArgumentsFromAbi convert byte encoded json abi into abu.Arguments.
 func ArgumentsFromAbi(abiBytes []byte) (abi.Arguments, error) {
 
 	var arg abi.Argument
@@ -60,35 +73,75 @@ func ArgumentsFromAbi(abiBytes []byte) (abi.Arguments, error) {
 
 }
 
-// ParseVerifiers converts map[string]map[string]VerifierConfig to map[[64]bytes]VerifierConfig, where string,string is mapped to [64]bytes using TwoStringsToByte64.
-func ParseVerifiers(config VerifierConfigUnparsed) (VerifierConfig, error) {
+// parseSourceConfig takes sourceBig and converts LutLimit from big.int to uint64.
+func parseSourceConfig(sourceConfigBig sourceBig) (Source, error) {
 
-	verifiers := make(VerifierConfig)
-
-	for sourceId, v := range config {
-		for attType, creds := range v {
-
-			key, err := TwoStringsToByte64(attType, sourceId)
-
-			if err != nil {
-				return VerifierConfig{}, err
-			}
-
-			if !creds.LutLimit.IsUint64() {
-				return VerifierConfig{}, fmt.Errorf("lut limit for %s, %s is too big: %s", attType, sourceId, creds.LutLimit.String())
-
-			}
-
-			credsParsed := VerifierCredentials{Url: creds.Url, ApiKey: creds.ApiKey, LutLimit: creds.LutLimit.Uint64()}
-
-			verifiers[key] = credsParsed
-
-		}
+	if !sourceConfigBig.LutLimit.IsUint64() {
+		return Source{
+				Url:      sourceConfigBig.Url,
+				ApiKey:   sourceConfigBig.ApiKey,
+				LutLimit: 0,
+			},
+			errors.New("lutLimit does not fit in uint64")
 
 	}
 
-	return verifiers, nil
+	return Source{
+			Url:      sourceConfigBig.Url,
+			ApiKey:   sourceConfigBig.ApiKey,
+			LutLimit: sourceConfigBig.LutLimit.Uint64(),
+		},
+		nil
 
+}
+
+func ParseAttestationTypeConfig(attTypeConfigUnparsed AttestationTypeUnparsed) (AttestationType, error) {
+
+	responseArguments, responseAbiString, err := getAbi(attTypeConfigUnparsed.Abi)
+
+	if err != nil {
+		return AttestationType{}, fmt.Errorf("getting abi %w", err)
+	}
+
+	sourcesConfig, err := parseSourcesConfig(attTypeConfigUnparsed.Sources)
+
+	if err != nil {
+		return AttestationType{}, fmt.Errorf("parsing: %w", err)
+
+	}
+
+	return AttestationType{
+			ResponseArguments:  responseArguments,
+			ResponseAbisString: responseAbiString,
+			SourcesConfig:      sourcesConfig,
+		},
+		nil
+
+}
+
+func parseSourcesConfig(sourcesConfigUnparsed map[string]sourceBig) (map[[32]byte]Source, error) {
+
+	sourcesConfig := make(map[[32]byte]Source)
+
+	for k := range sourcesConfigUnparsed {
+
+		source, err := StringToByte32(k)
+
+		if err != nil {
+			return nil, fmt.Errorf("reading source %w", err)
+		}
+
+		sourceConfig, err := parseSourceConfig(sourcesConfigUnparsed[k])
+
+		if err != nil {
+			return nil, fmt.Errorf("parsing source config %w", err)
+		}
+
+		sourcesConfig[source] = sourceConfig
+
+	}
+
+	return sourcesConfig, nil
 }
 
 // WhiteSpaceStrip removes any white space character from the string.

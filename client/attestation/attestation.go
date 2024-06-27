@@ -59,6 +59,7 @@ type Attestation struct {
 	LutLimit  uint64
 }
 
+// attestationFromDatabaseLog creates an Attestation from a request event log.
 func attestationFromDatabaseLog(request database.Log) (Attestation, error) {
 
 	requestLog, err := ParseAttestationRequestLog(request)
@@ -89,7 +90,7 @@ func attestationFromDatabaseLog(request database.Log) (Attestation, error) {
 // handleAttestation sends the attestation request to the correct verifier server and validates the response.
 func (m *Manager) handleAttestation(attestation *Attestation) error {
 
-	typeSourceConfig, err := attestation.prepareRequest(m.verifierServers, m.abiConfig.ResponseArguments)
+	typeSourceConfig, err := attestation.prepareRequest(m.attestationTypeConfig)
 
 	if err != nil {
 		return fmt.Errorf("handleAttestation: %w", err)
@@ -115,41 +116,44 @@ func (m *Manager) handleAttestation(attestation *Attestation) error {
 	}
 }
 
-func (a *Attestation) prepareRequest(verifierServers config.VerifierConfig, responseArguments map[[32]byte]abi.Arguments) (config.VerifierCredentials, error) {
-
-	attTypeAndSource, err := a.Request.AttestationTypeAndSource()
-	if err != nil {
-		a.Status = ProcessError
-		return config.VerifierCredentials{}, err
-	}
+// prepareRequest adds response abi and lutLimit to the Attestation and returns the verifier credentials.
+func (a *Attestation) prepareRequest(attestationTypesConfigs config.AttestationTypes) (config.Source, error) {
 
 	attType, err := a.Request.AttestationType()
 	if err != nil {
 		a.Status = ProcessError
-		return config.VerifierCredentials{}, err
+		return config.Source{}, err
 	}
-	var ok bool
 
-	a.Abi, ok = responseArguments[attType]
+	source, err := a.Request.Source()
+
+	if err != nil {
+		a.Status = ProcessError
+		return config.Source{}, err
+	}
+
+	attestationTypeConfig, ok := attestationTypesConfigs[attType]
 
 	if !ok {
 		a.Status = UnsupportedPair
-		return config.VerifierCredentials{}, fmt.Errorf("prepare request: no abi for: %s", string(attType[:]))
+		return config.Source{}, fmt.Errorf("prepare request: no configs for: %s", string(attType[:]))
 
 	}
 
-	typeSourceConfig, ok := verifierServers[attTypeAndSource]
+	a.Abi = attestationTypeConfig.ResponseArguments
+
+	sourceConfig, ok := attestationTypeConfig.SourcesConfig[source]
 
 	if !ok {
 		a.Status = UnsupportedPair
-		return config.VerifierCredentials{}, fmt.Errorf("prepare request: no verifier for pair %s %s", string(attTypeAndSource[0:32]), string(attTypeAndSource[32:64]))
+		return config.Source{}, fmt.Errorf("prepare request: no configs for: %s, %s", string(attType[:]), string(source[:]))
 
 	}
 
-	a.LutLimit = typeSourceConfig.LutLimit
+	a.LutLimit = sourceConfig.LutLimit
 	a.Status = Processing
 
-	return typeSourceConfig, nil
+	return sourceConfig, nil
 
 }
 

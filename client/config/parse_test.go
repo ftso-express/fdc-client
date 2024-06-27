@@ -6,8 +6,59 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
+
+const (
+	USER_FILE        = "../../testFiles/configs/userConfig.toml" //relative to test
+	SYSTEM_DIRECTORY = "../../testFiles/configs/systemConfigs"   //relative to test
+)
+
+func TestReadUserRaw(t *testing.T) {
+
+	cfg, err := config.ReadUserRaw(USER_FILE)
+
+	require.NoError(t, err)
+
+	require.Equal(t, "coston", cfg.Chain)
+
+	require.Equal(t, uint8(200), cfg.ProtocolId)
+
+	parsed, err := config.ParseAttestationTypesConfig(cfg.AttestationTypeConfig)
+
+	require.NoError(t, err)
+
+	attType, err := config.StringToByte32("EVMTransaction")
+
+	require.NoError(t, err)
+
+	typeConfigs, ok := parsed[attType]
+
+	require.True(t, ok)
+
+	source, err := config.StringToByte32("ETH")
+
+	require.NoError(t, err)
+
+	sourceConfig, ok := typeConfigs.SourcesConfig[source]
+
+	require.True(t, ok)
+
+	require.Equal(t, "12345", sourceConfig.ApiKey)
+
+}
+
+func TestReadSystem(t *testing.T) {
+
+	sysCfg, err := config.ReadSystem(SYSTEM_DIRECTORY, "coston", 200)
+
+	require.NoError(t, err)
+
+	require.Equal(t, common.HexToAddress("0x2cA6571Daa15ce734Bbd0Bf27D5C9D16787fc33f"), sysCfg.Addresses.SubmitContract)
+
+	require.Equal(t, uint64(240), sysCfg.Timing.RewardEpochLength)
+}
 
 func TestStringToByte32(t *testing.T) {
 

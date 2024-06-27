@@ -3,6 +3,7 @@ package attestation
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"flare-common/payload"
 	"fmt"
 	"local/fdc/client/shuffle"
@@ -10,7 +11,6 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -18,11 +18,10 @@ const (
 	NumOfSamples int     = 100000    // the actual number of samples is x2 (one normal and one optimistic for each seed)
 	divOpt       uint16  = 5         // totalWeight/divOpt is the weight of the optimistic samples
 	valueCap     float64 = 4.0 / 5.0 // bitVote support cap in factor of totalWeight
-	protocolId           = 300       // TODO get protocol id (300) from somewhere // read from config/toml
 )
 
 type BitVote struct {
-	Length    uint16 //number attestations
+	Length    uint16 //number of attestations
 	BitVector *big.Int
 }
 
@@ -200,12 +199,12 @@ type ConsensusBitVoteInput struct {
 }
 
 // ConsensusBitVote calculates the ConsensusBitVote for roundId given the weightedBitVotes.
-func ConsensusBitVote(input *ConsensusBitVoteInput) (BitVote, error) {
+func ConsensusBitVote(input *ConsensusBitVoteInput, protocolId uint64) (BitVote, error) {
 	weightVoted := sumWeightedBitVotes(input.WeightedBitVotes)
 
 	if weightVoted <= input.TotalWeight/2 {
 		percentage := (float32(weightVoted) * 100.0) / float32(input.TotalWeight)
-		return BitVote{}, errors.Errorf("only %.1f%% bitVoted", percentage)
+		return BitVote{}, fmt.Errorf("only %.1f%% bitVoted", percentage)
 	}
 
 	var eg errgroup.Group
@@ -218,7 +217,7 @@ func ConsensusBitVote(input *ConsensusBitVoteInput) (BitVote, error) {
 	for i := 0; i < NumOfSamples; i++ {
 		index := i
 		eg.Go(func() error {
-			bitVoteVals, err := calcBitVoteVals(input, index)
+			bitVoteVals, err := calcBitVoteVals(input, index, protocolId)
 			if err != nil {
 				return err
 			}
@@ -250,7 +249,7 @@ func sumWeightedBitVotes(weightedBitVotes []*WeightedBitVote) (weightVoted uint1
 	return weightVoted
 }
 
-func calcBitVoteVals(input *ConsensusBitVoteInput, index int) ([2]*bitVoteWithValue, error) {
+func calcBitVoteVals(input *ConsensusBitVoteInput, index int, protocolId uint64) ([2]*bitVoteWithValue, error) {
 	var results [2]*bitVoteWithValue
 
 	seed := shuffle.Seed(input.RoundID, uint64(index), protocolId)

@@ -268,11 +268,7 @@ func TestPrepareRequest(t *testing.T) {
 
 	require.NoError(t, err)
 
-	abiCfg, err := config.ParseAbi(cfg.Abis)
-
-	require.NoError(t, err)
-
-	vrfCfg, err := config.ParseVerifiers(cfg.Verifiers)
+	attestationTypesConfigs, err := config.ParseAttestationTypesConfig(cfg.AttestationTypeConfig)
 
 	require.NoError(t, err)
 
@@ -304,7 +300,7 @@ func TestPrepareRequest(t *testing.T) {
 
 		require.NoError(t, err, fmt.Sprintf("error parsing test %d", i))
 
-		creds, err := attestation.PrepareRequest(&att, vrfCfg, abiCfg.ResponseArguments)
+		creds, err := attestation.PrepareRequest(&att, attestationTypesConfigs)
 
 		require.NoError(t, err)
 
@@ -320,11 +316,7 @@ func TestPrepareRequestError(t *testing.T) {
 
 	require.NoError(t, err)
 
-	abiCfg, err := config.ParseAbi(cfg.Abis)
-
-	require.NoError(t, err)
-
-	vrfCfg, err := config.ParseVerifiers(cfg.Verifiers)
+	attestationTypesConfigs, err := config.ParseAttestationTypesConfig(cfg.AttestationTypeConfig)
 
 	require.NoError(t, err)
 
@@ -368,7 +360,7 @@ func TestPrepareRequestError(t *testing.T) {
 
 		require.NoError(t, err, fmt.Sprintf("error parsing test %d", i))
 
-		_, err = attestation.PrepareRequest(&att, vrfCfg, abiCfg.ResponseArguments)
+		_, err = attestation.PrepareRequest(&att, attestationTypesConfigs)
 
 		require.Error(t, err)
 
