@@ -27,11 +27,7 @@ func TestBitWalk65(t *testing.T) {
 		bitVote, err := attestation.BitVoteFromAttestations(atts)
 		require.NoError(t, err)
 
-		c := new(attestation.WeightedBitVote)
-		c.Index = j
-		c.Weight = uint16(1)
-		c.BitVote = bitVote
-
+		c := &attestation.WeightedBitVote{Index: j, Weight: 1, BitVote: bitVote}
 		weightedBitvotes = append(weightedBitvotes, c)
 	}
 
@@ -60,11 +56,7 @@ func TestBitWalkRandom(t *testing.T) {
 		bitVote, err := attestation.BitVoteFromAttestations(atts)
 		require.NoError(t, err)
 
-		c := new(attestation.WeightedBitVote)
-		c.Index = j
-		c.Weight = uint16(1)
-		c.BitVote = bitVote
-
+		c := &attestation.WeightedBitVote{Index: j, Weight: 1, BitVote: bitVote}
 		weightedBitvotes = append(weightedBitvotes, c)
 	}
 
@@ -102,11 +94,7 @@ func TestBitWalkFix(t *testing.T) {
 		bitVote, err := attestation.BitVoteFromAttestations(atts)
 		require.NoError(t, err)
 
-		c := new(attestation.WeightedBitVote)
-		c.Index = j
-		c.Weight = uint16(1)
-		c.BitVote = bitVote
-
+		c := &attestation.WeightedBitVote{Index: j, Weight: 1, BitVote: bitVote}
 		weightedBitvotes = append(weightedBitvotes, c)
 	}
 

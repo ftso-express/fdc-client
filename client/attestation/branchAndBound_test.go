@@ -10,7 +10,7 @@ import (
 )
 
 func TestBranchAndBoundRandom(t *testing.T) {
-	numAttestations := 30
+	numAttestations := 40
 	numVoters := 100
 	weightedBitvotes := []*attestation.WeightedBitVote{}
 	prob := 0.8
@@ -21,11 +21,7 @@ func TestBranchAndBoundRandom(t *testing.T) {
 		bitVote, err := attestation.BitVoteFromAttestations(atts)
 		require.NoError(t, err)
 
-		c := new(attestation.WeightedBitVote)
-		c.Index = j
-		c.Weight = uint16(1)
-		c.BitVote = bitVote
-
+		c := &attestation.WeightedBitVote{Index: j, Weight: 1, BitVote: bitVote}
 		weightedBitvotes = append(weightedBitvotes, c)
 	}
 
@@ -51,7 +47,7 @@ func TestBranchAndBoundRandom(t *testing.T) {
 }
 
 func TestBranchAndBound65(t *testing.T) {
-	numAttestations := 40
+	numAttestations := 100
 	numVoters := 100
 	weightedBitvotes := []*attestation.WeightedBitVote{}
 
@@ -67,11 +63,7 @@ func TestBranchAndBound65(t *testing.T) {
 		bitVote, err := attestation.BitVoteFromAttestations(atts)
 		require.NoError(t, err)
 
-		c := new(attestation.WeightedBitVote)
-		c.Index = j
-		c.Weight = uint16(1)
-		c.BitVote = bitVote
-
+		c := &attestation.WeightedBitVote{Index: j, Weight: 1, BitVote: bitVote}
 		weightedBitvotes = append(weightedBitvotes, c)
 	}
 
@@ -117,11 +109,7 @@ func TestBranchAndBoundFix(t *testing.T) {
 		bitVote, err := attestation.BitVoteFromAttestations(atts)
 		require.NoError(t, err)
 
-		c := new(attestation.WeightedBitVote)
-		c.Index = j
-		c.Weight = uint16(1)
-		c.BitVote = bitVote
-
+		c := &attestation.WeightedBitVote{Index: j, Weight: 1, BitVote: bitVote}
 		weightedBitvotes = append(weightedBitvotes, c)
 	}
 

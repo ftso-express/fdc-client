@@ -27,10 +27,10 @@ type BranchAndBoundSolution struct {
 	Participants []bool
 	Solution     []bool
 	Value        int
+	Optimal      bool
 }
 
 func CalcValue(feeSum int, weight, totalWeight uint16) int {
-
 	weightCaped := min(int(float64(totalWeight)*valueCap), int(weight))
 
 	return feeSum * weightCaped
@@ -60,7 +60,14 @@ func PermuteBits(allBitVotes []*WeightedBitVote, randPerm []int) []*WeightedBitV
 	return permBitVotes
 }
 
-func BranchAndBound(allBitVotes []*WeightedBitVote, fees []int, numIterations int, seed int64) *BranchAndBoundSolution {
+// BranchAndBound is a function that takes a set of weighted bit votes and a list of fees and
+// tries to get an optimal subset of votes with the weight more than the half of the total weight.
+// The algorithm executes a branch and bound strategy. In the case the algorithm is able search
+// through the entire solution space before reaching the given max operations counter, the algorithm
+// gives an optimal solution. In the case that the solution space is too big, the algorithm gives a
+// the best solution it finds. The search strategy is pseudo-randomized, where the pseudo-random
+// function is controlled by the given seed.
+func BranchAndBound(allBitVotes []*WeightedBitVote, fees []int, maxOperations int, seed int64) *BranchAndBoundSolution {
 	numAttestations := len(fees)
 	numVoters := len(allBitVotes)
 	totalWeight := uint16(0)
@@ -79,7 +86,7 @@ func BranchAndBound(allBitVotes []*WeightedBitVote, fees []int, numIterations in
 	randPerm := RandPerm(numAttestations, randGen)
 	permBitVotes := PermuteBits(allBitVotes, randPerm)
 
-	currentBound := &CurrentStatus{CurrentBound: 0, NumOperations: 0, MaxOperations: numIterations, TotalWeight: totalWeight, BitVotes: permBitVotes, Fees: fees, RandGen: randGen}
+	currentBound := &CurrentStatus{CurrentBound: 0, NumOperations: 0, MaxOperations: maxOperations, TotalWeight: totalWeight, BitVotes: permBitVotes, Fees: fees, RandGen: randGen}
 
 	permResult := Branch(participants, totalFee, currentBound, 0, numAttestations, totalWeight)
 
@@ -89,6 +96,11 @@ func BranchAndBound(allBitVotes []*WeightedBitVote, fees []int, numIterations in
 	}
 	for key, val := range randPerm {
 		result.Solution[key] = permResult.SolutionReverse[numAttestations-val-1]
+	}
+	if currentBound.NumOperations < maxOperations {
+		result.Optimal = true
+	} else {
+		result.Maximize(allBitVotes, fees)
 	}
 
 	return &result
@@ -156,4 +168,44 @@ func Branch(participants map[int]bool, feeSum int, currentStatus *CurrentStatus,
 		result0.SolutionReverse = append(result0.SolutionReverse, false)
 		return result0
 	}
+}
+
+func (solution *BranchAndBoundSolution) Maximize(allBitVotes []*WeightedBitVote, fees []int) {
+	for i, attestation := range solution.Solution {
+		if !attestation {
+			check := true
+			for j, voter := range solution.Participants {
+				if voter && allBitVotes[j].BitVote.BitVector.Bit(i) == 0 {
+					check = false
+					break
+				}
+			}
+			if check {
+				solution.Solution[i] = true
+			}
+		}
+	}
+
+	solution.Value = solution.CalcValueFromFees(allBitVotes, fees)
+}
+
+func (solution *BranchAndBoundSolution) CalcValueFromFees(allBitVotes []*WeightedBitVote, fees []int) int {
+	val := 0
+	for i, attestation := range solution.Solution {
+		if attestation {
+			val += fees[i]
+		}
+	}
+	weight := 0
+	totalWeight := 0
+	for j, voter := range solution.Participants {
+		if voter {
+			weight += int(allBitVotes[j].Weight)
+		}
+		totalWeight += int(allBitVotes[j].Weight)
+	}
+
+	weightCaped := min(int(float64(totalWeight)*valueCap), weight)
+
+	return val * weightCaped
 }
