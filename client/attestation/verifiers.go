@@ -60,8 +60,11 @@ func ResolveAttestationRequest(att *Attestation) (bool, error) {
 
 	responseBody := AbiEncodedResponseBody{}
 
-	// TODO: check whether the response body struct is correct
-	err = json.NewDecoder(resp.Body).Decode(&responseBody)
+	decoder := json.NewDecoder(resp.Body)
+
+	decoder.DisallowUnknownFields()
+
+	err = decoder.Decode(&responseBody)
 
 	if err != nil {
 		return false, err
