@@ -269,17 +269,14 @@ func (m *Manager) retryUnsuccessfulChosen(ctx context.Context, round *Round) (in
 
 			queue, ok := m.queues[queueName]
 
-			if ok {
-
-				err := queue.EnqueuePriority(ctx, round.Attestations[i])
-
-				if err != nil {
-					return 0, err
-				}
-			} else {
-
+			if !ok {
 				return 0, fmt.Errorf("retry: no queue: %s", queueName)
+			}
 
+			err := queue.EnqueuePriority(ctx, round.Attestations[i])
+
+			if err != nil {
+				return 0, err
 			}
 
 			count = count + 1
