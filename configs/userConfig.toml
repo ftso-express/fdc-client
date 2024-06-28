@@ -62,12 +62,14 @@ abi_path = "configs/abis/EVMTransaction.json"
 url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
 api_key = "12345"
 lut_limit = "18446744073709551615"
+queue = "evmETH"
 
 ##SGB
 [types.EVMTransaction.Sources.testSGB]
 url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
 api_key = "12345"
 lut_limit = "18446744073709551615"
+queue = "evmETH"
 
 
 ##FLR
@@ -75,3 +77,8 @@ lut_limit = "18446744073709551615"
 url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
 api_key = "12345"
 lut_limit = "18446744073709551615"
+queue = "evmETH"
+
+
+[queues.evmETH]
+size = 10

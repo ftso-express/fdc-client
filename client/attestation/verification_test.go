@@ -79,7 +79,7 @@ func TestResponse(t *testing.T) {
 
 		//MIC
 
-		mic, err := resp.ComputeMic(abi)
+		mic, err := resp.ComputeMic(&abi)
 
 		require.NoError(t, err)
 

@@ -2,6 +2,8 @@ package config
 
 import (
 	"flare-common/database"
+	"flare-common/queue"
+
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -13,6 +15,7 @@ type userCommon struct {
 	ProtocolId uint8             `toml:"protocolId"`
 	DB         database.DBConfig `toml:"db"`
 	RestServer RestServer        `toml:"rest_server"`
+	Queues     Queues            `toml:"queues"`
 }
 
 type UserRaw struct {
@@ -55,16 +58,18 @@ type Addresses struct {
 }
 
 type Source struct {
-	Url      string
-	ApiKey   string
-	LutLimit uint64
+	Url       string
+	ApiKey    string
+	LutLimit  uint64
+	QueueName string
 	//add pointer to a queue
 }
 
 type sourceBig struct {
-	Url      string   `toml:"url"`
-	ApiKey   string   `toml:"api_key"`
-	LutLimit *big.Int `toml:"lut_limit"`
+	Url       string   `toml:"url"`
+	ApiKey    string   `toml:"api_key"`
+	LutLimit  *big.Int `toml:"lut_limit"`
+	QueueName string   `toml:"queue"`
 	//add pointer to a queue
 }
 
@@ -87,3 +92,5 @@ type Timing struct {
 	T0                uint64 `toml:"t0"`
 	RewardEpochLength uint64 `toml:"reward_epoch_length"`
 }
+
+type Queues map[string]queue.PriorityQueueParams

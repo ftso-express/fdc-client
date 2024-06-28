@@ -95,7 +95,7 @@ func (r Request) Mic() (common.Hash, error) {
 // ComputeMic computes Mic from the response.
 // Mic is defined by solidity code abi.encode(response,"Flare") where response is a instance of a struct defined by the attestation type.
 // It is assumed that roundId in the response is set to 0.
-func (r Response) ComputeMic(args abi.Arguments) (common.Hash, error) {
+func (r Response) ComputeMic(args *abi.Arguments) (common.Hash, error) {
 
 	decoded, err := args.Unpack(r)
 
@@ -114,9 +114,9 @@ func (r Response) ComputeMic(args abi.Arguments) (common.Hash, error) {
 		return common.Hash{}, err
 	}
 
-	args = append(args, stringArgument)
+	micArgs := append(*args, stringArgument)
 
-	withSalt, err := args.Pack(decoded[0], "Flare")
+	withSalt, err := micArgs.Pack(decoded[0], "Flare")
 
 	if err != nil {
 		return common.Hash{}, err

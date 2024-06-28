@@ -19,17 +19,17 @@ type PriorityQueue[T any] struct {
 	workersSem      chan struct{}
 }
 
-// PriorityQueueInput values are used to construct a new PriorityQueue.
-type PriorityQueueInput struct {
-	Size                 int
-	MaxDequeuesPerSecond int // Set to 0 to disable rate-limiting
-	MaxWorkers           int // Set to 0 for unlimited workers
+// PriorityQueueParams values are used to construct a new PriorityQueue.
+type PriorityQueueParams struct {
+	Size                 int `toml:"size"`
+	MaxDequeuesPerSecond int `toml:"max_dequeues_per_second"` // Set to 0 to disable rate-limiting
+	MaxWorkers           int `toml:"max_workers"`             // Set to 0 for unlimited workers
 }
 
 // NewPriority constructs a new PriorityQueue.
-func NewPriority[T any](input *PriorityQueueInput) PriorityQueue[T] {
+func NewPriority[T any](input *PriorityQueueParams) PriorityQueue[T] {
 	if input == nil {
-		input = new(PriorityQueueInput)
+		input = new(PriorityQueueParams)
 	}
 
 	q := PriorityQueue[T]{
@@ -75,9 +75,6 @@ func (q *PriorityQueue[T]) EnqueuePriority(ctx context.Context, item T) error {
 // function. If configured, rate limits and concurrent worker limits will be enforced.
 // This function will block if an item is not immediately available for
 // processing or if necessary to enforce limits.
-//
-// If the handler function returns a non-nil error, the item will be returned
-// to the queue to be retried later.
 func (q *PriorityQueue[T]) Dequeue(ctx context.Context, handler func(context.Context, T) error) error {
 	result, err := q.dequeueWithRateLimit(ctx)
 	if err != nil {

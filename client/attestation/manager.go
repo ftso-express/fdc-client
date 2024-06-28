@@ -41,6 +41,7 @@ type Manager struct {
 	SigningPolicies       <-chan []database.Log
 	signingPolicyStorage  *policy.SigningPolicyStorage
 	attestationTypeConfig config.AttestationTypes
+	queues                priorityQueues
 }
 
 // NewManager initializes attestation round manager from raw user configurations.
@@ -54,11 +55,14 @@ func NewManager(configs config.UserRaw) (*Manager, error) {
 		return nil, fmt.Errorf("error new manger, att types: %w", err)
 	}
 
+	queues := buildQueues(configs.Queues)
+
 	return &Manager{
 			protocolId:            uint64(configs.ProtocolId),
 			Rounds:                rounds,
 			signingPolicyStorage:  signingPolicyStorage,
 			attestationTypeConfig: attestationTypeConfig,
+			queues:                queues,
 		},
 		nil
 }
@@ -68,6 +72,8 @@ func (m *Manager) Run(ctx context.Context) {
 	// Get signing policy first as we cannot process any other message types
 	// without a signing policy.
 	var signingPolicies []database.Log
+
+	runQueues(ctx, m.queues)
 
 	select {
 	case signingPolicies = <-m.SigningPolicies:
@@ -125,6 +131,15 @@ func (m *Manager) Run(ctx context.Context) {
 				log.Warnf("Failed bitVote in round %d: %s", bitVotesForRound.Id, err)
 			} else {
 				log.Debugf("Consensus bitVote %s for round %d computed.", r.ConsensusBitVote.EncodeBitVoteHex(bitVotesForRound.Id), bitVotesForRound.Id)
+
+				noOfRetried, err := m.retryUnsuccessfulChosen(ctx, r)
+
+				if err != nil {
+					log.Warnf("error retrying round %d: %w", r.roundId, err)
+				} else if noOfRetried > 0 {
+					log.Debugf("retrying %d attestations in round %d", noOfRetried, r.roundId)
+				}
+
 			}
 
 		case requests := <-m.Requests:
@@ -215,7 +230,7 @@ func (m *Manager) OnRequest(request database.Log) error {
 	round.Attestations = append(round.Attestations, &attestation)
 
 	go func() {
-		if err := m.handleAttestation(&attestation); err != nil {
+		if err := m.AddToQueue(&attestation); err != nil {
 			log.Error("Error handling attestation:", err)
 		}
 	}()
@@ -240,5 +255,38 @@ func (m *Manager) OnSigningPolicy(initializedPolicy database.Log) error {
 	err = m.signingPolicyStorage.Add(parsedPolicy)
 
 	return err
+
+}
+
+func (m *Manager) retryUnsuccessfulChosen(ctx context.Context, round *Round) (int, error) {
+
+	count := 0
+
+	for i := range round.Attestations {
+
+		if round.Attestations[i].Consensus && round.Attestations[i].Status != Success {
+			queueName := round.Attestations[i].queueName
+
+			queue, ok := m.queues[queueName]
+
+			if ok {
+
+				err := queue.EnqueuePriority(ctx, round.Attestations[i])
+
+				if err != nil {
+					return 0, err
+				}
+			} else {
+
+				return 0, fmt.Errorf("retry: no queue: %s", queueName)
+
+			}
+
+			count = count + 1
+
+		}
+	}
+
+	return count, nil
 
 }

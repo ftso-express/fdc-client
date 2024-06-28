@@ -78,18 +78,20 @@ func parseSourceConfig(sourceConfigBig sourceBig) (Source, error) {
 
 	if !sourceConfigBig.LutLimit.IsUint64() {
 		return Source{
-				Url:      sourceConfigBig.Url,
-				ApiKey:   sourceConfigBig.ApiKey,
-				LutLimit: 0,
+				Url:       sourceConfigBig.Url,
+				ApiKey:    sourceConfigBig.ApiKey,
+				LutLimit:  0,
+				QueueName: sourceConfigBig.QueueName,
 			},
 			errors.New("lutLimit does not fit in uint64")
 
 	}
 
 	return Source{
-			Url:      sourceConfigBig.Url,
-			ApiKey:   sourceConfigBig.ApiKey,
-			LutLimit: sourceConfigBig.LutLimit.Uint64(),
+			Url:       sourceConfigBig.Url,
+			ApiKey:    sourceConfigBig.ApiKey,
+			LutLimit:  sourceConfigBig.LutLimit.Uint64(),
+			QueueName: sourceConfigBig.QueueName,
 		},
 		nil
 

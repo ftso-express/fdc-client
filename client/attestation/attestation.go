@@ -1,6 +1,7 @@
 package attestation
 
 import (
+	"context"
 	"errors"
 	"flare-common/database"
 	"flare-common/events"
@@ -17,15 +18,16 @@ import (
 type Status int
 
 const (
-	Unprocessed     Status = iota
-	UnsupportedPair Status = 2
-	Waiting         Status = 3
-	Processing      Status = 4
-	Success         Status = 5
-	WrongMIC        Status = 6
-	InvalidLUT      Status = 7
-	Retrying        Status = 8
-	ProcessError    Status = 9
+	Unprocessed Status = iota
+	UnsupportedPair
+	Waiting
+	Processing
+	Success
+	WrongMIC
+	InvalidLUT
+	Retrying
+	ProcessError
+	Unconfirmed
 )
 
 type IndexLog struct {
@@ -47,16 +49,18 @@ func earlierLog(a, b IndexLog) bool {
 }
 
 type Attestation struct {
-	Index     IndexLog
-	RoundId   uint64
-	Request   Request
-	Response  Response
-	Fee       *big.Int
-	Status    Status
-	Consensus bool
-	Hash      common.Hash
-	Abi       abi.Arguments
-	LutLimit  uint64
+	Index       IndexLog
+	RoundId     uint64
+	Request     Request
+	Response    Response
+	Fee         *big.Int
+	Status      Status
+	Consensus   bool
+	Hash        common.Hash
+	Abi         *abi.Arguments
+	LutLimit    uint64
+	queueName   string
+	Credentials *VerifierCredentials
 }
 
 // attestationFromDatabaseLog creates an Attestation from a request event log.
@@ -87,73 +91,102 @@ func attestationFromDatabaseLog(request database.Log) (Attestation, error) {
 	return attestation, nil
 }
 
-// handleAttestation sends the attestation request to the correct verifier server and validates the response.
-func (m *Manager) handleAttestation(attestation *Attestation) error {
+func (m *Manager) AddToQueue(attestation *Attestation) error {
 
-	typeSourceConfig, err := attestation.prepareRequest(m.attestationTypeConfig)
+	err := attestation.prepareRequest(m.attestationTypeConfig)
 
 	if err != nil {
-		return fmt.Errorf("handleAttestation: %w", err)
-
+		return fmt.Errorf("preparing request: %w", err)
 	}
 
-	err = ResolveAttestationRequest(attestation, typeSourceConfig)
+	queue, ok := m.queues[attestation.queueName]
+
+	if !ok {
+		return fmt.Errorf("queue %s does not exist", attestation.queueName)
+	}
+
+	err = queue.Enqueue(context.Background(), attestation)
+
+	return err
+}
+
+// handle sends the attestation request to the correct verifier server and validates the response.
+func (a *Attestation) handle() error {
+
+	confirmed, err := ResolveAttestationRequest(a)
 
 	if err != nil {
-		attestation.Status = ProcessError
+		a.Status = ProcessError
 
-		return fmt.Errorf("handleAttestation, resolve request: %w", err)
-	} else {
-		err := attestation.validateResponse()
+		return fmt.Errorf("handle, resolve request: %w", err)
+	}
 
-		if err != nil {
+	if !confirmed {
 
-			return fmt.Errorf("handelAttestation, validate response: %w", err)
+		a.Status = Unconfirmed
 
-		}
+		log.Debugf("unconfirmed request: ")
 
 		return nil
 	}
+
+	err = a.validateResponse()
+
+	if err != nil {
+
+		return fmt.Errorf("handle, validate response: %w", err)
+
+	}
+
+	return nil
+
 }
 
-// prepareRequest adds response abi and lutLimit to the Attestation and returns the verifier credentials.
-func (a *Attestation) prepareRequest(attestationTypesConfigs config.AttestationTypes) (config.Source, error) {
+// prepareRequest adds response ABI, LUT limit and verifierCredentials to the Attestation and returns the verifier credentials.
+func (a *Attestation) prepareRequest(attestationTypesConfigs config.AttestationTypes) error {
 
 	attType, err := a.Request.AttestationType()
 	if err != nil {
 		a.Status = ProcessError
-		return config.Source{}, err
+		return err
 	}
 
 	source, err := a.Request.Source()
 
 	if err != nil {
 		a.Status = ProcessError
-		return config.Source{}, err
+		return err
 	}
 
 	attestationTypeConfig, ok := attestationTypesConfigs[attType]
 
 	if !ok {
 		a.Status = UnsupportedPair
-		return config.Source{}, fmt.Errorf("prepare request: no configs for: %s", string(attType[:]))
+		return fmt.Errorf("prepare request: no configs for: %s", string(attType[:]))
 
 	}
 
-	a.Abi = attestationTypeConfig.ResponseArguments
+	a.Abi = &attestationTypeConfig.ResponseArguments
 
 	sourceConfig, ok := attestationTypeConfig.SourcesConfig[source]
 
 	if !ok {
 		a.Status = UnsupportedPair
-		return config.Source{}, fmt.Errorf("prepare request: no configs for: %s, %s", string(attType[:]), string(source[:]))
+		return fmt.Errorf("prepare request: no configs for: %s, %s", string(attType[:]), string(source[:]))
 
 	}
 
 	a.LutLimit = sourceConfig.LutLimit
 	a.Status = Processing
 
-	return sourceConfig, nil
+	a.Credentials = new(VerifierCredentials)
+
+	a.Credentials.Url = sourceConfig.Url
+	a.Credentials.apiKey = sourceConfig.ApiKey
+
+	a.queueName = sourceConfig.QueueName
+
+	return nil
 
 }
 

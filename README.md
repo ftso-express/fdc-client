@@ -83,13 +83,25 @@ abi_path = "configs/abis/<attestationType>.json"
 url = "http://url/of/the/verifier1"
 api_key = "api-key1"
 lut_limit = "123124124"
+queue = "queue1"
+
 
 ## <source1>
 [verifiers.<attestationType>.Sources.<source2>]
 url = "http://url/of/the/verifier2"
 api_key = "api-key2"
-lut_limit = "123124124"
+lut_limit = "queue2"
+queue = "queue2"
+```
 
+Each queue is has the following configs
+
+```toml
+
+[queue.<queueName>]
+size = 10
+max_dequeues_per_second = 100 # 0 for unlimited
+max_workers = 10 # 0 for unlimited
 ```
 
 System configs for a pair of chain and protocol ID should be specified in

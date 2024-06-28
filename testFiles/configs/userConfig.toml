@@ -35,3 +35,10 @@ abi_path = "../../testFiles/configs/abis/EVMTransaction.json"
 url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
 api_key = "12345"
 lut_limit = "18446744073709551615"
+queue = "evmETH"
+
+
+[queues.evmETH]
+size = 10
+max_dequeues_per_second = 0
+max_workers = 0

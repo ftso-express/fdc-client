@@ -123,7 +123,7 @@ func TestValidateResponse(t *testing.T) {
 
 		require.NoError(t, err)
 
-		att.Abi = abiArgs
+		att.Abi = &abiArgs
 
 		att.LutLimit = test.lutLimit
 
@@ -248,7 +248,7 @@ func TestValidateResponseFail(t *testing.T) {
 
 		require.NoError(t, err)
 
-		att.Abi = abiArgs
+		att.Abi = &abiArgs
 
 		att.LutLimit = test.lutLimit
 
@@ -274,7 +274,7 @@ func TestPrepareRequest(t *testing.T) {
 
 	tests := []struct {
 		log      database.Log
-		apiKey   string
+		url      string
 		lutLimit uint64
 	}{
 		{
@@ -289,7 +289,7 @@ func TestPrepareRequest(t *testing.T) {
 				LogIndex:        0,
 				Timestamp:       1718113234,
 			},
-			apiKey:   "12345",
+			url:      "http://localhost:4500/eth/EVMTransaction/verifyFDC",
 			lutLimit: 18446744073709551615,
 		},
 	}
@@ -300,11 +300,11 @@ func TestPrepareRequest(t *testing.T) {
 
 		require.NoError(t, err, fmt.Sprintf("error parsing test %d", i))
 
-		creds, err := attestation.PrepareRequest(&att, attestationTypesConfigs)
+		err = attestation.PrepareRequest(&att, attestationTypesConfigs)
 
 		require.NoError(t, err)
 
-		require.Equal(t, test.apiKey, creds.ApiKey, fmt.Sprintf("wrong api key test %d", i))
+		require.Equal(t, test.url, att.Credentials.Url, fmt.Sprintf("wrong api key test %d", i))
 
 		require.Equal(t, attestation.Processing, att.Status, fmt.Sprintf("wrong status test %d", i))
 	}
@@ -360,7 +360,7 @@ func TestPrepareRequestError(t *testing.T) {
 
 		require.NoError(t, err, fmt.Sprintf("error parsing test %d", i))
 
-		_, err = attestation.PrepareRequest(&att, attestationTypesConfigs)
+		err = attestation.PrepareRequest(&att, attestationTypesConfigs)
 
 		require.Error(t, err)
 

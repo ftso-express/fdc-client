@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"local/fdc/client/config"
+	"fmt"
 	"net/http"
 	"strings"
 )
@@ -20,46 +20,63 @@ type AbiEncodedResponseBody struct {
 	AbiEncodedResponse string `json:"abiEncodedResponse"`
 }
 
+type VerifierCredentials struct {
+	Url    string
+	apiKey string
+}
+
 // ResolveAttestationRequest sends the attestation request to the verifier server with verifierCred and stores the response.
-func ResolveAttestationRequest(att *Attestation, verifierCred config.Source) error {
+func ResolveAttestationRequest(att *Attestation) (bool, error) {
 	client := &http.Client{}
 	requestBytes := att.Request
+
 	encoded := hex.EncodeToString(requestBytes)
 	payload := AbiEncodedRequestBody{AbiEncodedRequest: "0x" + encoded}
 
 	encodedBody, err := json.Marshal(payload)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	request, err := http.NewRequest("POST", verifierCred.Url, bytes.NewBuffer(encodedBody))
+	request, err := http.NewRequest("POST", att.Credentials.Url, bytes.NewBuffer(encodedBody))
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("X-API-KEY", verifierCred.ApiKey)
+	request.Header.Set("X-API-KEY", att.Credentials.apiKey)
 	resp, err := client.Do(request)
 
 	if err != nil {
-		return err
+		return false, err
+	}
+
+	if resp.StatusCode != 200 {
+		return false, fmt.Errorf("request responded with code %d", resp.StatusCode)
 	}
 
 	// close response body after function ends
 	defer resp.Body.Close()
 
-	var responseBody AbiEncodedResponseBody
+	responseBody := AbiEncodedResponseBody{}
+
+	// TODO: check whether the response body struct is correct
 	err = json.NewDecoder(resp.Body).Decode(&responseBody)
 
 	if err != nil {
-		return err
+		return false, err
+	}
+
+	if responseBody.Status != "VALID" {
+		return false, nil
 	}
 
 	responseBytes, err := hex.DecodeString(strings.TrimPrefix(responseBody.AbiEncodedResponse, "0x"))
 	if err != nil {
-		return err
+		return false, err
 	}
+
 	att.Response = responseBytes
 
-	return nil
+	return true, nil
 }
