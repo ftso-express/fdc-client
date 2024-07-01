@@ -11,8 +11,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 )
 
-// ParseAttestationTypesConfig parses AttestationTypesUnparsed as read from toml file into AttestationTypes.
-func ParseAttestationTypesConfig(attTypesConfigUnparsed AttestationTypesUnparsed) (AttestationTypes, error) {
+// ParseAttestationTypes parses AttestationTypesUnparsed as read from toml file into AttestationTypes.
+func ParseAttestationTypes(attTypesConfigUnparsed AttestationTypesUnparsed) (AttestationTypes, error) {
 
 	attTypesConfig := make(AttestationTypes)
 
@@ -24,7 +24,7 @@ func ParseAttestationTypesConfig(attTypesConfigUnparsed AttestationTypesUnparsed
 			return nil, fmt.Errorf("reading type %w", err)
 		}
 
-		attTypeConfig, err := ParseAttestationTypeConfig(attTypesConfigUnparsed[k])
+		attTypeConfig, err := ParseAttestationType(attTypesConfigUnparsed[k])
 
 		if err != nil {
 			return nil, fmt.Errorf("parsing type %s: %w", k, err)
@@ -73,8 +73,8 @@ func ArgumentsFromAbi(abiBytes []byte) (abi.Arguments, error) {
 
 }
 
-// parseSourceConfig takes sourceBig and converts LutLimit from big.int to uint64.
-func parseSourceConfig(sourceConfigBig sourceBig) (Source, error) {
+// parseSource takes sourceBig and converts LutLimit from big.int to uint64.
+func parseSource(sourceConfigBig sourceBig) (Source, error) {
 
 	if !sourceConfigBig.LutLimit.IsUint64() {
 		return Source{
@@ -97,7 +97,7 @@ func parseSourceConfig(sourceConfigBig sourceBig) (Source, error) {
 
 }
 
-func ParseAttestationTypeConfig(attTypeConfigUnparsed AttestationTypeUnparsed) (AttestationType, error) {
+func ParseAttestationType(attTypeConfigUnparsed AttestationTypeUnparsed) (AttestationType, error) {
 
 	responseArguments, responseAbiString, err := getAbi(attTypeConfigUnparsed.Abi)
 
@@ -105,7 +105,7 @@ func ParseAttestationTypeConfig(attTypeConfigUnparsed AttestationTypeUnparsed) (
 		return AttestationType{}, fmt.Errorf("getting abi %w", err)
 	}
 
-	sourcesConfig, err := parseSourcesConfig(attTypeConfigUnparsed.Sources)
+	sourcesConfig, err := parseSources(attTypeConfigUnparsed.Sources)
 
 	if err != nil {
 		return AttestationType{}, fmt.Errorf("parsing: %w", err)
@@ -121,7 +121,7 @@ func ParseAttestationTypeConfig(attTypeConfigUnparsed AttestationTypeUnparsed) (
 
 }
 
-func parseSourcesConfig(sourcesConfigUnparsed map[string]sourceBig) (map[[32]byte]Source, error) {
+func parseSources(sourcesConfigUnparsed map[string]sourceBig) (map[[32]byte]Source, error) {
 
 	sourcesConfig := make(map[[32]byte]Source)
 
@@ -133,7 +133,7 @@ func parseSourcesConfig(sourcesConfigUnparsed map[string]sourceBig) (map[[32]byt
 			return nil, fmt.Errorf("reading source %w", err)
 		}
 
-		sourceConfig, err := parseSourceConfig(sourcesConfigUnparsed[k])
+		sourceConfig, err := parseSource(sourcesConfigUnparsed[k])
 
 		if err != nil {
 			return nil, fmt.Errorf("parsing source config %w", err)

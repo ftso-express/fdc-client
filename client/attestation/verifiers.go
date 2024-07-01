@@ -26,6 +26,7 @@ type VerifierCredentials struct {
 }
 
 // ResolveAttestationRequest sends the attestation request to the verifier server with verifierCred and stores the response.
+// Returns true if the response is "VALID" and false otherwise.
 func ResolveAttestationRequest(att *Attestation) (bool, error) {
 	client := &http.Client{}
 	requestBytes := att.Request

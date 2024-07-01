@@ -23,12 +23,16 @@ var log = logger.GetLogger()
 // hubFilterer is only used for Attestation Requests logs parsing. Set in init().
 var hubFilterer *hub.HubFilterer
 
-// relayFilterer is only used for SigningPolicyInitialized logs parsing. Set in init()
-
-// init sets the hubFilterer and relayFilterer.
+// init sets the hubFilterer
 func init() {
 
-	hubFilterer, _ = hub.NewHubFilterer(common.Address{}, nil)
+	var err error
+
+	hubFilterer, err = hub.NewHubFilterer(common.Address{}, nil)
+
+	if err != nil {
+		log.Panic("cannot get fdc contract:", err)
+	}
 
 }
 
@@ -49,7 +53,7 @@ func NewManager(configs config.UserRaw) (*Manager, error) {
 	rounds := storage.NewCyclic[*Round](roundBuffer)
 	signingPolicyStorage := policy.NewSigningPolicyStorage()
 
-	attestationTypeConfig, err := config.ParseAttestationTypesConfig(configs.AttestationTypeConfig)
+	attestationTypeConfig, err := config.ParseAttestationTypes(configs.AttestationTypeConfig)
 
 	if err != nil {
 		return nil, fmt.Errorf("error new manger, att types: %w", err)
@@ -188,11 +192,11 @@ func (m *Manager) GetOrCreateRound(roundId uint64) (*Round, error) {
 func (m *Manager) OnBitVote(message payload.Message) error {
 
 	if message.Timestamp < timing.ChooseStartTimestamp(uint64(message.VotingRound)) {
-		return fmt.Errorf("bitvote from %s too soon", message.From)
+		return fmt.Errorf("bitVote from %s for voting round %d too soon", message.From, message.VotingRound)
 	}
 
 	if message.Timestamp > timing.ChooseEndTimestamp(uint64(message.VotingRound)) {
-		return fmt.Errorf("bitvote from %s too late", message.From)
+		return fmt.Errorf("bitVote from %s for voting round %d too late", message.From, message.VotingRound)
 	}
 
 	round, err := m.GetOrCreateRound(message.VotingRound)
@@ -212,7 +216,7 @@ func (m *Manager) OnBitVote(message payload.Message) error {
 
 // OnRequest process the attestation request.
 // The request parsed into an Attestation that is assigned to an attestation round according to the timestamp.
-// The request is sent to verifier server and the verifier's response is validated.
+// The request is added to verifier queue.
 func (m *Manager) OnRequest(request database.Log) error {
 
 	attestation, err := attestationFromDatabaseLog(request)
@@ -224,7 +228,7 @@ func (m *Manager) OnRequest(request database.Log) error {
 	round, err := m.GetOrCreateRound(attestation.RoundId)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("OnRequest: %w", err)
 	}
 
 	round.Attestations = append(round.Attestations, &attestation)
@@ -239,7 +243,7 @@ func (m *Manager) OnRequest(request database.Log) error {
 
 }
 
-// OnSigningPolicy parsed SigningPolicyInitialized log and stores it into the signingPolicyStorage.
+// OnSigningPolicy parses SigningPolicyInitialized log and stores it into the signingPolicyStorage.
 func (m *Manager) OnSigningPolicy(initializedPolicy database.Log) error {
 
 	data, err := policy.ParseSigningPolicyInitializedEvent(initializedPolicy)
@@ -258,9 +262,10 @@ func (m *Manager) OnSigningPolicy(initializedPolicy database.Log) error {
 
 }
 
+// retryUnsuccessfulChosen adds the request that were chosen by the consensus bitVote but were not confirmed to the priority verifier queues.
 func (m *Manager) retryUnsuccessfulChosen(ctx context.Context, round *Round) (int, error) {
 
-	count := 0
+	count := 0 //only for logging
 
 	for i := range round.Attestations {
 

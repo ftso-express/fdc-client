@@ -268,7 +268,7 @@ func TestPrepareRequest(t *testing.T) {
 
 	require.NoError(t, err)
 
-	attestationTypesConfigs, err := config.ParseAttestationTypesConfig(cfg.AttestationTypeConfig)
+	attestationTypesConfigs, err := config.ParseAttestationTypes(cfg.AttestationTypeConfig)
 
 	require.NoError(t, err)
 
@@ -316,7 +316,7 @@ func TestPrepareRequestError(t *testing.T) {
 
 	require.NoError(t, err)
 
-	attestationTypesConfigs, err := config.ParseAttestationTypesConfig(cfg.AttestationTypeConfig)
+	attestationTypesConfigs, err := config.ParseAttestationTypes(cfg.AttestationTypeConfig)
 
 	require.NoError(t, err)
 

@@ -25,7 +25,7 @@ func TestReadUserRaw(t *testing.T) {
 
 	require.Equal(t, uint8(200), cfg.ProtocolId)
 
-	parsed, err := config.ParseAttestationTypesConfig(cfg.AttestationTypeConfig)
+	parsed, err := config.ParseAttestationTypes(cfg.AttestationTypeConfig)
 
 	require.NoError(t, err)
 

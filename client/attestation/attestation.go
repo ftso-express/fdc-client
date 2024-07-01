@@ -1,6 +1,7 @@
 package attestation
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"flare-common/database"
@@ -35,7 +36,7 @@ type IndexLog struct {
 	LogIndex    uint64 // consecutive number of log in block
 }
 
-// earlierLog returns true if a has lower blockNumber as b or the same blockNumber and lower LogIndex. Otherwise, it returns false.
+// earlierLog returns true if a has lower blockNumber then b or has the same blockNumber and lower LogIndex. Otherwise, it returns false.
 func earlierLog(a, b IndexLog) bool {
 	if a.BlockNumber < b.BlockNumber {
 		return true
@@ -69,13 +70,13 @@ func attestationFromDatabaseLog(request database.Log) (Attestation, error) {
 	requestLog, err := ParseAttestationRequestLog(request)
 
 	if err != nil {
-		return Attestation{}, fmt.Errorf("parsing attestation, parsing log: %w", err)
+		return Attestation{}, fmt.Errorf("parsing log: %w", err)
 	}
 
 	roundId, err := timing.RoundIdForTimestamp(request.Timestamp)
 
 	if err != nil {
-		return Attestation{}, fmt.Errorf("parsing attestation: %w", err)
+		return Attestation{}, fmt.Errorf("parsing log, roundId: %w", err)
 	}
 
 	index := IndexLog{request.BlockNumber, request.LogIndex}
@@ -91,6 +92,7 @@ func attestationFromDatabaseLog(request database.Log) (Attestation, error) {
 	return attestation, nil
 }
 
+// AddToQueue adds the attestation to the correct verifier queue.
 func (m *Manager) AddToQueue(attestation *Attestation) error {
 
 	err := attestation.prepareRequest(m.attestationTypeConfig)
@@ -105,7 +107,7 @@ func (m *Manager) AddToQueue(attestation *Attestation) error {
 		return fmt.Errorf("queue %s does not exist", attestation.queueName)
 	}
 
-	err = queue.Enqueue(context.Background(), attestation)
+	err = queue.Enqueue(context.Background(), attestation) //TODO: get the correct context
 
 	return err
 }
@@ -162,7 +164,7 @@ func (a *Attestation) prepareRequest(attestationTypesConfigs config.AttestationT
 
 	if !ok {
 		a.Status = UnsupportedPair
-		return fmt.Errorf("prepare request: no configs for: %s", string(attType[:]))
+		return fmt.Errorf("prepare request: no configs for: %s", string(bytes.Trim(attType[:], "\x00")))
 
 	}
 
@@ -172,7 +174,7 @@ func (a *Attestation) prepareRequest(attestationTypesConfigs config.AttestationT
 
 	if !ok {
 		a.Status = UnsupportedPair
-		return fmt.Errorf("prepare request: no configs for: %s, %s", string(attType[:]), string(source[:]))
+		return fmt.Errorf("prepare request: no configs for: %s, %s", string(bytes.Trim(attType[:], "\x00")), string(bytes.Trim(source[:], "\x00")))
 
 	}
 

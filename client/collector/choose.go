@@ -66,7 +66,7 @@ func BitVoteListener(
 			}
 
 			if len(bitVotes) > 0 {
-				log.Infof("Received %d for round %d", len(bitVotes), roundId)
+				log.Infof("Received %d bitVotes for round %d", len(bitVotes), roundId)
 
 				select {
 				case out <- payload.Round{Messages: bitVotes, Id: roundId}:
@@ -164,7 +164,7 @@ func tryTriggerBitVote(
 
 	if currentBlockTime > *nextChoosePhaseEndTimestamp {
 		select {
-		case c <- uint64(*nextChoosePhaseRoundIDEnd):
+		case c <- *nextChoosePhaseRoundIDEnd:
 			log.Infof("bitVote for round %d started with on-chain time", *nextChoosePhaseRoundIDEnd)
 
 		case <-ctx.Done():

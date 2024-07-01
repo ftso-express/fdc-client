@@ -13,3 +13,7 @@ var AttestationFromDatabaseLog = attestationFromDatabaseLog
 var ValidateResponse = (*Attestation).validateResponse
 
 var PrepareRequest = (*Attestation).prepareRequest
+
+var SkipDuplicates = (checkList).skipDuplicates
+
+type CheckList = checkList

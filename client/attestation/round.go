@@ -47,7 +47,7 @@ func (r *Round) sortAttestations() {
 	})
 }
 
-// sortBitVotes sorts rounds' bitVotes according to the signingPolicy Index of their providers.
+// sortBitVotes sorts round's bitVotes according to the signingPolicy Index of their providers.
 func (r *Round) sortBitVotes() {
 
 	sort.Slice(r.bitVotes, func(i, j int) bool {
@@ -63,7 +63,7 @@ func (r *Round) BitVoteHex() (string, error) {
 	bitVote, err := BitVoteFromAttestations(r.Attestations)
 
 	if err != nil {
-		return "", fmt.Errorf("cannot get bitvote for round %d", r.roundId)
+		return "", fmt.Errorf("cannot get bitVote for round %d: %w", r.roundId, err)
 	}
 
 	return bitVote.EncodeBitVoteHex(r.roundId), nil
@@ -89,9 +89,10 @@ func (r *Round) ComputeConsensusBitVote(protocolId uint64) error {
 	}
 	r.ConsensusBitVote = consensus
 
-	return r.SetConsensusStatus(consensus)
+	return r.setConsensusStatus(consensus)
 }
 
+// GetConsensusBitVote returns consensus BitVote if it is already computed.
 func (r *Round) GetConsensusBitVote() (BitVote, error) {
 
 	if r.ConsensusBitVote.BitVector == nil {
@@ -101,10 +102,10 @@ func (r *Round) GetConsensusBitVote() (BitVote, error) {
 	return r.ConsensusBitVote, nil
 }
 
-// SetConsensusStatus sets consensus status of the attestations.
+// setConsensusStatus sets consensus status of the attestations.
 // The scenario where a chosen attestation is missing is not possible as in such case, it is not possible to compute the consensus bitVote.
 // It is assumed that the Attestations are already ordered.
-func (r *Round) SetConsensusStatus(consensusBitVote BitVote) error {
+func (r *Round) setConsensusStatus(consensusBitVote BitVote) error {
 
 	// sanity check
 	if consensusBitVote.BitVector.BitLen() > len(r.Attestations) {
@@ -126,9 +127,9 @@ func (r *Round) MerkleTree() (merkle.Tree, error) {
 
 	r.sortAttestations()
 
-	hashes := []common.Hash{}
+	hashes := new([]common.Hash)
 
-	added := make(map[common.Hash]bool)
+	added := make(checkList)
 
 	for i := range r.Attestations {
 		if r.Attestations[i].Consensus {
@@ -136,24 +137,33 @@ func (r *Round) MerkleTree() (merkle.Tree, error) {
 				return merkle.Tree{}, errors.New("cannot build merkle tree")
 			}
 
-			//skip duplicates
-			if _, alreadyAdded := added[r.Attestations[i].Hash]; !alreadyAdded {
-
-				hashes = append(hashes, r.Attestations[i].Hash)
-				added[r.Attestations[i].Hash] = true
-
-			}
+			added.skipDuplicates(r.Attestations[i].Hash, hashes)
 
 		}
 	}
 
 	// sort.Slice(hashes, func(i, j int) bool { return compareHash(hashes[i], hashes[j]) })
 
-	merkleTree := merkle.Build(hashes, false)
+	merkleTree := merkle.Build(*hashes, false)
 
 	r.merkleTree = merkleTree
 
 	return merkleTree, nil
+
+}
+
+type checkList map[common.Hash]bool
+
+// skipDuplicates adds hash to hashes if it is not already added.
+func (c checkList) skipDuplicates(hash common.Hash, hashes *[]common.Hash) {
+
+	if _, alreadyAdded := c[hash]; !alreadyAdded {
+
+		*hashes = append(*hashes, hash)
+
+		c[hash] = true
+
+	}
 
 }
 
