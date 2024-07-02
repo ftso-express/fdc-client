@@ -93,7 +93,7 @@ func attestationFromDatabaseLog(request database.Log) (Attestation, error) {
 }
 
 // AddToQueue adds the attestation to the correct verifier queue.
-func (m *Manager) AddToQueue(attestation *Attestation) error {
+func (m *Manager) AddToQueue(ctx context.Context, attestation *Attestation) error {
 
 	err := attestation.prepareRequest(m.attestationTypeConfig)
 
@@ -107,7 +107,7 @@ func (m *Manager) AddToQueue(attestation *Attestation) error {
 		return fmt.Errorf("queue %s does not exist", attestation.queueName)
 	}
 
-	err = queue.Enqueue(context.Background(), attestation) //TODO: get the correct context
+	err = queue.Enqueue(ctx, attestation)
 
 	return err
 }

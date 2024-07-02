@@ -152,7 +152,7 @@ func (m *Manager) Run(ctx context.Context) {
 
 			for i := range requests {
 
-				if err := m.OnRequest(requests[i]); err != nil {
+				if err := m.OnRequest(ctx, requests[i]); err != nil {
 					log.Error("OnRequest:", err)
 				}
 
@@ -217,7 +217,7 @@ func (m *Manager) OnBitVote(message payload.Message) error {
 // OnRequest process the attestation request.
 // The request parsed into an Attestation that is assigned to an attestation round according to the timestamp.
 // The request is added to verifier queue.
-func (m *Manager) OnRequest(request database.Log) error {
+func (m *Manager) OnRequest(ctx context.Context, request database.Log) error {
 
 	attestation, err := attestationFromDatabaseLog(request)
 
@@ -234,7 +234,7 @@ func (m *Manager) OnRequest(request database.Log) error {
 	round.Attestations = append(round.Attestations, &attestation)
 
 	go func() {
-		if err := m.AddToQueue(&attestation); err != nil {
+		if err := m.AddToQueue(ctx, &attestation); err != nil {
 			log.Error("Error handling attestation:", err)
 		}
 	}()
@@ -284,7 +284,7 @@ func (m *Manager) retryUnsuccessfulChosen(ctx context.Context, round *Round) (in
 				return 0, err
 			}
 
-			count = count + 1
+			count++
 
 		}
 	}

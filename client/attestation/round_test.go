@@ -21,7 +21,7 @@ func TestSkipDuplicates(t *testing.T) {
 		},
 		{
 			toAdd:    []common.Hash{},
-			atTheEnd: []common.Hash(nil),
+			atTheEnd: []common.Hash{},
 		},
 
 		{
@@ -41,17 +41,16 @@ func TestSkipDuplicates(t *testing.T) {
 
 	for i, test := range tests {
 
-		hashes := new([]common.Hash)
+		hashes := []common.Hash{}
 
-		added := make(attestation.CheckList)
+		added := attestation.CheckList{}
 
 		for j := range test.toAdd {
 
-			attestation.SkipDuplicates(added, test.toAdd[j], hashes)
-
+			hashes = attestation.SkipDuplicates(added, test.toAdd[j], hashes)
 		}
 
-		require.Equal(t, test.atTheEnd, *hashes, fmt.Sprintf("error in test %d", i))
+		require.Equal(t, test.atTheEnd, hashes, fmt.Sprintf("error in test %d", i))
 
 	}
 

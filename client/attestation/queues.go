@@ -3,6 +3,7 @@ package attestation
 import (
 	"context"
 	"flare-common/queue"
+	"fmt"
 	"local/fdc/client/config"
 )
 
@@ -28,11 +29,17 @@ func buildQueues(queuesConfigs config.Queues) priorityQueues {
 }
 
 // handler handles dequeued attestation.
-func handler(_ context.Context, at *Attestation) error {
+func handler(ctx context.Context, at *Attestation) error {
 
-	err := at.handle()
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("handler exiting: %w", ctx.Err())
+	default:
 
-	return err
+		err := at.handle()
+
+		return err
+	}
 
 }
 
@@ -48,10 +55,16 @@ func run(ctx context.Context, queue *attestationQueue) {
 
 	for {
 
-		err := queue.Dequeue(ctx, handler)
+		select {
+		case <-ctx.Done():
+			log.Infof("queue exiting: %s", ctx.Err())
+			return
+		default:
+			err := queue.Dequeue(ctx, handler)
 
-		if err != nil {
-			log.Error(err)
+			if err != nil {
+				log.Error(err)
+			}
 		}
 	}
 

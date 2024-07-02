@@ -127,9 +127,9 @@ func (r *Round) MerkleTree() (merkle.Tree, error) {
 
 	r.sortAttestations()
 
-	hashes := new([]common.Hash)
+	hashes := []common.Hash{}
 
-	added := make(checkList)
+	added := checkList{}
 
 	for i := range r.Attestations {
 		if r.Attestations[i].Consensus {
@@ -137,14 +137,14 @@ func (r *Round) MerkleTree() (merkle.Tree, error) {
 				return merkle.Tree{}, errors.New("cannot build merkle tree")
 			}
 
-			added.skipDuplicates(r.Attestations[i].Hash, hashes)
+			hashes = added.skipDuplicates(r.Attestations[i].Hash, hashes)
 
 		}
 	}
 
 	// sort.Slice(hashes, func(i, j int) bool { return compareHash(hashes[i], hashes[j]) })
 
-	merkleTree := merkle.Build(*hashes, false)
+	merkleTree := merkle.Build(hashes, false)
 
 	r.merkleTree = merkleTree
 
@@ -155,15 +155,17 @@ func (r *Round) MerkleTree() (merkle.Tree, error) {
 type checkList map[common.Hash]bool
 
 // skipDuplicates adds hash to hashes if it is not already added.
-func (c checkList) skipDuplicates(hash common.Hash, hashes *[]common.Hash) {
+func (c checkList) skipDuplicates(hash common.Hash, hashes []common.Hash) []common.Hash {
 
 	if _, alreadyAdded := c[hash]; !alreadyAdded {
 
-		*hashes = append(*hashes, hash)
+		hashes = append(hashes, hash)
 
 		c[hash] = true
 
 	}
+
+	return hashes
 
 }
 
