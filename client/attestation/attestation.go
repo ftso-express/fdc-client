@@ -113,9 +113,9 @@ func (m *Manager) AddToQueue(ctx context.Context, attestation *Attestation) erro
 }
 
 // handle sends the attestation request to the correct verifier server and validates the response.
-func (a *Attestation) handle() error {
+func (a *Attestation) handle(ctx context.Context) error {
 
-	confirmed, err := ResolveAttestationRequest(a)
+	confirmed, err := ResolveAttestationRequest(ctx, a)
 
 	if err != nil {
 		a.Status = ProcessError

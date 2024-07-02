@@ -2,6 +2,7 @@ package attestation
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -27,7 +28,7 @@ type VerifierCredentials struct {
 
 // ResolveAttestationRequest sends the attestation request to the verifier server with verifierCred and stores the response.
 // Returns true if the response is "VALID" and false otherwise.
-func ResolveAttestationRequest(att *Attestation) (bool, error) {
+func ResolveAttestationRequest(ctx context.Context, att *Attestation) (bool, error) {
 	client := &http.Client{}
 	requestBytes := att.Request
 
@@ -39,7 +40,7 @@ func ResolveAttestationRequest(att *Attestation) (bool, error) {
 		return false, err
 	}
 
-	request, err := http.NewRequest("POST", att.Credentials.Url, bytes.NewBuffer(encodedBody))
+	request, err := http.NewRequestWithContext(ctx, "POST", att.Credentials.Url, bytes.NewBuffer(encodedBody))
 	if err != nil {
 		return false, err
 	}

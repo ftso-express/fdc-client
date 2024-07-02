@@ -3,8 +3,8 @@ package attestation
 import (
 	"context"
 	"flare-common/queue"
-	"fmt"
 	"local/fdc/client/config"
+	"sync"
 )
 
 type attestationQueue = queue.PriorityQueue[*Attestation]
@@ -30,41 +30,37 @@ func buildQueues(queuesConfigs config.Queues) priorityQueues {
 
 // handler handles dequeued attestation.
 func handler(ctx context.Context, at *Attestation) error {
-
-	select {
-	case <-ctx.Done():
-		return fmt.Errorf("handler exiting: %w", ctx.Err())
-	default:
-
-		err := at.handle()
-
-		return err
-	}
+	return at.handle(ctx)
 
 }
 
 // runQueues runs all queues at once.
 func runQueues(ctx context.Context, queues priorityQueues) {
+	var wg sync.WaitGroup
+
+	wg.Add(len(queues))
+
 	for k := range queues {
-		go run(ctx, queues[k])
+		go func(k string) {
+			run(ctx, queues[k])
+			wg.Done()
+		}(k)
 	}
+
+	wg.Wait()
 }
 
 // run tracks and handles all dequeued attestations from queue.
 func run(ctx context.Context, queue *attestationQueue) {
-
 	for {
+		err := queue.Dequeue(ctx, handler)
+		if err != nil {
+			log.Error(err)
+		}
 
-		select {
-		case <-ctx.Done():
-			log.Infof("queue exiting: %s", ctx.Err())
+		if err := ctx.Err(); err != nil {
+			log.Infof("queue worker exiting: %v", err)
 			return
-		default:
-			err := queue.Dequeue(ctx, handler)
-
-			if err != nil {
-				log.Error(err)
-			}
 		}
 	}
 

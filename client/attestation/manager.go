@@ -77,7 +77,7 @@ func (m *Manager) Run(ctx context.Context) {
 	// without a signing policy.
 	var signingPolicies []database.Log
 
-	runQueues(ctx, m.queues)
+	go runQueues(ctx, m.queues)
 
 	select {
 	case signingPolicies = <-m.SigningPolicies:
@@ -233,11 +233,9 @@ func (m *Manager) OnRequest(ctx context.Context, request database.Log) error {
 
 	round.Attestations = append(round.Attestations, &attestation)
 
-	go func() {
-		if err := m.AddToQueue(ctx, &attestation); err != nil {
-			log.Error("Error handling attestation:", err)
-		}
-	}()
+	if err := m.AddToQueue(ctx, &attestation); err != nil {
+		return err
+	}
 
 	return nil
 
