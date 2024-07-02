@@ -31,10 +31,10 @@ type priorityQueueItem[T any] struct {
 
 // PriorityQueueInput values are used to construct a new PriorityQueue.
 type PriorityQueueParams struct {
-	Size                 int
-	MaxDequeuesPerSecond int    // Set to 0 to disable rate-limiting
-	MaxWorkers           int    // Set to 0 for unlimited workers
-	MaxAttempts          uint64 // Set to 0 for unlimited retry attempts
+	Size                 int    `toml:"size"`
+	MaxDequeuesPerSecond int    `toml:"max_dequeues_per_second"` // Set to 0 to disable rate-limiting
+	MaxWorkers           int    `toml:"max_workers"`             // Set to 0 for unlimited workers
+	MaxAttempts          uint64 `toml:"max_attempts"`            // Set to 0 for unlimited retry attempts
 
 	// Pass a callback to specify the backoff policy which affects when items
 	// are returned to the queue after an error. By default, items are

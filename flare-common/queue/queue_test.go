@@ -260,7 +260,7 @@ func TestMaxAttempts(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel()
 
-	q := queue.NewPriority[int](&queue.PriorityQueueInput{Size: size, MaxAttempts: maxAttempts})
+	q := queue.NewPriority[int](&queue.PriorityQueueParams{Size: size, MaxAttempts: maxAttempts})
 
 	dlq := q.DeadLetterQueue()
 
@@ -289,7 +289,7 @@ func TestConstantBackOff(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel()
 
-	q := queue.NewPriority[int](&queue.PriorityQueueInput{Size: size, Backoff: func() backoff.BackOff {
+	q := queue.NewPriority[int](&queue.PriorityQueueParams{Size: size, Backoff: func() backoff.BackOff {
 		return backoff.NewConstantBackOff(backoffTime)
 	}})
 
