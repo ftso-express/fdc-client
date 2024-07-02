@@ -607,3 +607,130 @@ func BenchmarkConsensusMixed(b *testing.B) {
 	}
 
 }
+
+func TestAggregateBitvotes(t *testing.T) {
+	numAttestations := 100
+	numVoters := 100
+	weightedBitvotes := []*attestation.WeightedBitVote{}
+
+	for j := 0; j < numVoters; j++ {
+		var atts []*attestation.Attestation
+
+		if 0.65*float64(numVoters) > float64(j) {
+			atts = setAttestations(numAttestations, []int{2, 3})
+		} else {
+			atts = setAttestations(numAttestations, []int{3, 7})
+		}
+
+		bitVote, err := attestation.BitVoteFromAttestations(atts)
+		require.NoError(t, err)
+
+		c := &attestation.WeightedBitVote{Index: j, Weight: 1, BitVote: bitVote}
+		weightedBitvotes = append(weightedBitvotes, c)
+	}
+
+	aggregateBitVotes := attestation.AggregateBitVotes(weightedBitvotes)
+
+	require.Equal(t, len(aggregateBitVotes), 2)
+}
+
+func TestAggregateAttestations(t *testing.T) {
+	numAttestations := 100
+	numVoters := 100
+	weightedBitvotes := []*attestation.WeightedBitVote{}
+
+	for j := 0; j < numVoters; j++ {
+		var atts []*attestation.Attestation
+
+		if 0.65*float64(numVoters) > float64(j) {
+			atts = setAttestations(numAttestations, []int{2, 3})
+		} else {
+			atts = setAttestations(numAttestations, []int{3, 7})
+		}
+
+		bitVote, err := attestation.BitVoteFromAttestations(atts)
+		require.NoError(t, err)
+
+		c := &attestation.WeightedBitVote{Index: j, Weight: 1, BitVote: bitVote}
+		weightedBitvotes = append(weightedBitvotes, c)
+	}
+
+	fees := make([]int, numAttestations)
+	for j := 0; j < numAttestations; j++ {
+		fees[j] = 1
+	}
+
+	aggregatedBitVotes, aggregatedFees, aggregateMap := attestation.AggregateAttestations(weightedBitvotes, fees)
+	fmt.Println(aggregatedFees, aggregateMap)
+
+	require.Equal(t, len(aggregatedBitVotes), numAttestations)
+	require.Equal(t, len(aggregatedFees), 4)
+	require.Equal(t, aggregatedBitVotes[0].BitVote.Length, uint16(4))
+}
+
+func TestFilterBitVotes(t *testing.T) {
+	numAttestations := 5
+	numVoters := 100
+	weightedBitvotes := []*attestation.WeightedBitVote{}
+	totalWeight := uint16(0)
+	for j := 0; j < numVoters; j++ {
+		var atts []*attestation.Attestation
+		if 0.30*float64(numVoters) > float64(j) {
+			atts = setAttestationsFix(numAttestations, []int{0, 1, 2, 3, 4})
+		} else if 0.70*float64(numVoters) > float64(j) {
+			atts = setAttestationsFix(numAttestations, []int{})
+		} else {
+			atts = setAttestationsFix(numAttestations, []int{3, 4})
+		}
+
+		bitVote, err := attestation.BitVoteFromAttestations(atts)
+		require.NoError(t, err)
+		weight := uint16(1)
+
+		c := &attestation.WeightedBitVote{Index: j, Weight: weight, BitVote: bitVote}
+		weightedBitvotes = append(weightedBitvotes, c)
+		totalWeight += weight
+	}
+
+	filtered, removedOnes, removedOnesWeight, removedZeros, removedZerosWeight := attestation.FilterBitVotes(weightedBitvotes)
+
+	require.Equal(t, len(removedOnes), 30)
+	require.Equal(t, removedOnesWeight, uint16(30))
+
+	require.Equal(t, len(removedZeros), 40)
+	require.Equal(t, removedZerosWeight, uint16(40))
+
+	require.Equal(t, len(filtered), 30)
+}
+
+func TestFilterAttestations(t *testing.T) {
+	numAttestations := 10
+	numVoters := 100
+	weightedBitvotes := []*attestation.WeightedBitVote{}
+	totalWeight := uint16(0)
+	for j := 0; j < numVoters; j++ {
+		var atts []*attestation.Attestation
+		if 0.30*float64(numVoters) > float64(j) {
+			atts = setAttestationsFix(numAttestations, []int{0, 1, 2, 3, 4})
+		} else if 0.70*float64(numVoters) > float64(j) {
+			atts = setAttestationsFix(numAttestations, []int{1, 4})
+		} else {
+			atts = setAttestationsFix(numAttestations, []int{3, 4})
+		}
+
+		bitVote, err := attestation.BitVoteFromAttestations(atts)
+		require.NoError(t, err)
+		weight := uint16(1)
+
+		c := &attestation.WeightedBitVote{Index: j, Weight: weight, BitVote: bitVote}
+		weightedBitvotes = append(weightedBitvotes, c)
+		totalWeight += weight
+	}
+
+	filtered, removedOnes, removedLowWeight := attestation.FilterAttestations(weightedBitvotes, totalWeight)
+
+	require.Equal(t, len(removedOnes), 1)
+	require.Equal(t, len(removedLowWeight), 7)
+
+	require.Equal(t, filtered[0].BitVote.Length, uint16(2))
+}

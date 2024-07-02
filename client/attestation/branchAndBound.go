@@ -1,26 +1,26 @@
 package attestation
 
 import (
-	"fmt"
 	"math/big"
 	"math/rand"
 )
 
-type CurrentStatus struct {
-	CurrentBound  int
-	NumOperations int
-	MaxOperations int
-	TotalWeight   uint16
-	BitVotes      []*WeightedBitVote
-	Fees          []int
-	RandGen       rand.Source
-	// mu           sync.Mutex
+type SharedStatus struct {
+	CurrentBound    int
+	NumOperations   int
+	MaxOperations   int
+	TotalWeight     uint16
+	BitVotes        []*WeightedBitVote
+	Fees            []int
+	RandGen         rand.Source
+	NumAttestations int
+	NumProviders    int
 }
 
 type BranchAndBoundPartialSolution struct {
-	Participants    map[int]bool
-	SolutionReverse []bool
-	Value           int
+	Participants map[int]bool
+	Solution     map[int]bool
+	Value        int
 }
 
 type BranchAndBoundSolution struct {
@@ -62,12 +62,13 @@ func PermuteBits(allBitVotes []*WeightedBitVote, randPerm []int) []*WeightedBitV
 
 // BranchAndBound is a function that takes a set of weighted bit votes and a list of fees and
 // tries to get an optimal subset of votes with the weight more than the half of the total weight.
-// The algorithm executes a branch and bound strategy. In the case the algorithm is able search
+// The algorithm executes a branch and bound strategy on the space of subsets of attestations, hence
+// it is particularly useful when there are not too many attestations. In the case the algorithm is able search
 // through the entire solution space before reaching the given max operations counter, the algorithm
 // gives an optimal solution. In the case that the solution space is too big, the algorithm gives a
 // the best solution it finds. The search strategy is pseudo-randomized, where the pseudo-random
 // function is controlled by the given seed.
-func BranchAndBound(allBitVotes []*WeightedBitVote, fees []int, maxOperations int, seed int64) *BranchAndBoundSolution {
+func BranchAndBound(allBitVotes []*WeightedBitVote, fees []int, absoluteTotalWeight uint16, maxOperations int, seed int64) *BranchAndBoundSolution {
 	numAttestations := len(fees)
 	numVoters := len(allBitVotes)
 	totalWeight := uint16(0)
@@ -86,16 +87,18 @@ func BranchAndBound(allBitVotes []*WeightedBitVote, fees []int, maxOperations in
 	randPerm := RandPerm(numAttestations, randGen)
 	permBitVotes := PermuteBits(allBitVotes, randPerm)
 
-	currentBound := &CurrentStatus{CurrentBound: 0, NumOperations: 0, MaxOperations: maxOperations, TotalWeight: totalWeight, BitVotes: permBitVotes, Fees: fees, RandGen: randGen}
+	currentBound := &SharedStatus{CurrentBound: 0, NumOperations: 0, MaxOperations: maxOperations,
+		TotalWeight: absoluteTotalWeight, BitVotes: permBitVotes, Fees: fees, RandGen: randGen, NumAttestations: numAttestations}
 
-	permResult := Branch(participants, totalFee, currentBound, 0, numAttestations, totalWeight)
+	permResult := Branch(participants, currentBound, 0, totalWeight, totalFee)
 
-	result := BranchAndBoundSolution{Participants: make([]bool, numVoters), Solution: make([]bool, numAttestations), Value: permResult.Value}
+	result := BranchAndBoundSolution{Participants: make([]bool, numVoters),
+		Solution: make([]bool, numAttestations), Value: permResult.Value}
 	for key, val := range permResult.Participants {
 		result.Participants[key] = val
 	}
 	for key, val := range randPerm {
-		result.Solution[key] = permResult.SolutionReverse[numAttestations-val-1]
+		result.Solution[key] = permResult.Solution[val]
 	}
 	if currentBound.NumOperations < maxOperations {
 		result.Optimal = true
@@ -106,17 +109,17 @@ func BranchAndBound(allBitVotes []*WeightedBitVote, fees []int, maxOperations in
 	return &result
 }
 
-func Branch(participants map[int]bool, feeSum int, currentStatus *CurrentStatus, branch, numAttestations int, currentWeight uint16) *BranchAndBoundPartialSolution {
+func Branch(participants map[int]bool, currentStatus *SharedStatus, branch int, currentWeight uint16, feeSum int) *BranchAndBoundPartialSolution {
 	currentStatus.NumOperations++
 
 	// end of recursion
-	if branch == numAttestations {
+	if branch == currentStatus.NumAttestations {
 		value := CalcValue(feeSum, currentWeight, currentStatus.TotalWeight)
 		if value > currentStatus.CurrentBound {
 			currentStatus.CurrentBound = value
 		}
 
-		return &BranchAndBoundPartialSolution{Participants: participants, SolutionReverse: []bool{}, Value: value}
+		return &BranchAndBoundPartialSolution{Participants: participants, Solution: make(map[int]bool), Value: value}
 	}
 
 	// check if we already reached the maximal search space or if we exceeded the bound of the maximal possible value of the solution
@@ -130,7 +133,7 @@ func Branch(participants map[int]bool, feeSum int, currentStatus *CurrentStatus,
 	// decide randomly which branch is first
 	randBit := currentStatus.RandGen.Int63() % 2
 	if randBit == 0 {
-		result0 = Branch(participants, feeSum-currentStatus.Fees[branch], currentStatus, branch+1, numAttestations, currentWeight)
+		result0 = Branch(participants, currentStatus, branch+1, currentWeight, feeSum-currentStatus.Fees[branch])
 	}
 
 	// prepare and check if a branch is possible
@@ -145,27 +148,24 @@ func Branch(participants map[int]bool, feeSum int, currentStatus *CurrentStatus,
 		currentStatus.NumOperations++
 	}
 	if newCurrentWeight > currentStatus.TotalWeight/2 {
-		result1 = Branch(newParticipants, feeSum, currentStatus, branch+1, numAttestations, newCurrentWeight)
+		result1 = Branch(newParticipants, currentStatus, branch+1, newCurrentWeight, feeSum)
 	}
 
 	if randBit == 1 {
-		result0 = Branch(participants, feeSum-currentStatus.Fees[branch], currentStatus, branch+1, numAttestations, currentWeight)
+		result0 = Branch(participants, currentStatus, branch+1, currentWeight, feeSum-currentStatus.Fees[branch])
 	}
 
-	if branch == 0 {
-		fmt.Println(currentStatus.NumOperations, randBit)
-	}
 	// max result
 	if result0 == nil && result1 == nil {
 		return nil
 	} else if result0 != nil && result1 == nil {
-		result0.SolutionReverse = append(result0.SolutionReverse, false)
+		result0.Solution[branch] = false
 		return result0
 	} else if result0 == nil || result0.Value < result1.Value {
-		result1.SolutionReverse = append(result1.SolutionReverse, true)
+		result1.Solution[branch] = true
 		return result1
 	} else {
-		result0.SolutionReverse = append(result0.SolutionReverse, false)
+		result0.Solution[branch] = false
 		return result0
 	}
 }

@@ -15,14 +15,17 @@ func TestBranchAndBoundRandom(t *testing.T) {
 	weightedBitvotes := []*attestation.WeightedBitVote{}
 	prob := 0.8
 
+	totalWeight := uint16(0)
 	for j := 0; j < numVoters; j++ {
 		atts := random_attestations(numAttestations, prob)
 
 		bitVote, err := attestation.BitVoteFromAttestations(atts)
 		require.NoError(t, err)
 
-		c := &attestation.WeightedBitVote{Index: j, Weight: 1, BitVote: bitVote}
+		weight := uint16(1)
+		c := &attestation.WeightedBitVote{Index: j, Weight: weight, BitVote: bitVote}
 		weightedBitvotes = append(weightedBitvotes, c)
+		totalWeight += weight
 	}
 
 	fees := make([]int, numAttestations)
@@ -31,7 +34,7 @@ func TestBranchAndBoundRandom(t *testing.T) {
 	}
 
 	start := time.Now()
-	solution := attestation.BranchAndBound(weightedBitvotes, fees, 100000000, time.Now().Unix())
+	solution := attestation.BranchAndBound(weightedBitvotes, fees, totalWeight, 100000000, time.Now().Unix())
 
 	fmt.Println("time passed:", time.Since(start).Seconds())
 	fmt.Println("solution", solution)
@@ -47,10 +50,10 @@ func TestBranchAndBoundRandom(t *testing.T) {
 }
 
 func TestBranchAndBound65(t *testing.T) {
-	numAttestations := 100
+	numAttestations := 40
 	numVoters := 100
 	weightedBitvotes := []*attestation.WeightedBitVote{}
-
+	totalWeight := uint16(0)
 	for j := 0; j < numVoters; j++ {
 		var atts []*attestation.Attestation
 
@@ -62,9 +65,11 @@ func TestBranchAndBound65(t *testing.T) {
 
 		bitVote, err := attestation.BitVoteFromAttestations(atts)
 		require.NoError(t, err)
+		weight := uint16(1)
 
-		c := &attestation.WeightedBitVote{Index: j, Weight: 1, BitVote: bitVote}
+		c := &attestation.WeightedBitVote{Index: j, Weight: weight, BitVote: bitVote}
 		weightedBitvotes = append(weightedBitvotes, c)
+		totalWeight += weight
 	}
 
 	fees := make([]int, numAttestations)
@@ -73,7 +78,7 @@ func TestBranchAndBound65(t *testing.T) {
 	}
 
 	start := time.Now()
-	solution := attestation.BranchAndBound(weightedBitvotes, fees, 50000000, time.Now().Unix())
+	solution := attestation.BranchAndBound(weightedBitvotes, fees, totalWeight, 50000000, time.Now().Unix())
 
 	fmt.Println("time passed:", time.Since(start).Seconds())
 	fmt.Println("solution", solution)
@@ -89,9 +94,10 @@ func TestBranchAndBound65(t *testing.T) {
 }
 
 func TestBranchAndBoundFix(t *testing.T) {
-	numAttestations := 5
-	numVoters := 100
+	numAttestations := 30
+	numVoters := 30
 	weightedBitvotes := []*attestation.WeightedBitVote{}
+	totalWeight := uint16(0)
 
 	for j := 0; j < numVoters; j++ {
 		var atts []*attestation.Attestation
@@ -108,9 +114,11 @@ func TestBranchAndBoundFix(t *testing.T) {
 
 		bitVote, err := attestation.BitVoteFromAttestations(atts)
 		require.NoError(t, err)
+		weight := uint16(1)
 
-		c := &attestation.WeightedBitVote{Index: j, Weight: 1, BitVote: bitVote}
+		c := &attestation.WeightedBitVote{Index: j, Weight: weight, BitVote: bitVote}
 		weightedBitvotes = append(weightedBitvotes, c)
+		totalWeight += weight
 	}
 
 	fees := make([]int, numAttestations)
@@ -119,7 +127,7 @@ func TestBranchAndBoundFix(t *testing.T) {
 	}
 
 	start := time.Now()
-	solution := attestation.BranchAndBound(weightedBitvotes, fees, 50000000, time.Now().Unix())
+	solution := attestation.BranchAndBound(weightedBitvotes, fees, totalWeight, 50000000, time.Now().Unix())
 
 	fmt.Println("time passed:", time.Since(start).Seconds())
 	fmt.Println("solution", solution)

@@ -8,6 +8,8 @@ import (
 	"local/fdc/client/shuffle"
 	"math"
 	"math/big"
+	"sort"
+	"strconv"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -416,4 +418,153 @@ func (r *Round) ProcessBitVote(message payload.Message) error {
 	}
 
 	return nil
+}
+
+// AggregateBitVotes joins WeightedBitVotes with the same BitVote and sums their weight.
+// The index of the aggregateBitVote is the lowest index of the weightedBitVote with the same BitVote.
+// AggregateBitVotes are sorted by their index.
+func AggregateBitVotes(bitVotes []*WeightedBitVote) []*WeightedBitVote {
+	aggregators := map[string]*WeightedBitVote{}
+
+	aggregatorsArray := []*WeightedBitVote{}
+
+	for j := range bitVotes {
+
+		bitVoteString := bitVotes[j].BitVote.BitVector.String()
+
+		aggregator, ok := aggregators[bitVoteString]
+
+		if ok {
+			aggregator.Weight += bitVotes[j].Weight
+			if bitVotes[j].Index < aggregator.Index {
+				aggregator.Index = bitVotes[j].Index
+			}
+		} else {
+			newAggregator := WeightedBitVote{BitVote: bitVotes[j].BitVote, Index: bitVotes[j].Index, Weight: bitVotes[j].Weight}
+			aggregators[bitVoteString] = &newAggregator
+		}
+	}
+
+	for _, value := range aggregators {
+		aggregatorsArray = append(aggregatorsArray, value)
+	}
+
+	sort.Slice(aggregatorsArray, func(i int, j int) bool {
+		return aggregatorsArray[i].Index < aggregatorsArray[j].Index
+	})
+
+	return aggregatorsArray
+}
+
+// AggregateAttestations joins attestations among WeightedBitVotes with the same BitVote and sums their fees.
+func AggregateAttestations(bitVotes []*WeightedBitVote, fees []int) ([]*WeightedBitVote, []int, map[int][]int) {
+	if len(fees) == 0 {
+		return bitVotes, fees, nil
+	}
+
+	wordToIndex := make(map[string]int)
+	aggregationMap := make(map[int][]int)
+
+	newFees := make([]int, 0)
+	counter := 0
+	for i := 0; i < len(fees); i++ {
+		word := ""
+		for _, e := range bitVotes {
+			word += strconv.Itoa(int(e.BitVote.BitVector.Bit(i)))
+		}
+
+		if index, ok := wordToIndex[word]; ok {
+			aggregationMap[index] = append(aggregationMap[index], i)
+			newFees[index] += fees[i]
+		} else {
+			wordToIndex[word] = counter
+			aggregationMap[counter] = []int{i}
+			newFees = append(newFees, fees[i])
+			counter++
+		}
+	}
+
+	newLength := uint16(counter)
+
+	newBitVotes := make([]*WeightedBitVote, len(bitVotes))
+	for i, e := range bitVotes {
+		newBitVotes[i] = &WeightedBitVote{Index: e.Index, indexTx: e.indexTx, Weight: e.Weight, BitVote: BitVote{Length: newLength, BitVector: big.NewInt(0)}}
+		for j := 0; j < int(newLength); j++ {
+			newBit := bitVotes[i].BitVote.BitVector.Bit(aggregationMap[j][0])
+			if newBit == 1 {
+				newBitVotes[i].BitVote.BitVector.Add(newBitVotes[i].BitVote.BitVector, new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(j)), nil))
+			}
+		}
+	}
+
+	return newBitVotes, newFees, aggregationMap
+}
+
+// FilterBitVotes filters out those bit votes whose bit vector is all ones or all zeros
+func FilterBitVotes(bitVotes []*WeightedBitVote) ([]*WeightedBitVote, []int, uint16, []int, uint16) {
+	removedOnes := make([]int, 0)
+	removedOnesWeight := uint16(0)
+	removedZeros := make([]int, 0)
+	removedZerosWeight := uint16(0)
+
+	newBitVotes := make([]*WeightedBitVote, 0)
+
+	ones := new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(bitVotes[0].BitVote.Length)), nil)
+	ones.Sub(ones, big.NewInt(1))
+	zeros := big.NewInt(0)
+
+	for j, bitVote := range bitVotes {
+		if bitVote.BitVote.BitVector.Cmp(ones) == 0 {
+			removedOnes = append(removedOnes, j)
+			removedOnesWeight += bitVote.Weight
+		} else if bitVote.BitVote.BitVector.Cmp(zeros) == 0 {
+			removedZeros = append(removedZeros, j)
+			removedZerosWeight += bitVote.Weight
+		} else {
+			newBitVotes = append(newBitVotes, bitVote)
+		}
+	}
+
+	return newBitVotes, removedOnes, removedOnesWeight, removedZeros, removedZerosWeight
+}
+
+// FilterAttestations filters out those attestations that are confirmed by all or by less than half
+func FilterAttestations(bitVotes []*WeightedBitVote, totalWeight uint16) ([]*WeightedBitVote, []int, []int) {
+	removedOnes := make([]int, 0)
+	removedLowWeight := make([]int, 0)
+	remains := make([]int, 0)
+
+	for i := 0; i < int(bitVotes[0].BitVote.Length); i++ {
+		checkOnes := true
+		weight := uint16(0)
+		for _, bitVote := range bitVotes {
+			if bitVote.BitVote.BitVector.Bit(i) == 0 {
+				checkOnes = false
+			} else {
+				weight += bitVote.Weight
+			}
+		}
+		if checkOnes {
+			removedOnes = append(removedOnes, i)
+		} else if weight < totalWeight/2 {
+			removedLowWeight = append(removedLowWeight, i)
+		} else {
+			remains = append(remains, i)
+		}
+	}
+
+	newLength := uint16(len(remains))
+
+	newBitVotes := make([]*WeightedBitVote, len(bitVotes))
+	for i, e := range bitVotes {
+		newBitVotes[i] = &WeightedBitVote{Index: e.Index, indexTx: e.indexTx, Weight: e.Weight, BitVote: BitVote{Length: newLength, BitVector: big.NewInt(0)}}
+		for j := 0; j < int(newLength); j++ {
+			newBit := bitVotes[i].BitVote.BitVector.Bit(remains[j])
+			if newBit == 1 {
+				newBitVotes[i].BitVote.BitVector.Add(newBitVotes[i].BitVote.BitVector, new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(j)), nil))
+			}
+		}
+	}
+
+	return newBitVotes, removedOnes, removedLowWeight
 }
