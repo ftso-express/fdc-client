@@ -22,23 +22,26 @@ type PriorityQueue[T any] struct {
 	maxAttempts     uint64
 	deadLetterQueue chan T
 	backoff         func() backoff.BackOff
+	timeOff         uint32
 }
 
 type priorityQueueItem[T any] struct {
-	value   T
-	backoff backoff.BackOff
+	value    T
+	backoff  backoff.BackOff
+	priority bool
 }
 
 // PriorityQueueInput values are used to construct a new PriorityQueue.
 type PriorityQueueParams struct {
 	Size                 int    `toml:"size"`
-	MaxDequeuesPerSecond int    `toml:"max_dequeues_per_second"` // Set to 0 to disable rate-limiting
-	MaxWorkers           int    `toml:"max_workers"`             // Set to 0 for unlimited workers
-	MaxAttempts          uint64 `toml:"max_attempts"`            // Set to 0 for unlimited retry attempts
+	MaxDequeuesPerSecond int    `toml:"max_dequeues_per_second"` // Set to 0 to disable rate-limiting.
+	MaxWorkers           int    `toml:"max_workers"`             // Set to 0 for unlimited workers.
+	MaxAttempts          int32  `toml:"max_attempts"`            // Set to negative for unlimited retry attempts. If unset or set to 0, the default value (10) is applied.
+	TimeOff              uint32 `toml:"time_off"`                // Only relevant if Backoff is not set.
 
 	// Pass a callback to specify the backoff policy which affects when items
 	// are returned to the queue after an error. By default, items are
-	// re-queued immediately.
+	// re-queued after TimeOff.
 	Backoff func() backoff.BackOff
 }
 
@@ -52,6 +55,7 @@ func NewPriority[T any](input *PriorityQueueParams) PriorityQueue[T] {
 		regular:  make(chan priorityQueueItem[T], input.Size),
 		priority: make(chan priorityQueueItem[T], input.Size),
 		backoff:  input.Backoff,
+		timeOff:  input.TimeOff,
 	}
 
 	if input.MaxDequeuesPerSecond > 0 {
@@ -63,8 +67,14 @@ func NewPriority[T any](input *PriorityQueueParams) PriorityQueue[T] {
 		q.workersSem = make(chan struct{}, input.MaxWorkers)
 	}
 
-	if input.MaxAttempts > 0 {
-		q.maxAttempts = input.MaxAttempts
+	if input.MaxAttempts > -1 {
+
+		q.maxAttempts = uint64(input.MaxAttempts)
+
+		if input.MaxAttempts == 0 {
+			q.maxAttempts = 10
+		}
+
 		q.deadLetterQueue = make(chan T, input.Size)
 	}
 
@@ -77,7 +87,7 @@ func (q PriorityQueue[T]) DeadLetterQueue() <-chan T {
 
 // Enqueue adds an item to the queue with regular priority.
 func (q *PriorityQueue[T]) Enqueue(ctx context.Context, item T) error {
-	return q.enqueue(ctx, priorityQueueItem[T]{value: item, backoff: q.newBackoff()})
+	return q.enqueue(ctx, priorityQueueItem[T]{value: item, backoff: q.newBackoff(), priority: false})
 }
 
 func (q *PriorityQueue[T]) enqueue(ctx context.Context, item priorityQueueItem[T]) error {
@@ -90,10 +100,9 @@ func (q *PriorityQueue[T]) enqueue(ctx context.Context, item priorityQueueItem[T
 	}
 }
 
-// EnqueuePriority adds an item to the queue with high priority.
-func (q *PriorityQueue[T]) EnqueuePriority(ctx context.Context, item T) error {
+func (q *PriorityQueue[T]) enqueuePriority(ctx context.Context, item priorityQueueItem[T]) error {
 	select {
-	case q.priority <- priorityQueueItem[T]{value: item, backoff: q.newBackoff()}:
+	case q.priority <- item:
 		return nil
 
 	case <-ctx.Done():
@@ -101,9 +110,15 @@ func (q *PriorityQueue[T]) EnqueuePriority(ctx context.Context, item T) error {
 	}
 }
 
+// EnqueuePriority adds an item to the queue with high priority.
+func (q *PriorityQueue[T]) EnqueuePriority(ctx context.Context, item T) error {
+	return q.enqueuePriority(ctx, priorityQueueItem[T]{value: item, backoff: q.newBackoff(), priority: true})
+
+}
+
 func (q *PriorityQueue[T]) newBackoff() (bOff backoff.BackOff) {
 	if q.backoff == nil {
-		bOff = backoff.NewConstantBackOff(0)
+		bOff = backoff.NewConstantBackOff(time.Duration(q.timeOff) * time.Second)
 	} else {
 		bOff = q.backoff()
 	}
@@ -176,7 +191,13 @@ func (q *PriorityQueue[T]) handleError(ctx context.Context, item priorityQueueIt
 			}
 		}
 
-		if err := q.enqueue(ctx, item); err != nil {
+		if item.priority {
+			err := q.enqueuePriority(ctx, item)
+			if err != nil {
+				log.Errorf("error enqueing priority item %v for retry: %v", item.value, err)
+
+			}
+		} else if err := q.enqueue(ctx, item); err != nil {
 			log.Errorf("error enqueing item %v for retry: %v", item.value, err)
 		}
 	}()
