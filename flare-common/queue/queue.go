@@ -8,6 +8,8 @@ import (
 	"github.com/cenkalti/backoff/v4"
 )
 
+const defaultMaxAttempts uint64 = 10
+
 var log = logger.GetLogger()
 
 // PriorityQueue is made up of two sub-queues - one regular and one with
@@ -22,7 +24,7 @@ type PriorityQueue[T any] struct {
 	maxAttempts     uint64
 	deadLetterQueue chan T
 	backoff         func() backoff.BackOff
-	timeOff         uint32
+	timeOff         time.Duration
 }
 
 type priorityQueueItem[T any] struct {
@@ -37,7 +39,7 @@ type PriorityQueueParams struct {
 	MaxDequeuesPerSecond int    `toml:"max_dequeues_per_second"` // Set to 0 to disable rate-limiting.
 	MaxWorkers           int    `toml:"max_workers"`             // Set to 0 for unlimited workers.
 	MaxAttempts          int32  `toml:"max_attempts"`            // Set to negative for unlimited retry attempts. If unset or set to 0, the default value (10) is applied.
-	TimeOff              uint32 `toml:"time_off"`                // Only relevant if Backoff is not set.
+	TimeOff              uint32 `toml:"time_off"`                // In seconds. Only relevant if Backoff is not set.
 
 	// Pass a callback to specify the backoff policy which affects when items
 	// are returned to the queue after an error. By default, items are
@@ -55,7 +57,7 @@ func NewPriority[T any](input *PriorityQueueParams) PriorityQueue[T] {
 		regular:  make(chan priorityQueueItem[T], input.Size),
 		priority: make(chan priorityQueueItem[T], input.Size),
 		backoff:  input.Backoff,
-		timeOff:  input.TimeOff,
+		timeOff:  time.Duration(input.TimeOff) * time.Second,
 	}
 
 	if input.MaxDequeuesPerSecond > 0 {
@@ -72,7 +74,7 @@ func NewPriority[T any](input *PriorityQueueParams) PriorityQueue[T] {
 		q.maxAttempts = uint64(input.MaxAttempts)
 
 		if input.MaxAttempts == 0 {
-			q.maxAttempts = 10
+			q.maxAttempts = defaultMaxAttempts
 		}
 
 		q.deadLetterQueue = make(chan T, input.Size)
@@ -118,7 +120,7 @@ func (q *PriorityQueue[T]) EnqueuePriority(ctx context.Context, item T) error {
 
 func (q *PriorityQueue[T]) newBackoff() (bOff backoff.BackOff) {
 	if q.backoff == nil {
-		bOff = backoff.NewConstantBackOff(time.Duration(q.timeOff) * time.Second)
+		bOff = backoff.NewConstantBackOff(q.timeOff)
 	} else {
 		bOff = q.backoff()
 	}

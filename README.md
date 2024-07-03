@@ -102,6 +102,9 @@ Each queue is has the following configs
 size = 10
 max_dequeues_per_second = 100 # 0 for unlimited
 max_workers = 10 # 0 for unlimited
+max_attempts = 3 # negative for unlimited
+time_off = 2 # in seconds
+
 ```
 
 System configs for a pair of chain and protocol ID should be specified in

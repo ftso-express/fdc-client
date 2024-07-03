@@ -80,8 +80,10 @@ lut_limit = "18446744073709551615"
 queue = "evmETH"
 
 
+# Queues
 [queues.evmETH]
 size = 10
 max_dequeues_per_second = 0
 max_workers = 0
 max_attempts = 3
+time_off = 2
