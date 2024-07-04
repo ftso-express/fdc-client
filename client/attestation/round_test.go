@@ -136,7 +136,7 @@ func TestAddAttestation(t *testing.T) {
 					Topic2:          "NULL",
 					Topic3:          "NULL",
 					TransactionHash: "e995790cdbb02e851cd767ee4f36bdf4d172b6fc210a497a505ec9c73330f5d1",
-					LogIndex:        0,
+					LogIndex:        1,
 					Timestamp:       1718113234,
 				},
 				{
@@ -158,7 +158,7 @@ func TestAddAttestation(t *testing.T) {
 					Topic2:          "NULL",
 					Topic3:          "NULL",
 					TransactionHash: "e995790cdbb02e851cd767ee4f36bdf4d172b6fc210a497a505ec9c73330f5d1",
-					LogIndex:        1,
+					LogIndex:        0,
 					Timestamp:       1718113234,
 				},
 			},
