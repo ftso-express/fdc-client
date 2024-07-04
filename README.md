@@ -37,6 +37,8 @@ chain = <chainName>
 protocolId = <protocolId>
 ```
 
+### C-chain Indexer
+
 The client needs access to C-chain indexer
 
 ```toml
@@ -48,6 +50,8 @@ username = "root"
 password = "root"
 log_queries = false
 ```
+
+### Rest Server
 
 FSP client access data from FDC client through the rest server.
 
@@ -65,6 +69,8 @@ swagger_path = "/api-doc"
 
 ```
 
+### Attestation Types
+
 For each supported attestation type, the ABI of the attestation response struct should be provided.
 The ABI in json file should be saved in json file in `configs/abis` folder.
 It is recommended for a file to be named `<attestationType>.json`.
@@ -72,6 +78,9 @@ In `userConfig.toml`, a path to the json file is specified.
 
 For each supported source of an attestation type, an url and an API key of a verifier server should be specified.
 In addition, LUT limit of the pair must be provided as a string representing a non-negative number smaller than $2^{64}$.
+
+Each verifier needs a designated queue that is assigned by it name.
+The same queue can be assigned to more than one verifier.
 
 ```toml
 # Verifiers for <attestationType>
@@ -94,18 +103,22 @@ lut_limit = "queue2"
 queue = "queue2"
 ```
 
-Each queue is has the following configs
+### Queues
+
+A queue ensures that the calls to the verifier server do not exceed server's limitations.
+
+Each queue is has the following configs:
 
 ```toml
-
 [queue.<queueName>]
 size = 10
 max_dequeues_per_second = 100 # 0 for unlimited
 max_workers = 10 # 0 for unlimited
 max_attempts = 3 # negative for unlimited
-time_off = 2 # in seconds
-
+time_off = 2 # in seconds. Time off after each unsuccessful attempt.
 ```
+
+### System Configs
 
 System configs for a pair of chain and protocol ID should be specified in
 `configs/systemConfigs/<protrocolId>/<chain>.toml`
@@ -118,4 +131,12 @@ The addresses must be specified in the systemConfig file.
 submit_contract = "0x2cA6571Daa15ce734Bbd0Bf27D5C9D16787fc33f"
 relay_contract = "0x32D46A1260BB2D8C9d5Ab1C9bBd7FF7D7CfaabCC"
 fdc_contract = "0xCf6798810Bc8C0B803121405Fee2A5a9cc0CA5E5"
+```
+
+The timestamp of the start of the first reward epoch (T0) and length of reward epoch have to be specified.
+
+```toml
+[timing]
+t0 = 1658429955 # in seconds
+reward_epoch_length = 240 # in voting rounds
 ```

@@ -22,6 +22,8 @@ const (
 	signingPolicyBufferSize = 3
 
 	bitVoteOffChainTriggerSeconds = 15
+
+	outOfSyncTolerance = 60
 )
 const (
 	requestListenerInterval = 2 * time.Second
@@ -200,14 +202,16 @@ func (c collectorDBGorm) FetchTransactionsByAddressAndSelectorTimestamp(
 	)
 }
 
+// Run starts SigningPolicyInitializedListener, BitVoteListener, and AttestationRequestListener,
+// assigns their channels to the RoundManager, and starts the RoundManager.
 func (r *Collector) Run(ctx context.Context) {
 	state, err := database.FetchState(ctx, r.DB)
 	if err != nil {
 		log.Panic("database error:", err)
 	}
 
-	if k := time.Now().Unix() - int64(state.BlockTimestamp); k > 60 { //get 60 from config
-		log.Panic("database not up to date")
+	if k := time.Now().Unix() - int64(state.BlockTimestamp); k > outOfSyncTolerance {
+		log.Panicf("database not up to date. lags for %d minutes", k/60)
 	}
 
 	chooseTrigger := make(chan uint64)
