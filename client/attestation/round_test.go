@@ -80,6 +80,7 @@ func TestAddAttestation(t *testing.T) {
 					TransactionHash: "e995790cdbb02e851cd767ee4f36bdf4d172b6fc210a497a505ec9c73330f5d1",
 					LogIndex:        0,
 					Timestamp:       1718113234,
+					BlockNumber:     16497501,
 				},
 				{
 					Address:         "Cf6798810Bc8C0B803121405Fee2A5a9cc0CA5E5",
@@ -91,6 +92,7 @@ func TestAddAttestation(t *testing.T) {
 					TransactionHash: "e995790cdbb02e851cd767ee4f36bdf4d172b6fc210a497a505ec9c73330f5d1",
 					LogIndex:        1,
 					Timestamp:       1718113234,
+					BlockNumber:     16497501,
 				},
 			},
 			fees:             []*big.Int{big.NewInt(20)},
@@ -109,6 +111,7 @@ func TestAddAttestation(t *testing.T) {
 					TransactionHash: "e995790cdbb02e851cd767ee4f36bdf4d172b6fc210a497a505ec9c73330f5d1",
 					LogIndex:        0,
 					Timestamp:       1718113234,
+					BlockNumber:     16497501,
 				},
 				{
 					Address:         "Cf6798810Bc8C0B803121405Fee2A5a9cc0CA5E5",
@@ -120,6 +123,7 @@ func TestAddAttestation(t *testing.T) {
 					TransactionHash: "0b8ae3462ce8226b9abeb660d70c842170ae60f4118d2b9401cbc89162395728",
 					LogIndex:        0,
 					Timestamp:       1718113235,
+					BlockNumber:     16497501,
 				},
 			},
 			fees:             []*big.Int{big.NewInt(10), big.NewInt(10)},
@@ -138,6 +142,7 @@ func TestAddAttestation(t *testing.T) {
 					TransactionHash: "e995790cdbb02e851cd767ee4f36bdf4d172b6fc210a497a505ec9c73330f5d1",
 					LogIndex:        1,
 					Timestamp:       1718113234,
+					BlockNumber:     16497501,
 				},
 				{
 					Address:         "Cf6798810Bc8C0B803121405Fee2A5a9cc0CA5E5",
@@ -149,6 +154,7 @@ func TestAddAttestation(t *testing.T) {
 					TransactionHash: "0b8ae3462ce8226b9abeb660d70c842170ae60f4118d2b9401cbc89162395728",
 					LogIndex:        0,
 					Timestamp:       1718113235,
+					BlockNumber:     16497501,
 				},
 				{
 					Address:         "Cf6798810Bc8C0B803121405Fee2A5a9cc0CA5E5",
@@ -160,6 +166,7 @@ func TestAddAttestation(t *testing.T) {
 					TransactionHash: "e995790cdbb02e851cd767ee4f36bdf4d172b6fc210a497a505ec9c73330f5d1",
 					LogIndex:        0,
 					Timestamp:       1718113234,
+					BlockNumber:     16497501,
 				},
 			},
 			fees:             []*big.Int{big.NewInt(20), big.NewInt(10)},

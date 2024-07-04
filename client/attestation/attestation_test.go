@@ -288,6 +288,7 @@ func TestPrepareRequest(t *testing.T) {
 				TransactionHash: "e995790cdbb02e851cd767ee4f36bdf4d172b6fc210a497a505ec9c73330f5d1",
 				LogIndex:        0,
 				Timestamp:       1718113234,
+				BlockNumber:     16497501,
 			},
 			url:      "http://localhost:4500/eth/EVMTransaction/verifyFDC",
 			lutLimit: 18446744073709551615,
