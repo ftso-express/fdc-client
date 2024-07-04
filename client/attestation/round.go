@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 type RoundStatus int
@@ -24,6 +25,7 @@ const (
 type Round struct {
 	roundId          uint64
 	Attestations     []*Attestation
+	attestationMap   map[common.Hash]*Attestation
 	bitVotes         []*WeightedBitVote
 	bitVoteCheckList map[common.Address]*WeightedBitVote
 	ConsensusBitVote BitVote
@@ -34,9 +36,33 @@ type Round struct {
 // CreateRound returns a pointer to a new round with roundId and voterSet.
 func CreateRound(roundId uint64, voterSet *policy.VoterSet) *Round {
 
-	r := &Round{roundId: roundId, voterSet: voterSet}
+	r := &Round{roundId: roundId, voterSet: voterSet, attestationMap: make(map[common.Hash]*Attestation)}
 
 	return r
+}
+
+// addAttestation checks whether an attestation with such request is already in the round.
+// If not it is added to the round, if yes the fee is added to the existent attestation
+// and Index is set to the earlier one.
+func (r *Round) addAttestation(attestation *Attestation) bool {
+	identifier := crypto.Keccak256Hash(attestation.Request)
+
+	att, exists := r.attestationMap[identifier]
+
+	if exists {
+		att.Fee = att.Fee.Add(att.Fee, attestation.Fee)
+
+		if earlierLog(attestation.Index, att.Index) {
+			att.Index = attestation.Index
+		}
+		return false
+	}
+
+	r.attestationMap[identifier] = attestation
+
+	r.Attestations = append(r.Attestations, attestation)
+
+	return true
 }
 
 // sortAttestations sorts round's attestations according to their IndexLog.

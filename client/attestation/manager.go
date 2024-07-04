@@ -231,10 +231,13 @@ func (m *Manager) OnRequest(ctx context.Context, request database.Log) error {
 		return fmt.Errorf("OnRequest: %w", err)
 	}
 
-	round.Attestations = append(round.Attestations, &attestation)
+	added := round.addAttestation(&attestation)
 
-	if err := m.AddToQueue(ctx, &attestation); err != nil {
-		return err
+	if added {
+		if err := m.AddToQueue(ctx, &attestation); err != nil {
+			return err
+		}
+
 	}
 
 	return nil

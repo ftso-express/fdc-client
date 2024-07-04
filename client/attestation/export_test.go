@@ -16,4 +16,6 @@ var PrepareRequest = (*Attestation).prepareRequest
 
 var SkipDuplicates = (checkList).skipDuplicates
 
+var AddAttestation = (*Round).addAttestation
+
 type CheckList = checkList
