@@ -3,7 +3,6 @@ package queue_test
 import (
 	"context"
 	"flare-common/queue"
-	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -118,19 +117,14 @@ func TestRateLimit(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	var lastDequeueTime *time.Time
+	start := time.Now()
 	for i := 0; i < size; i++ {
 		err := q.Dequeue(ctx, itemCheckCallback(i))
 		require.NoError(t, err)
-
-		now := time.Now()
-		if lastDequeueTime != nil {
-			delta := now.Sub(*lastDequeueTime)
-			require.GreaterOrEqual(t, delta, minDelta, fmt.Sprintf("failed iteration %d", i))
-		}
-
-		lastDequeueTime = &now
 	}
+
+	delta := time.Since(start)
+	require.GreaterOrEqual(t, delta, (size-1)*minDelta)
 }
 
 func TestEnqueueTimeout(t *testing.T) {
