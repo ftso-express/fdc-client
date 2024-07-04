@@ -1,7 +1,6 @@
-package attestation
+package bitvotes
 
 // exports of private functions for tests
-
 var AndBitwise = andBitwise
 
 var BitVoteForSet = bitVoteForSet

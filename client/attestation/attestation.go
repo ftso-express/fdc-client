@@ -5,6 +5,7 @@ import (
 	"flare-common/contracts/relay"
 	"flare-common/database"
 	"flare-common/events"
+	bitvotes "local/fdc/client/attestation/bitVotes"
 	"local/fdc/client/timing"
 	hub "local/fdc/contracts/FDC"
 	"math/big"
@@ -125,4 +126,24 @@ func ParseSigningPolicyInitializedLog(dbLog database.Log) (*relay.RelaySigningPo
 		return nil, err
 	}
 	return relayFilterer.ParseSigningPolicyInitialized(*contractLog)
+}
+
+// BitVoteFromAttestations calculates BitVote for an array of attestations.
+// For i-th attestation in array, i-th bit in BitVote(from the right) is 1 if and only if i-th attestation status is Success.
+// Sorting of attestation must be done prior.
+func BitVoteFromAttestations(attestations []*Attestation) (bitvotes.BitVote, error) {
+	bitVector := big.NewInt(0)
+
+	if len(attestations) > 65535 {
+		return bitvotes.BitVote{}, errors.New("more than 65536 attestations")
+	}
+
+	for i, a := range attestations {
+		if a.Status == Success {
+			bitVector.SetBit(bitVector, i, 1)
+		}
+
+	}
+
+	return bitvotes.BitVote{uint16(len(attestations)), bitVector}, nil
 }

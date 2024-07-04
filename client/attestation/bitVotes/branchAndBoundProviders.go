@@ -1,4 +1,4 @@
-package attestation
+package bitvotes
 
 import (
 	"math/rand"
@@ -16,10 +16,10 @@ func PermuteBitVotes(allBitVotes []*WeightedBitVote, randPerm []int) []*Weighted
 // BranchAndBoundProviders is similar than BranchAndBound, the difference is that it
 // executes a branch and bound strategy on the space of subsets of attestation providers, hence
 // it is particularly useful when there are not too many distinct providers.
-func BranchAndBoundProviders(allBitVotes []*WeightedBitVote, fees []int, absoluteTotalWeight uint16, maxOperations int, seed int64) *BranchAndBoundSolution {
+func BranchAndBoundProviders(allBitVotes []*WeightedBitVote, fees []int, assumedWeight, absoluteTotalWeight uint16, maxOperations int, seed int64) *ConsensusSolution {
 	numAttestations := len(fees)
 	numProviders := len(allBitVotes)
-	totalWeight := uint16(0)
+	totalWeight := assumedWeight
 
 	for _, vote := range allBitVotes {
 		totalWeight += vote.Weight
@@ -36,11 +36,11 @@ func BranchAndBoundProviders(allBitVotes []*WeightedBitVote, fees []int, absolut
 	permBitVotes := PermuteBitVotes(allBitVotes, randPerm)
 
 	currentBound := &SharedStatus{CurrentBound: 0, NumOperations: 0, MaxOperations: maxOperations,
-		TotalWeight: absoluteTotalWeight, BitVotes: permBitVotes, Fees: fees, RandGen: randGen, NumProviders: numProviders}
+		TotalWeight: absoluteTotalWeight, LowerBoundWeight: absoluteTotalWeight / 2, BitVotes: permBitVotes, Fees: fees, RandGen: randGen, NumProviders: numProviders}
 
 	permResult := BranchProviders(startingSolution, totalFee, currentBound, 0, totalWeight)
 
-	result := BranchAndBoundSolution{Participants: make([]bool, numProviders),
+	result := ConsensusSolution{Participants: make([]bool, numProviders),
 		Solution: make([]bool, numAttestations), Value: permResult.Value}
 	for key, val := range randPerm {
 		result.Participants[key] = permResult.Participants[val]

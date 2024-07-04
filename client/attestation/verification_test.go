@@ -3,10 +3,9 @@ package attestation_test
 import (
 	"encoding/hex"
 	"fmt"
+	"local/fdc/client/attestation"
 	"os"
 	"testing"
-
-	"local/fdc/client/attestation"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 )

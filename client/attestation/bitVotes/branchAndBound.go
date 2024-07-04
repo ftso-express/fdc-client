@@ -1,4 +1,4 @@
-package attestation
+package bitvotes
 
 import (
 	"math/big"
@@ -6,28 +6,22 @@ import (
 )
 
 type SharedStatus struct {
-	CurrentBound    int
-	NumOperations   int
-	MaxOperations   int
-	TotalWeight     uint16
-	BitVotes        []*WeightedBitVote
-	Fees            []int
-	RandGen         rand.Source
-	NumAttestations int
-	NumProviders    int
+	CurrentBound     int
+	NumOperations    int
+	MaxOperations    int
+	TotalWeight      uint16
+	LowerBoundWeight uint16
+	BitVotes         []*WeightedBitVote
+	Fees             []int
+	RandGen          rand.Source
+	NumAttestations  int
+	NumProviders     int
 }
 
 type BranchAndBoundPartialSolution struct {
 	Participants map[int]bool
 	Solution     map[int]bool
 	Value        int
-}
-
-type BranchAndBoundSolution struct {
-	Participants []bool
-	Solution     []bool
-	Value        int
-	Optimal      bool
 }
 
 func CalcValue(feeSum int, weight, totalWeight uint16) int {
@@ -68,14 +62,14 @@ func PermuteBits(allBitVotes []*WeightedBitVote, randPerm []int) []*WeightedBitV
 // gives an optimal solution. In the case that the solution space is too big, the algorithm gives a
 // the best solution it finds. The search strategy is pseudo-randomized, where the pseudo-random
 // function is controlled by the given seed.
-func BranchAndBound(allBitVotes []*WeightedBitVote, fees []int, absoluteTotalWeight uint16, maxOperations int, seed int64) *BranchAndBoundSolution {
+func BranchAndBound(allBitVotes []*WeightedBitVote, fees []int, assumedWeight, absoluteTotalWeight uint16, maxOperations int, seed int64) *ConsensusSolution {
 	numAttestations := len(fees)
 	numVoters := len(allBitVotes)
-	totalWeight := uint16(0)
+	weight := assumedWeight
 
 	participants := make(map[int]bool)
 	for i, vote := range allBitVotes {
-		totalWeight += vote.Weight
+		weight += vote.Weight
 		participants[i] = true
 	}
 
@@ -88,11 +82,12 @@ func BranchAndBound(allBitVotes []*WeightedBitVote, fees []int, absoluteTotalWei
 	permBitVotes := PermuteBits(allBitVotes, randPerm)
 
 	currentBound := &SharedStatus{CurrentBound: 0, NumOperations: 0, MaxOperations: maxOperations,
-		TotalWeight: absoluteTotalWeight, BitVotes: permBitVotes, Fees: fees, RandGen: randGen, NumAttestations: numAttestations}
+		TotalWeight: absoluteTotalWeight, LowerBoundWeight: absoluteTotalWeight / 2, BitVotes: permBitVotes,
+		Fees: fees, RandGen: randGen, NumAttestations: numAttestations}
 
-	permResult := Branch(participants, currentBound, 0, totalWeight, totalFee)
+	permResult := Branch(participants, currentBound, 0, weight, totalFee)
 
-	result := BranchAndBoundSolution{Participants: make([]bool, numVoters),
+	result := ConsensusSolution{Participants: make([]bool, numVoters),
 		Solution: make([]bool, numAttestations), Value: permResult.Value}
 	for key, val := range permResult.Participants {
 		result.Participants[key] = val
@@ -147,7 +142,7 @@ func Branch(participants map[int]bool, currentStatus *SharedStatus, branch int, 
 		}
 		currentStatus.NumOperations++
 	}
-	if newCurrentWeight > currentStatus.TotalWeight/2 {
+	if newCurrentWeight >= currentStatus.LowerBoundWeight {
 		result1 = Branch(newParticipants, currentStatus, branch+1, newCurrentWeight, feeSum)
 	}
 
@@ -170,7 +165,7 @@ func Branch(participants map[int]bool, currentStatus *SharedStatus, branch int, 
 	}
 }
 
-func (solution *BranchAndBoundSolution) Maximize(allBitVotes []*WeightedBitVote, fees []int) {
+func (solution *ConsensusSolution) Maximize(allBitVotes []*WeightedBitVote, fees []int) {
 	for i, attestation := range solution.Solution {
 		if !attestation {
 			check := true
@@ -189,7 +184,7 @@ func (solution *BranchAndBoundSolution) Maximize(allBitVotes []*WeightedBitVote,
 	solution.Value = solution.CalcValueFromFees(allBitVotes, fees)
 }
 
-func (solution *BranchAndBoundSolution) CalcValueFromFees(allBitVotes []*WeightedBitVote, fees []int) int {
+func (solution *ConsensusSolution) CalcValueFromFees(allBitVotes []*WeightedBitVote, fees []int) int {
 	val := 0
 	for i, attestation := range solution.Solution {
 		if attestation {

@@ -1,15 +1,12 @@
-package attestation
+package bitvotes
 
 import (
 	"encoding/binary"
 	"encoding/hex"
-	"flare-common/payload"
 	"fmt"
 	"local/fdc/client/shuffle"
 	"math"
 	"math/big"
-	"sort"
-	"strconv"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -19,7 +16,7 @@ import (
 const (
 	NumOfSamples int     = 100000    // the actual number of samples is x2 (one normal and one optimistic for each seed)
 	divOpt       uint16  = 5         // totalWeight/divOpt is the weight of the optimistic samples
-	valueCap     float64 = 3.0 / 5.0 // bitVote support cap in factor of totalWeight
+	valueCap     float64 = 4.0 / 5.0 // bitVote support cap in factor of totalWeight
 	protocolId           = 300       // TODO get protocol id (300) from somewhere // read from config/toml
 )
 
@@ -34,7 +31,7 @@ type IndexTx struct {
 }
 
 // earlierTx compares IndexTxs a,b. Returns true if a has lower BlockNumber than b or has the same BlockNumber and lower TransactionIndex.
-func earlierTx(a, b IndexTx) bool {
+func EarlierTx(a, b IndexTx) bool {
 	if a.BlockNumber < b.BlockNumber {
 		return true
 	}
@@ -43,12 +40,11 @@ func earlierTx(a, b IndexTx) bool {
 	}
 
 	return false
-
 }
 
 type WeightedBitVote struct {
 	Index   int
-	indexTx IndexTx
+	IndexTx IndexTx
 	Weight  uint16
 	BitVote BitVote
 }
@@ -60,41 +56,22 @@ type bitVoteWithValue struct {
 	value       *big.Int // support multiplied with fees
 }
 
-// BitVoteFromAttestations calculates BitVote for an array of attestations.
-// For i-th attestation in array, i-th bit in BitVote(from the right) is 1 if and only if i-th attestation status is Success.
-// Sorting of attestation must be done prior.
-func BitVoteFromAttestations(attestations []*Attestation) (BitVote, error) {
-	bitVector := big.NewInt(0)
-
-	if len(attestations) > 65535 {
-		return BitVote{}, errors.New("more than 65536 attestations")
-	}
-
-	for i, a := range attestations {
-		if a.Status == Success {
-			bitVector.SetBit(bitVector, i, 1)
-		}
-
-	}
-	return BitVote{uint16(len(attestations)), bitVector}, nil
-}
-
 // fees sums the fees of the attestation requests indicated in BitVote
-func (bv BitVote) fees(attestations []*Attestation) (*big.Int, error) {
+func (bv BitVote) fees(fees []int) (int, error) {
 
-	if bv.BitVector.BitLen() > len(attestations) {
-		return nil, errors.New("a confirmed instance missing from attestations")
+	if bv.BitVector.BitLen() > len(fees) {
+		return 0, errors.New("a confirmed instance missing from attestations")
 	}
 
-	fees := big.NewInt(0)
+	fee := 0
 
-	for i := range attestations {
+	for i := range fees {
 
 		if bv.BitVector.Bit(i) == 1 {
-			fees.Add(fees, attestations[i].Fee)
+			fee += fees[i]
 		}
 	}
-	return fees, nil
+	return fee, nil
 }
 
 // bitVoteForSet calculates bitwise and of the WeightedBitVote in the order defined by shuffled
@@ -167,12 +144,13 @@ func andBitwise(a, b BitVote) BitVote {
 }
 
 // Value calculates the cappedValue and Value of the BitVote, which is the product of the fees and supportingWeight.
-func Values(bitVote BitVote, supportingWeight uint16, totalWeight uint16, attestations []*Attestation, capPercentage float64) (*big.Int, *big.Int, error) {
-	fees, err := bitVote.fees(attestations)
-
+func Values(bitVote BitVote, supportingWeight uint16, totalWeight uint16, fees []int, capPercentage float64) (*big.Int, *big.Int, error) {
+	fee, err := bitVote.fees(fees)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot compute value : %s", err)
 	}
+
+	feeBig := big.NewInt(int64(fee))
 
 	auxBigInt := new(big.Int)
 
@@ -180,11 +158,10 @@ func Values(bitVote BitVote, supportingWeight uint16, totalWeight uint16, attest
 
 	if cap < supportingWeight {
 
-		return auxBigInt.Mul(fees, big.NewInt(int64(cap))), auxBigInt.Mul(fees, big.NewInt(int64(supportingWeight))), nil
+		return auxBigInt.Mul(feeBig, big.NewInt(int64(cap))), auxBigInt.Mul(feeBig, big.NewInt(int64(supportingWeight))), nil
 
 	}
-
-	return auxBigInt.Mul(fees, big.NewInt(int64(supportingWeight))), auxBigInt, nil
+	return auxBigInt.Mul(feeBig, big.NewInt(int64(supportingWeight))), auxBigInt, nil // todo this cannot be right
 }
 
 type tempBitVoteResult struct {
@@ -198,7 +175,7 @@ type ConsensusBitVoteInput struct {
 	RoundID          uint64
 	WeightedBitVotes []*WeightedBitVote
 	TotalWeight      uint16
-	Attestations     []*Attestation
+	Fees             []int
 }
 
 // ConsensusBitVote calculates the ConsensusBitVote for roundId given the weightedBitVotes.
@@ -262,7 +239,7 @@ func calcBitVoteVals(input *ConsensusBitVoteInput, index int) ([2]*bitVoteWithVa
 
 	eg.Go(func() error {
 		tempBitVote, supportingWeight := bitVoteForSet(input.WeightedBitVotes, input.TotalWeight, shuffled)
-		valueCapped, value, err := Values(tempBitVote, supportingWeight, input.TotalWeight, input.Attestations, valueCap)
+		valueCapped, value, err := Values(tempBitVote, supportingWeight, input.TotalWeight, input.Fees, valueCap)
 		if err != nil {
 			return err
 		}
@@ -284,7 +261,7 @@ func calcBitVoteVals(input *ConsensusBitVoteInput, index int) ([2]*bitVoteWithVa
 
 		if supportingWeightOpt > input.TotalWeight/2 {
 			valueOptimisticCapped, valueOptimistic, err := Values(
-				tempBitVoteOpt, supportingWeightOpt, input.TotalWeight, input.Attestations, valueCap,
+				tempBitVoteOpt, supportingWeightOpt, input.TotalWeight, input.Fees, valueCap,
 			)
 			if err != nil {
 				return err
@@ -365,206 +342,4 @@ func DecodeBitVoteBytes(bitVoteByte []byte) (BitVote, uint8, error) {
 
 	return BitVote{length, bigBitVector}, roundCheck, nil
 
-}
-
-// ProcessBitVote decodes bitVote message, checks roundCheck, adds voter weight and index, and stores bitVote to the round.
-// If the voter is invalid, or has zero weight, the bitVote is ignored.
-// If a voter already submitted a valid bitVote for the round, the bitVote is overwritten.
-func (r *Round) ProcessBitVote(message payload.Message) error {
-
-	bitVote, roundCheck, err := DecodeBitVoteBytes(message.Payload)
-
-	if err != nil {
-		return err
-	}
-
-	if roundCheck != uint8(message.VotingRound%256) {
-		return fmt.Errorf("wrong round check from %s", message.From)
-	}
-
-	voter, exists := r.voterSet.VoterDataMap[message.From]
-
-	if !exists {
-		return fmt.Errorf("invalid voter %s", message.From)
-	}
-
-	weight := voter.Weight
-
-	if weight <= 0 {
-		return fmt.Errorf("zero weight voter %s ", message.From)
-	}
-
-	// check if a bitVote was already submitted by the sender
-	weightedBitVote, exists := r.bitVoteCheckList[message.From]
-
-	if !exists {
-		// first submission
-
-		weightedBitVote = &WeightedBitVote{}
-		r.bitVotes = append(r.bitVotes, weightedBitVote)
-
-		weightedBitVote.BitVote = bitVote
-		weightedBitVote.Weight = weight
-		weightedBitVote.Index = voter.Index
-		weightedBitVote.indexTx = IndexTx{message.BlockNumber, message.TransactionIndex}
-	} else if exists && earlierTx(weightedBitVote.indexTx, IndexTx{message.BlockNumber, message.TransactionIndex}) {
-		// more than one submission. The later submission is considered to be valid.
-
-		weightedBitVote.BitVote = bitVote
-		weightedBitVote.Weight = weight
-		weightedBitVote.Index = voter.Index
-		weightedBitVote.indexTx = IndexTx{message.BlockNumber, message.TransactionIndex}
-
-	}
-
-	return nil
-}
-
-// AggregateBitVotes joins WeightedBitVotes with the same BitVote and sums their weight.
-// The index of the aggregateBitVote is the lowest index of the weightedBitVote with the same BitVote.
-// AggregateBitVotes are sorted by their index.
-func AggregateBitVotes(bitVotes []*WeightedBitVote) []*WeightedBitVote {
-	aggregators := map[string]*WeightedBitVote{}
-
-	aggregatorsArray := []*WeightedBitVote{}
-
-	for j := range bitVotes {
-
-		bitVoteString := bitVotes[j].BitVote.BitVector.String()
-
-		aggregator, ok := aggregators[bitVoteString]
-
-		if ok {
-			aggregator.Weight += bitVotes[j].Weight
-			if bitVotes[j].Index < aggregator.Index {
-				aggregator.Index = bitVotes[j].Index
-			}
-		} else {
-			newAggregator := WeightedBitVote{BitVote: bitVotes[j].BitVote, Index: bitVotes[j].Index, Weight: bitVotes[j].Weight}
-			aggregators[bitVoteString] = &newAggregator
-		}
-	}
-
-	for _, value := range aggregators {
-		aggregatorsArray = append(aggregatorsArray, value)
-	}
-
-	sort.Slice(aggregatorsArray, func(i int, j int) bool {
-		return aggregatorsArray[i].Index < aggregatorsArray[j].Index
-	})
-
-	return aggregatorsArray
-}
-
-// AggregateAttestations joins attestations among WeightedBitVotes with the same BitVote and sums their fees.
-func AggregateAttestations(bitVotes []*WeightedBitVote, fees []int) ([]*WeightedBitVote, []int, map[int][]int) {
-	if len(fees) == 0 {
-		return bitVotes, fees, nil
-	}
-
-	wordToIndex := make(map[string]int)
-	aggregationMap := make(map[int][]int)
-
-	newFees := make([]int, 0)
-	counter := 0
-	for i := 0; i < len(fees); i++ {
-		word := ""
-		for _, e := range bitVotes {
-			word += strconv.Itoa(int(e.BitVote.BitVector.Bit(i)))
-		}
-
-		if index, ok := wordToIndex[word]; ok {
-			aggregationMap[index] = append(aggregationMap[index], i)
-			newFees[index] += fees[i]
-		} else {
-			wordToIndex[word] = counter
-			aggregationMap[counter] = []int{i}
-			newFees = append(newFees, fees[i])
-			counter++
-		}
-	}
-
-	newLength := uint16(counter)
-
-	newBitVotes := make([]*WeightedBitVote, len(bitVotes))
-	for i, e := range bitVotes {
-		newBitVotes[i] = &WeightedBitVote{Index: e.Index, indexTx: e.indexTx, Weight: e.Weight, BitVote: BitVote{Length: newLength, BitVector: big.NewInt(0)}}
-		for j := 0; j < int(newLength); j++ {
-			newBit := bitVotes[i].BitVote.BitVector.Bit(aggregationMap[j][0])
-			if newBit == 1 {
-				newBitVotes[i].BitVote.BitVector.Add(newBitVotes[i].BitVote.BitVector, new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(j)), nil))
-			}
-		}
-	}
-
-	return newBitVotes, newFees, aggregationMap
-}
-
-// FilterBitVotes filters out those bit votes whose bit vector is all ones or all zeros
-func FilterBitVotes(bitVotes []*WeightedBitVote) ([]*WeightedBitVote, []int, uint16, []int, uint16) {
-	removedOnes := make([]int, 0)
-	removedOnesWeight := uint16(0)
-	removedZeros := make([]int, 0)
-	removedZerosWeight := uint16(0)
-
-	newBitVotes := make([]*WeightedBitVote, 0)
-
-	ones := new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(bitVotes[0].BitVote.Length)), nil)
-	ones.Sub(ones, big.NewInt(1))
-	zeros := big.NewInt(0)
-
-	for j, bitVote := range bitVotes {
-		if bitVote.BitVote.BitVector.Cmp(ones) == 0 {
-			removedOnes = append(removedOnes, j)
-			removedOnesWeight += bitVote.Weight
-		} else if bitVote.BitVote.BitVector.Cmp(zeros) == 0 {
-			removedZeros = append(removedZeros, j)
-			removedZerosWeight += bitVote.Weight
-		} else {
-			newBitVotes = append(newBitVotes, bitVote)
-		}
-	}
-
-	return newBitVotes, removedOnes, removedOnesWeight, removedZeros, removedZerosWeight
-}
-
-// FilterAttestations filters out those attestations that are confirmed by all or by less than half
-func FilterAttestations(bitVotes []*WeightedBitVote, totalWeight uint16) ([]*WeightedBitVote, []int, []int) {
-	removedOnes := make([]int, 0)
-	removedLowWeight := make([]int, 0)
-	remains := make([]int, 0)
-
-	for i := 0; i < int(bitVotes[0].BitVote.Length); i++ {
-		checkOnes := true
-		weight := uint16(0)
-		for _, bitVote := range bitVotes {
-			if bitVote.BitVote.BitVector.Bit(i) == 0 {
-				checkOnes = false
-			} else {
-				weight += bitVote.Weight
-			}
-		}
-		if checkOnes {
-			removedOnes = append(removedOnes, i)
-		} else if weight < totalWeight/2 {
-			removedLowWeight = append(removedLowWeight, i)
-		} else {
-			remains = append(remains, i)
-		}
-	}
-
-	newLength := uint16(len(remains))
-
-	newBitVotes := make([]*WeightedBitVote, len(bitVotes))
-	for i, e := range bitVotes {
-		newBitVotes[i] = &WeightedBitVote{Index: e.Index, indexTx: e.indexTx, Weight: e.Weight, BitVote: BitVote{Length: newLength, BitVector: big.NewInt(0)}}
-		for j := 0; j < int(newLength); j++ {
-			newBit := bitVotes[i].BitVote.BitVector.Bit(remains[j])
-			if newBit == 1 {
-				newBitVotes[i].BitVote.BitVector.Add(newBitVotes[i].BitVote.BitVector, new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(j)), nil))
-			}
-		}
-	}
-
-	return newBitVotes, removedOnes, removedLowWeight
 }

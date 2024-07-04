@@ -3,8 +3,10 @@ package attestation
 import (
 	"errors"
 	"flare-common/merkle"
+	"flare-common/payload"
 	"flare-common/policy"
 	"fmt"
+	bitvotes "local/fdc/client/attestation/bitVotes"
 	"sort"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -24,9 +26,9 @@ const (
 type Round struct {
 	roundId          uint64
 	Attestations     []*Attestation
-	bitVotes         []*WeightedBitVote
-	bitVoteCheckList map[common.Address]*WeightedBitVote
-	ConsensusBitVote BitVote
+	bitVotes         []*bitvotes.WeightedBitVote
+	bitVoteCheckList map[common.Address]*bitvotes.WeightedBitVote
+	ConsensusBitVote bitvotes.BitVote
 	voterSet         *policy.VoterSet
 	merkleTree       merkle.Tree
 }
@@ -60,7 +62,7 @@ func (r *Round) sortBitVotes() {
 }
 
 // BitVote returns the BitVote for the round according to the current status of Attestations.
-func (r *Round) BitVote() (BitVote, error) {
+func (r *Round) BitVote() (bitvotes.BitVote, error) {
 
 	r.sortAttestations()
 	return BitVoteFromAttestations(r.Attestations)
@@ -87,11 +89,16 @@ func (r *Round) ComputeConsensusBitVote() error {
 
 	r.sortAttestations()
 
-	consensus, err := ConsensusBitVote(&ConsensusBitVoteInput{
+	fees := make([]int, len(r.Attestations))
+	for i, e := range r.Attestations {
+		fees[i] = int(e.Fee.Int64())
+	}
+
+	consensus, err := bitvotes.ConsensusBitVote(&bitvotes.ConsensusBitVoteInput{
 		RoundID:          r.roundId,
 		WeightedBitVotes: r.bitVotes,
 		TotalWeight:      r.voterSet.TotalWeight,
-		Attestations:     r.Attestations,
+		Fees:             fees,
 	})
 	if err != nil {
 		return err
@@ -102,10 +109,10 @@ func (r *Round) ComputeConsensusBitVote() error {
 	return r.SetConsensusStatus()
 }
 
-func (r *Round) GetConsensusBitVote() (BitVote, error) {
+func (r *Round) GetConsensusBitVote() (bitvotes.BitVote, error) {
 
 	if r.ConsensusBitVote.BitVector == nil {
-		return BitVote{}, errors.New("no consensus bitVote")
+		return bitvotes.BitVote{}, errors.New("no consensus bitVote")
 	}
 
 	return r.ConsensusBitVote, nil
@@ -210,4 +217,57 @@ func (r *Round) GetMerkleRootCachedHex() (string, error) {
 
 	return root.Hex(), nil
 
+}
+
+// ProcessBitVote decodes bitVote message, checks roundCheck, adds voter weight and index, and stores bitVote to the round.
+// If the voter is invalid, or has zero weight, the bitVote is ignored.
+// If a voter already submitted a valid bitVote for the round, the bitVote is overwritten.
+func (r *Round) ProcessBitVote(message payload.Message) error {
+
+	bitVote, roundCheck, err := bitvotes.DecodeBitVoteBytes(message.Payload)
+
+	if err != nil {
+		return err
+	}
+
+	if roundCheck != uint8(message.VotingRound%256) {
+		return fmt.Errorf("wrong round check from %s", message.From)
+	}
+
+	voter, exists := r.voterSet.VoterDataMap[message.From]
+
+	if !exists {
+		return fmt.Errorf("invalid voter %s", message.From)
+	}
+
+	weight := voter.Weight
+
+	if weight <= 0 {
+		return fmt.Errorf("zero weight voter %s ", message.From)
+	}
+
+	// check if a bitVote was already submitted by the sender
+	weightedBitVote, exists := r.bitVoteCheckList[message.From]
+
+	if !exists {
+		// first submission
+
+		weightedBitVote = &bitvotes.WeightedBitVote{}
+		r.bitVotes = append(r.bitVotes, weightedBitVote)
+
+		weightedBitVote.BitVote = bitVote
+		weightedBitVote.Weight = weight
+		weightedBitVote.Index = voter.Index
+		weightedBitVote.IndexTx = bitvotes.IndexTx{message.BlockNumber, message.TransactionIndex}
+	} else if exists && bitvotes.EarlierTx(weightedBitVote.IndexTx, bitvotes.IndexTx{message.BlockNumber, message.TransactionIndex}) {
+		// more than one submission. The later submission is considered to be valid.
+
+		weightedBitVote.BitVote = bitVote
+		weightedBitVote.Weight = weight
+		weightedBitVote.Index = voter.Index
+		weightedBitVote.IndexTx = bitvotes.IndexTx{message.BlockNumber, message.TransactionIndex}
+
+	}
+
+	return nil
 }
