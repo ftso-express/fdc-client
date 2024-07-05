@@ -3,6 +3,7 @@ package attestation
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"flare-common/database"
 	"flare-common/events"
@@ -50,7 +51,7 @@ func earlierLog(a, b IndexLog) bool {
 }
 
 type Attestation struct {
-	Indexes     []IndexLog // indexLogs of all logs in the round with the Request.
+	Indexes     []IndexLog // indexLogs of all logs in the round with the Request. The earliest is in the first place.
 	RoundId     uint64
 	Request     Request
 	Response    Response
@@ -253,4 +254,12 @@ func ParseAttestationRequestLog(dbLog database.Log) (*hub.HubAttestationRequest,
 		return nil, err
 	}
 	return hubFilterer.ParseAttestationRequest(*contractLog)
+}
+
+func (a *Attestation) index() IndexLog {
+	if len(a.Indexes) > 0 {
+		return a.Indexes[0]
+	}
+	log.Errorf("attestation without index in round %d with request %s", a.RoundId, hex.EncodeToString(a.Request)) // this should never happen
+	return IndexLog{18446744073709551615, 18446744073709551615}
 }

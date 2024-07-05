@@ -91,7 +91,7 @@ func prepend[T any](slice []T, element T) []T {
 func (r *Round) sortAttestations() {
 
 	sort.Slice(r.Attestations, func(i, j int) bool {
-		return earlierLog(r.Attestations[i].Indexes[0], r.Attestations[j].Indexes[0])
+		return earlierLog(r.Attestations[i].index(), r.Attestations[j].index())
 	})
 }
 
