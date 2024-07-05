@@ -256,6 +256,7 @@ func ParseAttestationRequestLog(dbLog database.Log) (*hub.HubAttestationRequest,
 	return hubFilterer.ParseAttestationRequest(*contractLog)
 }
 
+// index is used to safely retrieve Index for sorting purposes.
 func (a *Attestation) index() IndexLog {
 	if len(a.Indexes) > 0 {
 		return a.Indexes[0]
