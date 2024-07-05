@@ -24,9 +24,9 @@ func setAttestations(n int, rules []int) []*attestation.Attestation {
 
 		att.Status = attestation.ProcessError
 
-		att.Index.BlockNumber = uint64(j)
+		index := attestation.IndexLog{uint64(j), uint64(j % 2)}
 
-		att.Index.LogIndex = uint64(j % 2)
+		att.Indexes = append(att.Indexes, index)
 
 		for i := range rules {
 

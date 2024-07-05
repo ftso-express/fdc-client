@@ -18,4 +18,6 @@ var SkipDuplicates = (checkList).skipDuplicates
 
 var AddAttestation = (*Round).addAttestation
 
+var PrependInt = prepend[int]
+
 type CheckList = checkList

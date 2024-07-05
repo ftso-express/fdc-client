@@ -52,11 +52,14 @@ func (r *Round) addAttestation(attestation *Attestation) bool {
 	if exists {
 		att.Fee = att.Fee.Add(att.Fee, attestation.Fee)
 
-		if earlierLog(attestation.Index, att.Index) {
-			att.Index = attestation.Index
+		if earlierLog(attestation.Indexes[0], att.Indexes[0]) {
+
+			att.Indexes = prepend(att.Indexes, attestation.Indexes[0])
 		}
 		return false
 	}
+
+	att.Indexes = append(att.Indexes, attestation.Indexes[0])
 
 	r.attestationMap[identifier] = attestation
 
@@ -65,11 +68,28 @@ func (r *Round) addAttestation(attestation *Attestation) bool {
 	return true
 }
 
+// prepend places the element at the beginning of the slice and moves the potentially replaced element to the end.
+func prepend[T any](slice []T, element T) []T {
+
+	if len(slice) == 0 {
+		slice = append(slice, element)
+		return slice
+	}
+
+	slice = append(slice, slice[0])
+
+	slice[0] = element
+
+	return slice
+
+}
+
 // sortAttestations sorts round's attestations according to their IndexLog.
+// we assume that attestations have at least one index.
 func (r *Round) sortAttestations() {
 
 	sort.Slice(r.Attestations, func(i, j int) bool {
-		return earlierLog(r.Attestations[i].Index, r.Attestations[j].Index)
+		return earlierLog(r.Attestations[i].Indexes[0], r.Attestations[j].Indexes[0])
 	})
 }
 

@@ -50,11 +50,11 @@ func earlierLog(a, b IndexLog) bool {
 }
 
 type Attestation struct {
-	Index       IndexLog
+	Indexes     []IndexLog // indexLogs of all logs in the round with the Request.
 	RoundId     uint64
 	Request     Request
 	Response    Response
-	Fee         *big.Int
+	Fee         *big.Int // sum of fees of all logs in the round with the Request
 	Status      Status
 	Consensus   bool
 	Hash        common.Hash
@@ -79,10 +79,10 @@ func attestationFromDatabaseLog(request database.Log) (Attestation, error) {
 		return Attestation{}, fmt.Errorf("parsing log, roundId: %w", err)
 	}
 
-	index := IndexLog{request.BlockNumber, request.LogIndex}
+	indexes := []IndexLog{{request.BlockNumber, request.LogIndex}}
 
 	attestation := Attestation{
-		Index:   index,
+		Indexes: indexes,
 		RoundId: roundId,
 		Request: requestLog.Data,
 		Fee:     requestLog.Fee,

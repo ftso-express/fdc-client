@@ -199,3 +199,33 @@ func TestAddAttestation(t *testing.T) {
 	}
 
 }
+
+func TestPrepend(t *testing.T) {
+
+	tests := []struct {
+		added    []int
+		expected []int
+	}{
+
+		{
+			added:    []int{1, 1, 1},
+			expected: []int{1, 1, 1},
+		},
+		{
+			added:    []int{1, 2, 3, 4, 5},
+			expected: []int{5, 1, 2, 3, 4},
+		},
+	}
+
+	for i, test := range tests {
+		array := make([]int, 0)
+		for _, j := range test.added {
+
+			array = attestation.PrependInt(array, j)
+
+		}
+
+		require.Equal(t, test.expected, array, fmt.Sprintf("error in test %d", i))
+	}
+
+}
