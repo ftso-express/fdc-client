@@ -28,21 +28,13 @@ func TestEnsembleRandom(t *testing.T) {
 		fees[j] = 1
 	}
 
-	start := time.Now()
 	solution := bitvotes.Ensemble(weightedBitvotes, fees, 100000000, time.Now().Unix())
+	require.Equal(t, numVoters, len(solution.Participants))
+	require.Equal(t, numAttestations, len(solution.Solution))
 
-	fmt.Println("time passed:", time.Since(start).Seconds())
-	fmt.Println("solution", solution)
-	fmt.Println(solution.Value)
-	count := 0
-	for _, e := range solution.Solution {
-		if e {
-			count += 1
-		}
-	}
+	solutionCheck := bitvotes.BranchAndBound(weightedBitvotes, fees, 0, totalWeight, 100000000, time.Now().Unix())
 
-	fmt.Println("num attestations", count, len(solution.Solution))
-	fmt.Println("num bitvotes", len(solution.Participants))
+	require.Equal(t, solutionCheck.Value, solution.Value)
 }
 
 func TestEnsembleFixed(t *testing.T) {
@@ -77,7 +69,17 @@ func TestEnsembleFixed(t *testing.T) {
 	fmt.Println("time passed:", time.Since(start).Seconds())
 	// fmt.Println("solution", solution)
 
-	require.Equal(t, 71, solution.Value)
+	require.Equal(t, 2*71, solution.Value)
 	require.Equal(t, []bool{false, true, false, false, true, false, false, false}, solution.Solution)
-
+	for j := 0; j < numVoters; j++ {
+		if 0.30*float64(numVoters) > float64(j) {
+			require.Equal(t, true, solution.Participants[j])
+		} else if 0.61*float64(numVoters) > float64(j) {
+			require.Equal(t, true, solution.Participants[j])
+		} else if 0.90*float64(numVoters) > float64(j) {
+			require.Equal(t, false, solution.Participants[j])
+		} else {
+			require.Equal(t, true, solution.Participants[j])
+		}
+	}
 }

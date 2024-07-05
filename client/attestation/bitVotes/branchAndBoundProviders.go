@@ -4,9 +4,9 @@ import (
 	"math/rand"
 )
 
-func PermuteBitVotes(allBitVotes []*WeightedBitVote, randPerm []int) []*WeightedBitVote {
-	permBitVotes := make([]*WeightedBitVote, len(allBitVotes))
-	for i, e := range allBitVotes {
+func PermuteBitVotes(bitVotes []*WeightedBitVote, randPerm []int) []*WeightedBitVote {
+	permBitVotes := make([]*WeightedBitVote, len(bitVotes))
+	for i, e := range bitVotes {
 		permBitVotes[randPerm[i]] = e
 	}
 
@@ -16,12 +16,12 @@ func PermuteBitVotes(allBitVotes []*WeightedBitVote, randPerm []int) []*Weighted
 // BranchAndBoundProviders is similar than BranchAndBound, the difference is that it
 // executes a branch and bound strategy on the space of subsets of attestation providers, hence
 // it is particularly useful when there are not too many distinct providers.
-func BranchAndBoundProviders(allBitVotes []*WeightedBitVote, fees []int, assumedWeight, absoluteTotalWeight uint16, maxOperations int, seed int64) *ConsensusSolution {
+func BranchAndBoundProviders(bitVotes []*WeightedBitVote, fees []int, assumedWeight, absoluteTotalWeight uint16, maxOperations int, seed int64) *ConsensusSolution {
 	numAttestations := len(fees)
-	numProviders := len(allBitVotes)
+	numProviders := len(bitVotes)
 	totalWeight := assumedWeight
 
-	for _, vote := range allBitVotes {
+	for _, vote := range bitVotes {
 		totalWeight += vote.Weight
 	}
 
@@ -33,7 +33,7 @@ func BranchAndBoundProviders(allBitVotes []*WeightedBitVote, fees []int, assumed
 	}
 	randGen := rand.NewSource(seed)
 	randPerm := RandPerm(numProviders, randGen)
-	permBitVotes := PermuteBitVotes(allBitVotes, randPerm)
+	permBitVotes := PermuteBitVotes(bitVotes, randPerm)
 
 	currentBound := &SharedStatus{CurrentBound: 0, NumOperations: 0, MaxOperations: maxOperations,
 		TotalWeight: absoluteTotalWeight, LowerBoundWeight: absoluteTotalWeight / 2, BitVotes: permBitVotes, Fees: fees, RandGen: randGen, NumProviders: numProviders}
@@ -51,7 +51,7 @@ func BranchAndBoundProviders(allBitVotes []*WeightedBitVote, fees []int, assumed
 	if currentBound.NumOperations < maxOperations {
 		result.Optimal = true
 	} else {
-		result.Maximize(allBitVotes, fees)
+		result.MaximizeProviders(bitVotes, fees, assumedWeight, absoluteTotalWeight)
 	}
 
 	return &result
@@ -84,7 +84,7 @@ func BranchProviders(solution map[int]bool, feeSum int, currentStatus *SharedSta
 	randBit := currentStatus.RandGen.Int63() % 2
 	if randBit == 0 {
 		// check if a branch is possible
-		if newCurrentMaxWeight > currentStatus.TotalWeight/2 {
+		if newCurrentMaxWeight > currentStatus.LowerBoundWeight {
 			result0 = BranchProviders(solution, feeSum, currentStatus, branch+1, newCurrentMaxWeight)
 		}
 	}

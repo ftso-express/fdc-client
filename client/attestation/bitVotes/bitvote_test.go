@@ -1,10 +1,13 @@
 package bitvotes_test
 
 import (
+	"encoding/hex"
+	"fmt"
 	bitvotes "local/fdc/client/attestation/bitVotes"
 	"math/big"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -165,7 +168,6 @@ func TestBitVoteForSetHalfFirst(t *testing.T) {
 		c.BitVote = bitVote.BitVote
 
 		weightedBitvotes = append(weightedBitvotes, c)
-
 	}
 
 	shuffle := make([]uint64, 100)
@@ -326,203 +328,179 @@ func TestConsensusMissingAttestation(t *testing.T) {
 	require.Error(t, err)
 }
 
-// func TestConsensusMixed(t *testing.T) {
+func TestConsensusMixed(t *testing.T) {
 
-// 	weightedBitvotes := []*bitvotes.WeightedBitVote{}
+	weightedBitvotes := []*bitvotes.WeightedBitVote{}
 
-// 	totalWeight := uint16(0)
+	totalWeight := uint16(0)
 
-// 	for j := 0; j < 100; j++ {
+	for j := 0; j < 100; j++ {
+		var bitVote *bitvotes.WeightedBitVote
 
-// 		var atts []*attestation.Attestation
+		if 65 > j {
+			bitVote = setBitVoteFromRules(100, []int{2, 3})
+		} else {
+			bitVote = setBitVoteFromRules(100, []int{2, 7})
+		}
 
-// 		if 65 > j {
+		c := new(bitvotes.WeightedBitVote)
+		c.Index = j
+		c.Weight = uint16(1)
+		totalWeight += c.Weight
+		c.BitVote = bitVote.BitVote
 
-// 			atts = setAttestations(100, []int{2, 3})
-// 		} else {
+		weightedBitvotes = append(weightedBitvotes, c)
+	}
 
-// 			atts = setAttestations(100, []int{2, 7})
-// 		}
+	fees := make([]int, 100)
+	for i := range fees {
+		fees[i] = 1
+	}
+	start := time.Now()
+	bv, err := bitvotes.ConsensusBitVote(&bitvotes.ConsensusBitVoteInput{
+		RoundID:          1,
+		WeightedBitVotes: weightedBitvotes,
+		TotalWeight:      totalWeight,
+		Fees:             fees,
+	})
 
-// 		bitVote, err := bitvotes.BitVoteFromAttestations(atts)
-// 		fmt.Println(bitVote)
-// 		require.NoError(t, err)
+	fmt.Printf("time passed: %v\n", time.Since(start).Seconds())
 
-// 		c := new(bitvotes.WeightedBitVote)
-// 		c.Index = j
-// 		c.Weight = uint16(1)
-// 		totalWeight += c.Weight
-// 		c.BitVote = bitVote
+	require.NoError(t, err)
 
-// 		weightedBitvotes = append(weightedBitvotes, c)
+	fmt.Printf("bitVote 1: %v\n", bv.BitVector.Text(10))
 
-// 	}
+	bitVote := setBitVoteFromRules(100, []int{2, 3})
 
-// 	atts := setAttestations(100, []int{2, 3})
-// 	start := time.Now()
-// 	bv, err := bitvotes.ConsensusBitVote(&bitvotes.ConsensusBitVoteInput{
-// 		RoundID:          1,
-// 		WeightedBitVotes: weightedBitvotes,
-// 		TotalWeight:      totalWeight,
-// 		Attestations:     atts,
-// 	})
+	fmt.Printf("bitVote 2: %v\n", bitVote.BitVote.BitVector.Text(10))
 
-// 	fmt.Printf("time passed: %v\n", time.Since(start).Seconds())
+	require.NoError(t, err)
 
-// 	require.NoError(t, err)
+}
 
-// 	fmt.Printf("bitVote 1: %v\n", bv.BitVector.Text(10))
+func TestEncodeDecodeBitVote(t *testing.T) {
+	bitVote := setBitVoteFromRules(5, []int{2, 3})
 
-// 	bitVote, err := bitvotes.BitVoteFromAttestations(atts)
+	encoded := bitVote.BitVote.EncodeBitVoteHex(257)
 
-// 	fmt.Printf("bitVote 2: %v\n", bitVote.BitVector.Text(10))
+	require.Equal(t, "0100051d", encoded)
 
-// 	require.NoError(t, err)
+	byteEncoded, err := hex.DecodeString(encoded)
 
-// }
+	require.NoError(t, err)
 
-// func TestEncodeDecodeBitVote(t *testing.T) {
+	decoded, roundCheck, err := bitvotes.DecodeBitVoteBytes(byteEncoded)
 
-// 	atts := setAttestations(5, []int{2, 3})
+	require.NoError(t, err)
 
-// 	bitVote, err := bitvotes.BitVoteFromAttestations(atts)
+	require.Equal(t, bitVote.BitVote, decoded)
 
-// 	require.NoError(t, err)
+	require.Equal(t, uint8(1), roundCheck)
 
-// 	encoded := bitVote.EncodeBitVoteHex(257)
+}
 
-// 	require.Equal(t, "0100051d", encoded)
+func TestEncodeDecodeZero(t *testing.T) {
+	bitVote := setBitVoteFromRules(5, []int{})
 
-// 	byteEncoded, err := hex.DecodeString(encoded)
+	encoded := bitVote.BitVote.EncodeBitVoteHex(257)
 
-// 	require.NoError(t, err)
+	require.Equal(t, "010005", encoded)
 
-// 	decoded, roundCheck, err := bitvotes.DecodeBitVoteBytes(byteEncoded)
+	byteEncoded, err := hex.DecodeString(encoded)
 
-// 	require.NoError(t, err)
+	require.NoError(t, err)
 
-// 	require.Equal(t, bitVote, decoded)
+	decoded, roundCheck, err := bitvotes.DecodeBitVoteBytes(byteEncoded)
 
-// 	require.Equal(t, uint8(1), roundCheck)
+	require.NoError(t, err)
 
-// }
+	require.Equal(t, bitVote.BitVote, decoded)
 
-// func TestEncodeDecodeZero(t *testing.T) {
+	require.Equal(t, uint8(1), roundCheck)
 
-// 	atts := setAttestations(5, []int{})
+}
 
-// 	bitVote, err := bitvotes.BitVoteFromAttestations(atts)
+func TestEncodeDecodeNoAttestations(t *testing.T) {
+	bitVote := setBitVoteFromRules(0, []int{})
+	encoded := bitVote.BitVote.EncodeBitVoteHex(257)
 
-// 	require.NoError(t, err)
+	require.Equal(t, "010000", encoded)
 
-// 	encoded := bitVote.EncodeBitVoteHex(257)
+	byteEncoded, err := hex.DecodeString(encoded)
 
-// 	require.Equal(t, "010005", encoded)
+	require.NoError(t, err)
 
-// 	byteEncoded, err := hex.DecodeString(encoded)
+	decoded, roundCheck, err := bitvotes.DecodeBitVoteBytes(byteEncoded)
 
-// 	require.NoError(t, err)
+	require.NoError(t, err)
 
-// 	decoded, roundCheck, err := bitvotes.DecodeBitVoteBytes(byteEncoded)
+	require.Equal(t, bitVote.BitVote, decoded)
 
-// 	require.NoError(t, err)
+	require.Equal(t, uint8(1), roundCheck)
 
-// 	require.Equal(t, bitVote, decoded)
+}
 
-// 	require.Equal(t, uint8(1), roundCheck)
+func TestDecodeFail(t *testing.T) {
 
-// }
+	_, _, err := bitvotes.DecodeBitVoteBytes([]byte{})
 
-// func TestEncodeDecodeNoAttestations(t *testing.T) {
+	require.Error(t, err)
 
-// 	bitVote, err := bitvotes.BitVoteFromAttestations([]*bitvotes.Attestation{})
+	byteEncoded, err := hex.DecodeString("0100")
 
-// 	require.NoError(t, err)
+	require.NoError(t, err)
 
-// 	encoded := bitVote.EncodeBitVoteHex(257)
+	_, _, err = bitvotes.DecodeBitVoteBytes(byteEncoded)
 
-// 	require.Equal(t, "010000", encoded)
+	require.Error(t, err)
 
-// 	byteEncoded, err := hex.DecodeString(encoded)
+	byteEncoded, err = hex.DecodeString("01000000aa")
 
-// 	require.NoError(t, err)
+	require.NoError(t, err)
 
-// 	decoded, roundCheck, err := bitvotes.DecodeBitVoteBytes(byteEncoded)
+	_, _, err = bitvotes.DecodeBitVoteBytes(byteEncoded)
 
-// 	require.NoError(t, err)
+	require.Error(t, err)
 
-// 	require.Equal(t, bitVote, decoded)
+}
 
-// 	require.Equal(t, uint8(1), roundCheck)
+func BenchmarkConsensusMixed(b *testing.B) {
 
-// }
+	weightedBitvotes := []*bitvotes.WeightedBitVote{}
 
-// func TestDecodeFail(t *testing.T) {
+	totalWeight := uint16(0)
 
-// 	_, _, err := bitvotes.DecodeBitVoteBytes([]byte{})
+	for j := 0; j < 100; j++ {
+		var bitVote *bitvotes.WeightedBitVote
 
-// 	require.Error(t, err)
+		if 65 > j {
+			bitVote = setBitVoteFromRules(100, []int{2, 3})
+		} else {
+			bitVote = setBitVoteFromRules(100, []int{2, 7})
+		}
 
-// 	byteEncoded, err := hex.DecodeString("0100")
+		c := new(bitvotes.WeightedBitVote)
+		c.Index = j
+		c.Weight = uint16(1)
+		totalWeight += c.Weight
+		c.BitVote = bitVote.BitVote
 
-// 	require.NoError(t, err)
+		weightedBitvotes = append(weightedBitvotes, c)
+	}
 
-// 	_, _, err = bitvotes.DecodeBitVoteBytes(byteEncoded)
+	fees := make([]int, 100)
+	for i := range fees {
+		fees[i] = 1
+	}
 
-// 	require.Error(t, err)
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		_, _ = bitvotes.ConsensusBitVote(&bitvotes.ConsensusBitVoteInput{
+			RoundID:          1,
+			WeightedBitVotes: weightedBitvotes,
+			TotalWeight:      totalWeight,
+			Fees:             fees,
+		})
+	}
 
-// 	byteEncoded, err = hex.DecodeString("01000000aa")
-
-// 	require.NoError(t, err)
-
-// 	_, _, err = bitvotes.DecodeBitVoteBytes(byteEncoded)
-
-// 	require.Error(t, err)
-
-// }
-
-// func BenchmarkConsensusMixed(b *testing.B) {
-
-// 	weightedBitvotes := []*bitvotes.WeightedBitVote{}
-
-// 	totalWeight := uint16(0)
-
-// 	for j := 0; j < 100; j++ {
-
-// 		var atts []*attestation.Attestation
-
-// 		if 65 > j {
-
-// 			atts = setAttestations(20, []int{2, 3})
-// 		} else {
-
-// 			atts = setAttestations(20, []int{2, 7})
-// 		}
-// 		fmt.Println()
-// 		bitVote, err := bitvotes.BitVoteFromAttestations(atts)
-
-// 		require.NoError(b, err)
-
-// 		c := new(bitvotes.WeightedBitVote)
-// 		c.Index = j
-// 		c.Weight = uint16(1)
-// 		totalWeight += c.Weight
-// 		c.BitVote = bitVote
-
-// 		weightedBitvotes = append(weightedBitvotes, c)
-
-// 	}
-
-// 	atts := setAttestations(100, []int{2, 3})
-
-// 	b.ResetTimer()
-// 	for j := 0; j < b.N; j++ {
-// 		_, _ = bitvotes.ConsensusBitVote(&bitvotes.ConsensusBitVoteInput{
-// 			RoundID:          1,
-// 			WeightedBitVotes: weightedBitvotes,
-// 			TotalWeight:      totalWeight,
-// 			Attestations:     atts,
-// 		})
-// 	}
-
-// }
+}

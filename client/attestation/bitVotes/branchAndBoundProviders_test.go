@@ -82,8 +82,28 @@ func TestBranchAndBoundProvidersRandom(t *testing.T) {
 			count += 1
 		}
 	}
-	fmt.Println("num attestations", count)
+	count2 := 0
+	for _, e := range solution.Participants {
+		if e {
+			count2 += 1
+		}
+	}
+	fmt.Println("num attestations, providers", count, count2)
 
 	solution2 := bitvotes.BranchAndBound(weightedBitvotes, fees, 0, totalWeight, 100000000, time.Now().Unix())
+	fmt.Println("solution2", solution2)
+	count = 0
+	for _, e := range solution2.Solution {
+		if e {
+			count += 1
+		}
+	}
+	count2 = 0
+	for _, e := range solution2.Participants {
+		if e {
+			count2 += 1
+		}
+	}
+	fmt.Println("2 num attestations, providers", count, count2)
 	require.Equal(t, solution.Value, solution2.Value)
 }

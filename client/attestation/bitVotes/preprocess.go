@@ -195,8 +195,6 @@ func ExpandSolution(compressedSolution *ConsensusSolution, preProcessInfo *PrePr
 	unAggregatedSolution := &ConsensusSolution{
 		Participants: make([]bool, preProcessInfo.NumBitVotesBeforeAggregation),
 		Solution:     make([]bool, preProcessInfo.NumAttestationsBeforeAggregation),
-		Value:        compressedSolution.Value,
-		Optimal:      compressedSolution.Optimal,
 	}
 
 	for key, val := range preProcessInfo.BitVotesAggregationMap {
@@ -213,7 +211,6 @@ func ExpandSolution(compressedSolution *ConsensusSolution, preProcessInfo *PrePr
 	newSolution := &ConsensusSolution{
 		Participants: make([]bool, preProcessInfo.NumBitVotesBeforeAggregation+len(preProcessInfo.RemovedBitVotesOnes)+len(preProcessInfo.RemovedBitVotesZeros)),
 		Solution:     make([]bool, preProcessInfo.NumAttestationsBeforeAggregation+len(preProcessInfo.RemovedAttestationsOnes)+len(preProcessInfo.RemovedAttestationsLowWeight)),
-		Value:        compressedSolution.Value,
 		Optimal:      compressedSolution.Optimal,
 	}
 
