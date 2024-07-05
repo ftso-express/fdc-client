@@ -50,16 +50,18 @@ func (r *Round) addAttestation(attestation *Attestation) bool {
 	att, exists := r.attestationMap[identifier]
 
 	if exists {
+
 		att.Fee = att.Fee.Add(att.Fee, attestation.Fee)
 
 		if earlierLog(attestation.Indexes[0], att.Indexes[0]) {
 
 			att.Indexes = prepend(att.Indexes, attestation.Indexes[0])
 		}
+
+		att.Indexes = append(att.Indexes, attestation.Indexes[0])
+
 		return false
 	}
-
-	att.Indexes = append(att.Indexes, attestation.Indexes[0])
 
 	r.attestationMap[identifier] = attestation
 
