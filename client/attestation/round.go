@@ -53,12 +53,12 @@ func (r *Round) addAttestation(attestation *Attestation) bool {
 
 		att.Fee = att.Fee.Add(att.Fee, attestation.Fee)
 
-		if earlierLog(attestation.Indexes[0], att.Indexes[0]) {
+		if earlierLog(attestation.index(), att.index()) {
 
-			att.Indexes = prepend(att.Indexes, attestation.Indexes[0])
+			att.Indexes = prepend(att.Indexes, attestation.index())
 		}
 
-		att.Indexes = append(att.Indexes, attestation.Indexes[0])
+		att.Indexes = append(att.Indexes, attestation.index())
 
 		return false
 	}
