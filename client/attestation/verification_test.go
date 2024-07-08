@@ -3,90 +3,206 @@ package attestation_test
 import (
 	"encoding/hex"
 	"fmt"
-	"local/fdc/client/attestation"
+	"math/big"
 	"os"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
+	"local/fdc/client/attestation"
+	"local/fdc/client/config"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/stretchr/testify/require"
 )
 
-const response string = "42616c616e636544656372656173696e675472616e73616374696f6e000000004254430000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000664cbf4c2a3ce5fb95fa6b436fbed49cbccc6dcbb9ee166a3ef217d227cbe5add6898dd20000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000009600000000000000000000000000000000000000000000000000000000664cbf4c06fa5d68b3284548b849dca2ffd9a59350c7440c5be121fe4b4ae0941dcae638000000000000000000000000000000000000000000000000000000000131a3c0000000000000000000000000000000000000000000000000000000add6898dd2"
+const (
+	requestPYM  = "5061796d656e74000000000000000000000000000000000000000000000000007465737442544300000000000000000000000000000000000000000000000000e7d627d5c7d0a8bdec2904164c669b2be3db4de3f15ef391d3167f9f3ca1a0c9fd63dba747f7fa0291a940c315a7cf3f75cc0dbb3385a99fafaf5c6f8dc8584800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+	responseEVM = "000000000000000000000000000000000000000000000000000000000000002045564d5472616e73616374696f6e0000000000000000000000000000000000004554480000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000666853c800000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000001804ff8da95da542ca5e013daf405d08871fdb4375ee6dec77f001e918c8cd8d1b800000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000fbbb5500000000000000000000000000000000000000000000000000000000666853c8000000000000000000000000b8b1bca1f986c471ed3ce9586a18ca63db53080a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000002ca6571daa15ce734bbd0bf27d5c9d16787fc33f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001200000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000034000000000000000000000000000000000000000000000000000000000000001e4833bf6c0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000001a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000fbbb5400000000000000000000000000000000000000000000000000000000000000a80000dae57b41b2c6153ba5398c6e89ca4977c39e11961f17eb32fb8fb642d00c1e677006353f97c936c96e46145cb65369736d83fe759392835e955f53694056023661bf961aada3e0a6722caa365ca49c0cb8fe5ae829686b4f60b3a0f00219090053635e5e8399627ea08de9c326729a9a3517aecb99e45e3d6afb25fd40b30000000000000000000000000000000000000000000000000000000000000140000000000000000000000000000000000000000000000000000000000000001c5dc7876a724e68cb21aa323b56a897c2f976d74eebecd96f6a1e324fc97d20956e62ac1d63acb20522793f1e75f761164603970641655dcbfb733a3386d7624f000000000000000000000000000000000000000000000000000000000000000ddffffffffffc0000f003c000c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+)
 
-func TestIsStaticType(t *testing.T) {
+const (
+	responseBDT = "42616c616e636544656372656173696e675472616e73616374696f6e000000004254430000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000664cbf4c2a3ce5fb95fa6b436fbed49cbccc6dcbb9ee166a3ef217d227cbe5add6898dd20000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000009600000000000000000000000000000000000000000000000000000000664cbf4c06fa5d68b3284548b849dca2ffd9a59350c7440c5be121fe4b4ae0941dcae638000000000000000000000000000000000000000000000000000000000131a3c0000000000000000000000000000000000000000000000000000000add6898dd2"
+	requetsEVM  = "45564d5472616e73616374696f6e00000000000000000000000000000000000045544800000000000000000000000000000000000000000000000000000000005453e040c1d33d8852f82714b28959380834b66988fa0348efe38625b3320b4500000000000000000000000000000000000000000000000000000000000000204ff8da95da542ca5e013daf405d08871fdb4375ee6dec77f001e918c8cd8d1b800000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000000"
+)
 
-	_, err := attestation.IsStaticType([]byte{1, 1, 1})
+func TestResponse(t *testing.T) {
 
-	if err == nil {
-		t.Error("fail")
-
+	tests := []struct {
+		response     string
+		isStaticType bool
+		abi          string
+		mic          string
+		lut          uint64
+		round        uint64
+		hash         string
+	}{
+		{
+			response:     responseEVM,
+			isStaticType: false,
+			abi:          "../../testFiles/configs/abis/EVMTransaction.json",
+			mic:          "5453e040c1d33d8852f82714b28959380834b66988fa0348efe38625b3320b45",
+			lut:          1718113224,
+			round:        10,
+			hash:         "484b93786d71c13127b8caeb326c491d41a19858beecb6c9b53b0162f9b2e9c6",
+		},
+		{
+			response:     responseBDT,
+			isStaticType: true,
+			abi:          "../../configs/abis/BalanceDecreasingTransaction.json",
+			mic:          "2f51362aef7ff57fa4aa74ecca9a5fbaffc123416d7df97226e8635776f06d0b",
+			lut:          1716305740,
+			round:        123123,
+			hash:         "7a65bd532a8b8ff0b832fe343ef887aae5855ad50ffb879b5fe0415af8617d05",
+		},
 	}
 
-	resp, _ := hex.DecodeString(response)
+	for i, test := range tests {
+		var resp attestation.Response
 
-	ok, err := attestation.IsStaticType(resp)
+		resp, err := hex.DecodeString(test.response)
 
-	if err != nil || !ok {
-		t.Error("fail")
+		require.NoError(t, err)
+
+		abiFile, err := os.ReadFile(test.abi)
+
+		require.NoError(t, err)
+
+		abi, err := config.ArgumentsFromAbi(abiFile)
+
+		require.NoError(t, err)
+
+		//isStaticType
+		isStaticType, err := attestation.IsStaticType(resp)
+
+		require.NoError(t, err)
+
+		require.Equal(t, test.isStaticType, isStaticType, fmt.Sprintf("error isStaticError in test %d", i))
+
+		//MIC
+
+		mic, err := resp.ComputeMic(&abi)
+
+		require.NoError(t, err)
+
+		expectedMic, err := hex.DecodeString(test.mic)
+
+		require.NoError(t, err)
+
+		require.Equal(t, expectedMic, mic[:], fmt.Sprintf("error mic in test %d", i))
+
+		// LUT
+
+		lut, err := resp.LUT()
+
+		require.NoError(t, err)
+
+		require.Equal(t, test.lut, lut, fmt.Sprintf("error lut in test %d", i))
+
+		// add round
+
+		_, err = resp.AddRound(1)
+
+		require.NoError(t, err)
+
+		_, err = resp.AddRound(test.round)
+
+		require.NoError(t, err)
+
+		roundStart := 2 * 32
+		roundEnd := 3 * 32
+
+		if !test.isStaticType {
+			roundStart += 32
+			roundEnd += 32
+		}
+
+		require.Equal(t, big.NewInt(int64(test.round)), new(big.Int).SetBytes(resp[roundStart:roundEnd]), fmt.Sprintf("error add round in test %d", i))
+
+		// hash
+
+		hash, err := resp.Hash(test.round)
+
+		require.NoError(t, err)
+
+		require.Equal(t, common.HexToHash(test.hash), hash, fmt.Sprintf("error hash in test %d", i))
 
 	}
 
 }
 
-func TestAddRound(t *testing.T) {
+func TestRequest(t *testing.T) {
 
-	var resp attestation.Response
-
-	resp, _ = hex.DecodeString(response)
-
-	resp, _ = resp.AddRound(9)
-
-	if resp[95] != byte(9) {
-		t.Error("fail")
+	tests := []struct {
+		request string
+		attType string
+		source  string
+		mic     string
+	}{
+		{request: requetsEVM,
+			attType: "EVMTransaction",
+			source:  "ETH",
+			mic:     "5453e040c1d33d8852f82714b28959380834b66988fa0348efe38625b3320b45",
+		},
+		{request: requestPYM,
+			attType: "Payment",
+			source:  "testBTC",
+			mic:     "e7d627d5c7d0a8bdec2904164c669b2be3db4de3f15ef391d3167f9f3ca1a0c9",
+		},
 	}
 
-	_, _ = resp.AddRound(257)
+	for i, test := range tests {
 
-	if resp[95] != byte(1) || resp[94] != byte(1) {
-		t.Error("fail")
-	}
+		var req attestation.Request
+		req, err := hex.DecodeString(test.request)
 
-}
+		require.NoError(t, err)
 
-func TestComputeMic(t *testing.T) {
+		// att type
 
-	var resp attestation.Response
+		expectedAttType := [32]byte{}
 
-	resp, _ = hex.DecodeString(response)
+		copy(expectedAttType[:], []byte(test.attType))
 
-	file, err := os.ReadFile("../../configs/abis/BalanceDecreasingTransaction.json")
+		attType, err := req.AttestationType()
 
-	fmt.Println(err)
+		require.NoError(t, err)
 
-	var arg abi.Argument
+		require.Equal(t, expectedAttType, attType, fmt.Sprintf("error attType in test %d", i))
 
-	err = arg.UnmarshalJSON(file)
+		// source
 
-	fmt.Println(err)
+		expectedSource := [32]byte{}
 
-	args := abi.Arguments{arg}
+		copy(expectedSource[:], []byte(test.source))
 
-	mic, _ := resp.ComputeMic(args)
+		source, err := req.Source()
 
-	if mic.String() != "0x2f51362aef7ff57fa4aa74ecca9a5fbaffc123416d7df97226e8635776f06d0b" {
-		t.Error("wrong mic")
-	}
+		require.NoError(t, err)
 
-}
+		require.Equal(t, expectedSource, source, fmt.Sprintf("error source in test %d", i))
 
-func TestHash(t *testing.T) {
+		// att type and source
 
-	var resp attestation.Response
+		expectedAttTypeAndSource := [64]byte{}
 
-	resp, _ = hex.DecodeString(response)
+		copy(expectedAttTypeAndSource[:], []byte(test.attType))
 
-	hash, _ := resp.Hash(0)
+		copy(expectedAttTypeAndSource[32:], []byte(test.source))
 
-	if hash.String() != "0xf014a6220c448b59f8067a99397b4d3506d17a182df101f23c52825e6c5e1f17" {
-		t.Error("wrong hash")
+		attTypeAndSource, err := req.AttestationTypeAndSource()
+
+		require.NoError(t, err)
+
+		require.Equal(t, expectedAttTypeAndSource, attTypeAndSource, fmt.Sprintf("error attTypeAndSource in test %d", i))
+
+		// mic
+
+		expectedMic := common.HexToHash(test.mic)
+
+		mic, err := req.Mic()
+
+		require.NoError(t, err)
+
+		require.Equal(t, expectedMic, mic, fmt.Sprintf("error mic in test %d", i))
+
 	}
 }

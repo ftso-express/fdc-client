@@ -5,6 +5,7 @@ import (
 	"flare-common/logger"
 	"local/fdc/client/collector"
 	"local/fdc/client/config"
+	"local/fdc/client/timing"
 	"local/fdc/server"
 	"os"
 	"os/signal"
@@ -12,8 +13,8 @@ import (
 )
 
 const (
-	USER_FILE   string = "configs/userConfig.toml"   //relative to project root
-	SYSTEM_FILE string = "configs/systemConfig.toml" //relative to project root
+	USER_FILE        string = "configs/userConfig.toml" //relative to project root
+	SYSTEM_DIRECTORY string = "configs/systemConfigs"   //relative to project root
 )
 
 var log = logger.GetLogger()
@@ -26,10 +27,16 @@ func main() {
 		log.Panicf("cannot read user config: %s", err)
 	}
 
-	systemConfig, err := config.ReadSystem(SYSTEM_FILE)
+	systemConfig, err := config.ReadSystem(SYSTEM_DIRECTORY, userConfigRaw.Chain, userConfigRaw.ProtocolId)
 
 	if err != nil {
 		log.Panicf("cannot read system config: %s", err)
+	}
+
+	err = timing.Set(systemConfig.Timing)
+
+	if err != nil {
+		log.Panicf("illegal timing configs: %s", err)
 	}
 
 	// Prepare context
@@ -43,7 +50,7 @@ func main() {
 
 	// run server
 	log.Info("Running server")
-	srv := server.New(&collector.RoundManager.Rounds, systemConfig.RestServer, userConfigRaw.RestServer)
+	srv := server.New(&collector.RoundManager.Rounds, userConfigRaw.RestServer)
 	go srv.Run(ctx)
 
 	// Block until a termination signal is received.

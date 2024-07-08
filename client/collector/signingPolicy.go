@@ -4,26 +4,25 @@ import (
 	"context"
 	"errors"
 	"flare-common/database"
-	"local/fdc/client/attestation"
+	"flare-common/policy"
 	"local/fdc/client/timing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"gorm.io/gorm"
 )
 
 // SigningPolicyInitializedListener returns a channel that serves signingPolicyInitialized events emitted by relayContractAddress.
 func SigningPolicyInitializedListener(
 	ctx context.Context,
-	db *gorm.DB,
+	db collectorDB,
 	relayContractAddress common.Address,
 	bufferSize int,
 ) <-chan []database.Log {
 	out := make(chan []database.Log, bufferSize)
 
 	go func() {
-		logs, err := database.FetchLatestLogsByAddressAndTopic0(
-			ctx, db, relayContractAddress, signingPolicyInitializedEventSel, 3,
+		logs, err := db.FetchLatestLogsByAddressAndTopic0(
+			ctx, relayContractAddress, signingPolicyInitializedEventSel, 3,
 		)
 
 		latestQuery := time.Now()
@@ -60,16 +59,16 @@ func SigningPolicyInitializedListener(
 
 }
 
-// spiTargetedListener that only starts aggressive queries for new signingPolicyInitialized events a bit before the expected emission and stops once it get one and waits until the next window.
+// spiTargetedListener that only starts aggressive queries for new signingPolicyInitialized events a bit before the expected emission and stops once it gets one and waits until the next window.
 func spiTargetedListener(
 	ctx context.Context,
-	db *gorm.DB,
+	db collectorDB,
 	relayContractAddress common.Address,
 	lastLog database.Log,
 	latestQuery time.Time,
 	out chan<- []database.Log,
 ) {
-	lastSigningPolicy, err := attestation.ParseSigningPolicyInitializedLog(lastLog)
+	lastSigningPolicy, err := policy.ParseSigningPolicyInitializedEvent(lastLog)
 	if err != nil {
 		log.Panic("error parsing initial logs:", err)
 	}
@@ -78,8 +77,6 @@ func spiTargetedListener(
 
 	for {
 		expectedStartOfTheNextSigningPolicyInitialized := timing.ExpectedRewardEpochStartTimestamp(lastInitializedRewardEpochID + 1)
-
-		log.Info(expectedStartOfTheNextSigningPolicyInitialized)
 
 		untilStart := time.Until(time.Unix(int64(expectedStartOfTheNextSigningPolicyInitialized)-90*15, 0)) //use const for headStart 90*15
 
@@ -112,7 +109,7 @@ func spiTargetedListener(
 
 func queryNextSPI(
 	ctx context.Context,
-	db *gorm.DB,
+	db collectorDB,
 	relayContractAddress common.Address,
 	latestQuery time.Time,
 	out chan<- []database.Log,
@@ -122,8 +119,8 @@ func queryNextSPI(
 	for {
 		now := time.Now()
 
-		logs, err := database.FetchLogsByAddressAndTopic0Timestamp(
-			ctx, db, relayContractAddress, signingPolicyInitializedEventSel, latestQuery.Unix(), now.Unix(),
+		logs, err := db.FetchLogsByAddressAndTopic0Timestamp(
+			ctx, relayContractAddress, signingPolicyInitializedEventSel, latestQuery.Unix(), now.Unix(),
 		)
 
 		latestQuery = now

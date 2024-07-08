@@ -93,53 +93,9 @@ func (r Request) Mic() (common.Hash, error) {
 }
 
 // ComputeMic computes Mic from the response.
-// Mic is the hash of the response with roundID set to 0.
-func (r Response) ComputeMicMaybe() (common.Hash, error) {
-
-	static, err := IsStaticType(r)
-
-	if err != nil {
-		return common.Hash{}, err
-	}
-
-	// roundId is encoded in the third 32bytes slot
-	roundIdStartByte := 64
-	roundIdEndByte := 96
-	commonFieldsLength := 128
-
-	// if Response is encoded dynamic struct the first 32 bytes are bytes32(32)
-	if !static {
-		roundIdStartByte += 32
-		roundIdEndByte += 32
-		commonFieldsLength += 32
-	}
-
-	if len(r) < commonFieldsLength {
-		return common.Hash{}, errors.New("response is to short")
-	}
-
-	// store roundId
-	d := make([]byte, 32)
-	roundIdBytes := r[roundIdStartByte:roundIdEndByte]
-	copy(d, roundIdBytes)
-
-	// restore roundId at the end
-	defer copy(roundIdBytes, d)
-
-	// set roundId to zero
-	zero32bytes := make([]byte, 32)
-	copy(roundIdBytes, zero32bytes)
-
-	mic := crypto.Keccak256Hash(r)
-
-	return mic, nil
-
-}
-
-// ComputeMic computes Mic from the response.
 // Mic is defined by solidity code abi.encode(response,"Flare") where response is a instance of a struct defined by the attestation type.
 // It is assumed that roundId in the response is set to 0.
-func (r Response) ComputeMic(args abi.Arguments) (common.Hash, error) {
+func (r Response) ComputeMic(args *abi.Arguments) (common.Hash, error) {
 
 	decoded, err := args.Unpack(r)
 
@@ -158,9 +114,9 @@ func (r Response) ComputeMic(args abi.Arguments) (common.Hash, error) {
 		return common.Hash{}, err
 	}
 
-	args = append(args, stringArgument)
+	micArgs := append(*args, stringArgument)
 
-	withSalt, err := args.Pack(decoded[0], "Flare")
+	withSalt, err := micArgs.Pack(decoded[0], "Flare")
 
 	if err != nil {
 		return common.Hash{}, err
@@ -220,7 +176,7 @@ func validLUT(lut, lutLimit, roundStart uint64) bool {
 }
 
 // AddRound sets the roundId in the response (third 32 bytes).
-func (r Response) AddRound(roundId uint32) (Response, error) {
+func (r Response) AddRound(roundId uint64) (Response, error) {
 
 	static, err := IsStaticType(r)
 
@@ -246,7 +202,7 @@ func (r Response) AddRound(roundId uint32) (Response, error) {
 
 	roundIdEncoded := make([]byte, 0)
 
-	roundIdEncoded = binary.BigEndian.AppendUint32(roundIdEncoded, roundId)
+	roundIdEncoded = binary.BigEndian.AppendUint64(roundIdEncoded, roundId)
 
 	roundIdSlot := make([]byte, 32-len(roundIdEncoded))
 
@@ -259,7 +215,7 @@ func (r Response) AddRound(roundId uint32) (Response, error) {
 }
 
 // Hash computes hash of the response.
-func (r Response) Hash(roundId uint32) (common.Hash, error) {
+func (r Response) Hash(roundId uint64) (common.Hash, error) {
 	if len(r) < 128 {
 		return common.Hash{}, errors.New("response is to short")
 	}

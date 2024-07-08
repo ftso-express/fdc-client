@@ -1,3 +1,11 @@
+
+# options are: "coston", "songbird", "coston2", "flare"
+chain = "coston"
+
+
+protocolId = 200
+
+
 [db]
 host = "localhost"
 port = 3306
@@ -7,111 +15,33 @@ password = "root"
 log_queries = false
 
 
-# # Verifiers for BTC
-# [verifiers.BTC.Payment]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
+[rest_server]
+# Addr optionally specifies the TCP address for the server to listen on, in the form "host:port". If empty, ":http" (port 80) is used. The service names are defined in RFC 6335 and assigned by IANA. See net.Dial for details of the address format.
+addr = ":8080"
+api_key_name = "X-API-KEY"
+api_keys = ["12345", "123456"]
+title = "FDC protocol data provider API"
+fsp_sub_router_title = "FDC protocol data provider for FSP client"
+fsp_sub_router_path = "/fsp"
+version = "0.0.0"
+swagger_path = "/api-doc"
 
+# EVMTransaction
+[types.EVMTransaction]
+abi_path = "../../testFiles/configs/abis/EVMTransaction.json"
 
-# [verifiers.BTC.BalanceDecreasingTransaction]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.BTC.ConfirmedBlockHeightExists]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.BTC.ReferencedPaymentNonexistence]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.BTC.AddressValidity]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# # Verifiers for DOGE
-# [verifiers.DOGE.Payment]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.DOGE.BalanceDecreasingTransaction]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.DOGE.ConfirmedBlockHeightExists]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.DOGE.ReferencedPaymentNonexistence]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.DOGE.AddressValidity]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# # Verifiers for XRP
-# [verifiers.XRP.Payment]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.XRP.BalanceDecreasingTransaction]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.XRP.ConfirmedBlockHeightExists]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.XRP.ReferencedPaymentNonexistence]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# [verifiers.XRP.AddressValidity]
-# url = "url"
-# api_key = "key"
-# lut_limit = 0
-
-
-# Verifiers for ETH
-[verifiers.ETH.EVMTransaction]
+# ETH 
+[types.EVMTransaction.Sources.ETH]
 url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
 api_key = "12345"
 lut_limit = "18446744073709551615"
+queue = "evmETH"
 
 
-#ABIs
-[abis]
-# Payment = ""
-# BalanceDecreasingTransaction = ""
-# ConfirmedBlockHeightExists = ""
-# ReferencedPaymentNonexistence = ""
-# AddressValidity = ""
-EVMTransaction = "../../testFiles/configs/abis/EVMTransaction.json" #relative to tests
+# Queues
+[queues.evmETH]
+size = 10
+max_dequeues_per_second = 0
+max_workers = 0
+max_attempts = 3
+time_off = 2

@@ -17,18 +17,21 @@ import (
 )
 
 const (
-	bitVoteBufferSize             = 10
+	bitVoteBufferSize       = 2
+	requestsBufferSize      = 10
+	signingPolicyBufferSize = 3
+
 	bitVoteOffChainTriggerSeconds = 15
-	requestsBufferSize            = 10
-	requestListenerInterval       = 2 * time.Second
-	signingPolicyBufferSize       = 3
+
+	outOfSyncTolerance = 60
+)
+const (
+	requestListenerInterval = 2 * time.Second
+	databasePollTime        = 2 * time.Second
+	bitVoteHeadStart        = 5 * time.Second
 )
 
-const (
-	roundLength      = 90 * time.Second
-	databasePollTime = 2 * time.Second
-	bitVoteHeadStart = 5 * time.Second
-)
+const submit1FuncSelHex = "6c532fae"
 
 var signingPolicyInitializedEventSel common.Hash
 var attestationRequestEventSel common.Hash
@@ -74,14 +77,17 @@ type Collector struct {
 	RoundManager          *attestation.Manager
 }
 
-const submit1FuncSelHex = "6c532fae"
-
-func New(user config.UserConfigRaw, system config.SystemConfig) *Collector {
+// New creates new Collector from user and system configs.
+func New(user config.UserRaw, system config.System) *Collector {
 	// CONSTANTS
 	// requestEventSignature := "251377668af6553101c9bb094ba89c0c536783e005e203625e6cd57345918cc9"
 	// signingPolicySignature := "91d0280e969157fc6c5b8f952f237b03d934b18534dafcac839075bbc33522f8"
 
-	roundManager := attestation.NewManager(user)
+	roundManager, err := attestation.NewManager(user)
+
+	if err != nil {
+		log.Panic("Cannot create manager:", err)
+	}
 
 	db, err := database.Connect(&user.DB)
 	if err != nil {
@@ -94,10 +100,10 @@ func New(user config.UserConfigRaw, system config.SystemConfig) *Collector {
 	}
 
 	runner := Collector{
-		Protocol:              system.Listener.Protocol,
-		SubmitContractAddress: system.Listener.SubmitContractAddress,
-		FdcContractAddress:    system.Listener.FdcContractAddress,
-		RelayContractAddress:  system.Listener.RelayContractAddress,
+		Protocol:              user.ProtocolId,
+		SubmitContractAddress: system.Addresses.SubmitContract,
+		FdcContractAddress:    system.Addresses.FdcContract,
+		RelayContractAddress:  system.Addresses.RelayContract,
 		DB:                    db,
 		submit1Sel:            submit1FuncSel,
 		RoundManager:          roundManager,
@@ -118,27 +124,107 @@ func parseFuncSel(sigInput string) ([4]byte, error) {
 	return ret, err
 }
 
-func (r *Collector) Run(ctx context.Context) {
+type collectorDB interface {
+	FetchState(context.Context) (database.State, error)
 
+	FetchLatestLogsByAddressAndTopic0(
+		context.Context, common.Address, common.Hash, int,
+	) ([]database.Log, error)
+
+	FetchLogsByAddressAndTopic0Timestamp(
+		context.Context, common.Address, common.Hash, int64, int64,
+	) ([]database.Log, error)
+
+	FetchLogsByAddressAndTopic0BlockNumber(
+		context.Context, common.Address, common.Hash, int64, int64,
+	) ([]database.Log, error)
+
+	FetchLogsByAddressAndTopic0TimestampToBlockNumber(
+		context.Context,
+		common.Address,
+		common.Hash,
+		int64,
+		int64,
+	) ([]database.Log, error)
+
+	FetchTransactionsByAddressAndSelectorTimestamp(
+		context.Context, common.Address, [4]byte, int64, int64,
+	) ([]database.Transaction, error)
+}
+
+type collectorDBGorm struct {
+	db *gorm.DB
+}
+
+func (c collectorDBGorm) FetchState(ctx context.Context) (database.State, error) {
+	return database.FetchState(ctx, c.db)
+}
+func (c collectorDBGorm) FetchLatestLogsByAddressAndTopic0(
+	ctx context.Context, addr common.Address, topic0 common.Hash, num int,
+) ([]database.Log, error) {
+	return database.FetchLatestLogsByAddressAndTopic0(ctx, c.db, addr, topic0, num)
+}
+
+func (c collectorDBGorm) FetchLogsByAddressAndTopic0Timestamp(
+	ctx context.Context, addr common.Address, topic0 common.Hash, from, to int64,
+) ([]database.Log, error) {
+	return database.FetchLogsByAddressAndTopic0Timestamp(ctx, c.db, addr, topic0, from, to)
+}
+
+func (c collectorDBGorm) FetchLogsByAddressAndTopic0BlockNumber(
+	ctx context.Context,
+	address common.Address,
+	topic0 common.Hash,
+	from, to int64,
+) ([]database.Log, error) {
+	return database.FetchLogsByAddressAndTopic0BlockNumber(ctx, c.db, address, topic0, from, to)
+}
+
+func (c collectorDBGorm) FetchLogsByAddressAndTopic0TimestampToBlockNumber(
+	ctx context.Context,
+	address common.Address,
+	topic0 common.Hash,
+	from, to int64,
+) ([]database.Log, error) {
+	return database.FetchLogsByAddressAndTopic0TimestampToBlockNumber(
+		ctx, c.db, address, topic0, from, to,
+	)
+}
+
+func (c collectorDBGorm) FetchTransactionsByAddressAndSelectorTimestamp(
+	ctx context.Context,
+	toAddress common.Address,
+	functionSel [4]byte,
+	from, to int64,
+) ([]database.Transaction, error) {
+	return database.FetchTransactionsByAddressAndSelectorTimestamp(
+		ctx, c.db, toAddress, functionSel, from, to,
+	)
+}
+
+// Run starts SigningPolicyInitializedListener, BitVoteListener, and AttestationRequestListener,
+// assigns their channels to the RoundManager, and starts the RoundManager.
+func (r *Collector) Run(ctx context.Context) {
 	state, err := database.FetchState(ctx, r.DB)
 	if err != nil {
 		log.Panic("database error:", err)
 	}
 
-	if k := time.Now().Unix() - int64(state.BlockTimestamp); k > 60 { //get 60 from config
-		log.Panic("database not up to date")
+	if k := time.Now().Unix() - int64(state.BlockTimestamp); k > outOfSyncTolerance {
+		log.Panicf("database not up to date. lags for %d minutes", k/60)
 	}
 
 	chooseTrigger := make(chan uint64)
 
-	r.RoundManager.SigningPolicies = SigningPolicyInitializedListener(ctx, r.DB, r.RelayContractAddress, 3)
+	db := collectorDBGorm{db: r.DB}
 
-	r.RoundManager.BitVotes = BitVoteListener(ctx, r.DB, r.FdcContractAddress, r.submit1Sel, r.Protocol, bitVoteBufferSize, chooseTrigger)
+	r.RoundManager.SigningPolicies = SigningPolicyInitializedListener(ctx, db, r.RelayContractAddress, 3)
 
-	r.RoundManager.Requests = AttestationRequestListener(ctx, r.DB, r.FdcContractAddress, requestsBufferSize, requestListenerInterval)
+	r.RoundManager.BitVotes = BitVoteListener(ctx, db, r.FdcContractAddress, r.submit1Sel, r.Protocol, bitVoteBufferSize, chooseTrigger)
+
+	r.RoundManager.Requests = AttestationRequestListener(ctx, db, r.FdcContractAddress, requestsBufferSize, requestListenerInterval)
 
 	go r.RoundManager.Run(ctx)
 
-	prepareChooseTriggers(ctx, chooseTrigger, r.DB)
-
+	PrepareChooseTriggers(ctx, chooseTrigger, db)
 }

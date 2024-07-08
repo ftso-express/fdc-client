@@ -1,61 +1,68 @@
 package timing
 
-import "time"
-
-const (
-	collectTime = 90 * time.Second
-	chooseTime  = 30 * time.Second
-	commitTime  = 20 * time.Second
-	offset      = 30 * time.Second
-	// TODO: Luka - get this from the config
-	t0 = 1658429955
+import (
+	"fmt"
 )
 
-func RoundIDForTimestamp(t uint64) uint32 {
+func RoundIdForTimestamp(t uint64) (uint64, error) {
 
-	roundID := uint32((t - t0 + 30) / 90)
+	if t+OffsetSec < Chain.T0 {
+		return 0, fmt.Errorf("timestamp: %d before first round : %d", t, Chain.T0-OffsetSec)
+	}
 
-	return roundID
+	roundId := (t + OffsetSec - Chain.T0) / CollectDurationSec
+
+	return roundId, nil
 }
 
-func RoundStartTime(n int) time.Time {
-	return time.Unix(t0, 0).Add(collectTime*time.Duration(n) - offset)
+func RoundStartTime(n uint64) uint64 {
+
+	return Chain.T0 + n*CollectDurationSec - OffsetSec
 }
 
-func RoundStartTimestamp(n int) uint64 {
-	return uint64(RoundStartTime(n).Unix())
+func ChooseStartTimestamp(n uint64) uint64 {
+	return RoundStartTime(n + 1)
 }
 
-func ChooseStartTimestamp(n int) uint64 {
-	return uint64(RoundStartTime(n).Add(collectTime).Unix())
+func ChooseEndTimestamp(n uint64) uint64 {
+	return ChooseStartTimestamp(n) + ChooseDurationSec
 }
 
-func ChooseEndTimestamp(n int) uint64 {
-	return uint64(RoundStartTime(n).Add(collectTime + chooseTime).Unix())
+// NextChoosePhaseEnd returns the roundId of the round whose choose phase is next in line to end and the timestamp of the end.
+func NextChooseEnd(t uint64) (uint64, uint64) {
+
+	if t+OffsetSec < Chain.T0+ChooseDurationSec {
+		return 0, ChooseEndTimestamp(0)
+	}
+
+	roundId := (t - Chain.T0 + OffsetSec - ChooseDurationSec) / CollectDurationSec
+
+	endTimestamp := ChooseEndTimestamp(roundId)
+
+	return roundId, endTimestamp
 }
 
-func NextChoosePhaseEnd(t uint64) (int, uint64) {
-	roundID := int((t - t0) / 90)
-	endTimestamp := uint64(t0 + (roundID+1)*90)
+func NextChoosePhasePtr(t uint64) (*uint64, *uint64) {
 
-	return roundID, endTimestamp
+	roundId, endTimestamp := NextChooseEnd(t)
+
+	return &roundId, &endTimestamp
 }
 
-func NextChoosePhaseEndPointers(t uint64) (*int, *uint64) {
-	roundID := int((t - t0) / 90)
-	endTimestamp := uint64(t0 + (roundID+1)*90)
+// LastCollectPhaseStart returns roundId and start timestamp of the latest round.
+func LastCollectPhaseStart(t uint64) (uint64, uint64, error) {
+	roundId, err := RoundIdForTimestamp(t)
 
-	return &roundID, &endTimestamp
+	if err != nil {
+		return 0, 0, err
+	}
+
+	startTimestamp := RoundStartTime(roundId)
+
+	return roundId, startTimestamp, nil
 }
 
-func LastCollectPhaseStart(t uint64) (int, uint64) {
-	roundID := RoundIDForTimestamp(t)
-
-	startTimestamp := t0 + uint64(roundID)*90 - 30
-
-	return int(roundID), startTimestamp
-}
-
+// ExpectedRewardEpochStartTimestamp returns the expected timestamp of the rewardEpoch with rewardEpochId.
 func ExpectedRewardEpochStartTimestamp(rewardEpochId uint64) uint64 {
-	return t0 + 240*90*rewardEpochId // TODO get this from config. currently for coston?
+	return Chain.T0 + Chain.RewardEpochLength*CollectDurationSec*rewardEpochId
 }

@@ -2,11 +2,8 @@ package attestation_test
 
 import (
 	"local/fdc/client/attestation"
-	bitvotes "local/fdc/client/attestation/bitVotes"
 	"math/big"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 )
 
 func TestBitVoteFromAttestationsEmpty(t *testing.T) {
@@ -58,8 +55,10 @@ func setAttestations(n int, rules []int) []*attestation.Attestation {
 		att := new(attestation.Attestation)
 		att.Fee = big.NewInt(10)
 		att.Status = attestation.ProcessError
-		att.Index.BlockNumber = uint64(j)
-		att.Index.LogIndex = uint64(j % 2)
+
+		index := attestation.IndexLog{uint64(j), uint64(j % 2)}
+
+		att.Indexes = append(att.Indexes, index)
 		for i := range rules {
 			if j%rules[i] == 0 {
 				att.Status = attestation.Success

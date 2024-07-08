@@ -2,7 +2,6 @@ package events
 
 import (
 	"encoding/hex"
-	"flare-common/contracts/relay"
 	"flare-common/database"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -36,12 +35,4 @@ func ConvertDatabaseLogToChainLog(dbLog database.Log) (*types.Log, error) {
 		Data:   data,
 		// Other fields are not used by log decoder
 	}, nil
-}
-
-func ParseSigningPolicyInitializedEvent(relay *relay.Relay, dbLog database.Log) (*relay.RelaySigningPolicyInitialized, error) {
-	contractLog, err := ConvertDatabaseLogToChainLog(dbLog)
-	if err != nil {
-		return nil, err
-	}
-	return relay.RelayFilterer.ParseSigningPolicyInitialized(*contractLog)
 }

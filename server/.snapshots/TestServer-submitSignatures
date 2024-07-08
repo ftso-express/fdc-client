@@ -1,0 +1,5 @@
+(*server.PDPResponse)({
+  Status: (server.PDPResponseStatus) (len=2) "OK",
+  Data: (string) (len=66) "0x0000000000000000000000000000000000000000000000000000000000000000",
+  AdditionalData: (string) (len=64) "59325e8e7acf7592738ea1d742edef190803095bdcc9caf294711d0258bacfdd"
+})

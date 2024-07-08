@@ -31,6 +31,8 @@ lint:
   script:
     - '! gofmt -l . | grep -q .'
     - golangci-lint run --timeout 5m0s
+    - cd flare-common
+    - golangci-lint run --timeout 5m0s
 
 test:
   stage: test
@@ -43,6 +45,8 @@ test:
     - go test -v -coverpkg=local/fdc/... -coverprofile=${COVERAGE_FILE} -covermode count ./...
     - go tool cover -func=${COVERAGE_FILE}
     - go run github.com/boumenot/gocover-cobertura < ${COVERAGE_FILE} > ${COBERTURA_FILE}
+    - cd flare-common
+    - go test -v ./...
   artifacts:
     paths:
       - ${COVERAGE_FILE}
@@ -51,3 +55,12 @@ test:
         coverage_format: cobertura
         path: ${COBERTURA_FILE}
   coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
+
+test-common:
+  stage: test
+  image: golang:${GOLANG_VERSION}
+  needs: [build]
+  extends: .gocache
+  script:
+    - cd flare-common
+    - go test -v ./...

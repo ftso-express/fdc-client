@@ -1,10 +1,64 @@
 package config_test
 
 import (
+	"fmt"
 	"local/fdc/client/config"
 	"strings"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/stretchr/testify/require"
 )
+
+const (
+	USER_FILE        = "../../testFiles/configs/userConfig.toml" //relative to test
+	SYSTEM_DIRECTORY = "../../testFiles/configs/systemConfigs"   //relative to test
+)
+
+func TestReadUserRaw(t *testing.T) {
+
+	cfg, err := config.ReadUserRaw(USER_FILE)
+
+	require.NoError(t, err)
+
+	require.Equal(t, "coston", cfg.Chain)
+
+	require.Equal(t, uint8(200), cfg.ProtocolId)
+
+	parsed, err := config.ParseAttestationTypes(cfg.AttestationTypeConfig)
+
+	require.NoError(t, err)
+
+	attType, err := config.StringToByte32("EVMTransaction")
+
+	require.NoError(t, err)
+
+	typeConfigs, ok := parsed[attType]
+
+	require.True(t, ok)
+
+	source, err := config.StringToByte32("ETH")
+
+	require.NoError(t, err)
+
+	sourceConfig, ok := typeConfigs.SourcesConfig[source]
+
+	require.True(t, ok)
+
+	require.Equal(t, "12345", sourceConfig.ApiKey)
+
+}
+
+func TestReadSystem(t *testing.T) {
+
+	sysCfg, err := config.ReadSystem(SYSTEM_DIRECTORY, "coston", 200)
+
+	require.NoError(t, err)
+
+	require.Equal(t, common.HexToAddress("0x2cA6571Daa15ce734Bbd0Bf27D5C9D16787fc33f"), sysCfg.Addresses.SubmitContract)
+
+	require.Equal(t, uint64(240), sysCfg.Timing.RewardEpochLength)
+}
 
 func TestStringToByte32(t *testing.T) {
 
@@ -12,30 +66,19 @@ func TestStringToByte32(t *testing.T) {
 
 	bytes, err := config.StringToByte32(a)
 
-	if err != nil {
-		t.Errorf("unexpected error %s", err)
-	}
+	require.NoError(t, err)
 
 	result := [32]byte{49, 50, 33, 65, 98, 40, 32, 41}
 
-	if bytes != result {
-		t.Errorf("bytes %v do not match the expected result %v", bytes, result)
-
-	}
+	require.Equal(t, result, bytes, fmt.Sprintf("bytes %v do not match expectation, %v", bytes, result))
 
 	c := strings.Repeat("A", 33)
 
 	bytes, err = config.StringToByte32(c)
 
-	if err == nil {
-		t.Errorf("unexpected fail error %s", err)
-	}
+	require.Error(t, err)
 
-	if bytes != [32]byte{} {
-
-		t.Errorf("bytes %v do not match the expected result %v", bytes, [32]byte{})
-
-	}
+	require.Equal(t, [32]byte{}, bytes, fmt.Sprintf("bytes %v do not match expectation, %v", bytes, result))
 
 }
 
@@ -46,9 +89,7 @@ func TestTwoStringsToByte64(t *testing.T) {
 
 	bytes, err := config.TwoStringsToByte64(a, b)
 
-	if err != nil {
-		t.Errorf("unexpected error %s", err)
-	}
+	require.NoError(t, err)
 
 	result := [64]byte{49, 50, 33, 65, 98, 40, 32, 41}
 	result[32] = 49
@@ -63,12 +104,33 @@ func TestTwoStringsToByte64(t *testing.T) {
 
 func TestWhiteSpaceStrip(t *testing.T) {
 
-	const a = "a s\vd \t ad \f\n YY \n"
+	tests := []struct {
+		input  string
+		output string
+	}{
+		{
+			input:  "a s\vd \t ad \f\n YY \n",
+			output: "asdadYY",
+		},
+		{
+			input:  "    ",
+			output: "",
+		},
+		{
+			input:  "  1  ",
+			output: "1",
+		},
+		{
+			input:  "  \n\f  ",
+			output: "",
+		},
+	}
 
-	aStriped := config.WhiteSpaceStrip(a)
+	for i, test := range tests {
 
-	if aStriped != "asdadYY" {
-		t.Errorf("expected %s, got %s", "asdadYY", aStriped)
+		output := config.WhiteSpaceStrip(test.input)
+
+		require.Equal(t, test.output, output, fmt.Sprintf("wrong output test %d", i))
 	}
 
 }

@@ -45,7 +45,6 @@ func (controller *FDCProtocolProviderController) submit1Controller(
 	}
 	if !exists {
 		return PDPResponse{Data: rsp, Status: NOT_AVAILABLE}, nil
-
 	}
 
 	response := PDPResponse{Data: rsp, Status: OK}

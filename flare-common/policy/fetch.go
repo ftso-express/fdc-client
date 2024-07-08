@@ -1,80 +1,31 @@
 package policy
 
 import (
-	"context"
 	"flare-common/contracts/relay"
 	"flare-common/database"
 	"flare-common/events"
-
-	"time"
+	"flare-common/logger"
 
 	"github.com/ethereum/go-ethereum/common"
-	"gorm.io/gorm"
 )
 
-const (
-	listenerBufferSize               = 10
-	ListenerInterval   time.Duration = 2 * time.Second
-)
+var RelayFilterer *relay.RelayFilterer
 
-type SigningPolicyListenerResponse struct {
-	policyData *relay.RelaySigningPolicyInitialized
-	timestamp  int64
+var log = logger.GetLogger()
+
+func init() {
+	var err error
+	RelayFilterer, err = relay.NewRelayFilterer(common.Address{}, nil)
+	if err != nil {
+		log.Panic(err)
+	}
 }
 
-type relayContractClient struct {
-	address common.Address
-
-	relay *relay.Relay
-
-	topic0SPI common.Hash // for SigningPolicyInitialized event
-	topic0PMR common.Hash // for ProtocolMessageRelayed event
-}
-
-func (r *relayContractClient) FetchSigningPolicies(
-	ctx context.Context, db *gorm.DB, from, to int64,
-) ([]SigningPolicyListenerResponse, error) {
-	logs, err := database.FetchLogsByAddressAndTopic0Timestamp(ctx, db, r.address, r.topic0SPI, from, to)
+func ParseSigningPolicyInitializedEvent(dbLog database.Log) (*relay.RelaySigningPolicyInitialized, error) {
+	contractLog, err := events.ConvertDatabaseLogToChainLog(dbLog)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make([]SigningPolicyListenerResponse, 0, len(logs))
-	for _, log := range logs {
-		policyData, err := events.ParseSigningPolicyInitializedEvent(r.relay, log)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, SigningPolicyListenerResponse{policyData, int64(log.Timestamp)})
-	}
-	return result, nil
-}
-
-func (r *relayContractClient) SigningPolicyInitializedListener(
-	ctx context.Context, db *gorm.DB, startTime time.Time,
-) <-chan SigningPolicyListenerResponse {
-	out := make(chan SigningPolicyListenerResponse, listenerBufferSize)
-	go func() {
-		ticker := time.NewTicker(ListenerInterval)
-		eventRangeStart := startTime.Unix()
-		for {
-			<-ticker.C
-			now := time.Now().Unix()
-			logs, err := database.FetchLogsByAddressAndTopic0Timestamp(ctx, db, r.address, r.topic0SPI, eventRangeStart, now)
-			if err != nil {
-				continue
-			}
-			for _, log := range logs {
-				policyData, err := events.ParseSigningPolicyInitializedEvent(r.relay, log)
-				if err != nil {
-					break
-				}
-				out <- SigningPolicyListenerResponse{policyData, int64(log.Timestamp)}
-				// continue with timestamps > log.Timestamp,
-				// there should be only one such log per timestamp
-				eventRangeStart = int64(log.Timestamp)
-			}
-		}
-	}()
-	return out
+	return RelayFilterer.ParseSigningPolicyInitialized(*contractLog)
 }

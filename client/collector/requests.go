@@ -7,13 +7,12 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"gorm.io/gorm"
 )
 
 // AttestationRequestListener returns a channel that serves attestation requests events emitted by fdcContractAddress.
 func AttestationRequestListener(
 	ctx context.Context,
-	db *gorm.DB,
+	db collectorDB,
 	fdcContractAddress common.Address,
 	bufferSize int,
 	ListenerInterval time.Duration,
@@ -25,17 +24,21 @@ func AttestationRequestListener(
 
 		trigger := time.NewTicker(ListenerInterval)
 
-		_, startTimestamp := timing.LastCollectPhaseStart(uint64(time.Now().Unix()))
+		_, startTimestamp, err := timing.LastCollectPhaseStart(uint64(time.Now().Unix()))
 
-		state, err := database.FetchState(ctx, db)
+		if err != nil {
+			log.Panic("time:", err)
+		}
+
+		state, err := db.FetchState(ctx)
 		if err != nil {
 			log.Panic("fetch initial state error:", err)
 		}
 
 		lastQueriedBlock := state.Index
 
-		logs, err := database.FetchLogsByAddressAndTopic0TimestampToBlockNumber(
-			ctx, db, fdcContractAddress, attestationRequestEventSel, int64(startTimestamp), int64(state.Index),
+		logs, err := db.FetchLogsByAddressAndTopic0TimestampToBlockNumber(
+			ctx, fdcContractAddress, attestationRequestEventSel, int64(startTimestamp), int64(state.Index),
 		)
 		if err != nil {
 			log.Panic("fetch initial logs error")
@@ -54,21 +57,20 @@ func AttestationRequestListener(
 		for {
 			select {
 			case <-trigger.C:
-				log.Debug("starting next AttestationRequestListener iteration")
 
 			case <-ctx.Done():
 				log.Info("AttestationRequestListener exiting:", ctx.Err())
 				return
 			}
 
-			state, err = database.FetchState(ctx, db)
+			state, err = db.FetchState(ctx)
 			if err != nil {
 				log.Error("fetch state error:", err)
 				continue
 			}
 
-			logs, err := database.FetchLogsByAddressAndTopic0BlockNumber(
-				ctx, db, fdcContractAddress, attestationRequestEventSel, int64(lastQueriedBlock), int64(state.Index),
+			logs, err := db.FetchLogsByAddressAndTopic0BlockNumber(
+				ctx, fdcContractAddress, attestationRequestEventSel, int64(lastQueriedBlock), int64(state.Index),
 			)
 			if err != nil {
 				log.Error("fetch logs error:", err)

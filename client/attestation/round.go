@@ -10,6 +10,7 @@ import (
 	"sort"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 type RoundStatus int
@@ -26,6 +27,7 @@ const (
 type Round struct {
 	roundId          uint64
 	Attestations     []*Attestation
+	attestationMap   map[common.Hash]*Attestation
 	bitVotes         []*bitvotes.WeightedBitVote
 	bitVoteCheckList map[common.Address]*bitvotes.WeightedBitVote
 	ConsensusBitVote bitvotes.BitVote
@@ -36,24 +38,66 @@ type Round struct {
 // CreateRound returns a pointer to a new round with roundId and voterSet.
 func CreateRound(roundId uint64, voterSet *policy.VoterSet) *Round {
 
-	r := &Round{}
-
-	r.roundId = roundId
-
-	r.voterSet = voterSet
+	r := &Round{roundId: roundId, voterSet: voterSet, attestationMap: make(map[common.Hash]*Attestation)}
 
 	return r
 }
 
+// addAttestation checks whether an attestation with such request is already in the round.
+// If not it is added to the round, if yes the fee is added to the existent attestation
+// and Index is set to the earlier one.
+func (r *Round) addAttestation(attestation *Attestation) bool {
+	identifier := crypto.Keccak256Hash(attestation.Request)
+
+	att, exists := r.attestationMap[identifier]
+
+	if exists {
+
+		att.Fee.Add(att.Fee, attestation.Fee)
+
+		if earlierLog(attestation.index(), att.index()) {
+
+			att.Indexes = prepend(att.Indexes, attestation.index())
+		}
+
+		att.Indexes = append(att.Indexes, attestation.index())
+
+		return false
+	}
+
+	r.attestationMap[identifier] = attestation
+
+	r.Attestations = append(r.Attestations, attestation)
+
+	return true
+}
+
+// prepend places the element at the beginning of the slice and moves the potentially replaced element to the end.
+func prepend[T any](slice []T, element T) []T {
+
+	if len(slice) == 0 {
+		slice = append(slice, element)
+		return slice
+	}
+
+	slice = append(slice, slice[0])
+
+	slice[0] = element
+
+	return slice
+
+}
+
 // sortAttestations sorts round's attestations according to their IndexLog.
+// we assume that attestations have at least one index.
 func (r *Round) sortAttestations() {
 
 	sort.Slice(r.Attestations, func(i, j int) bool {
-		return earlierLog(r.Attestations[i].Index, r.Attestations[j].Index)
+		return earlierLog(r.Attestations[i].index(), r.Attestations[j].index())
 	})
 }
 
-// sortBitVotes sorts rounds' bitVotes according to the signingPolicy Index of their providers.
+// sortBitVotes sorts round's bitVotes according to the signingPolicy Index of their providers.
 func (r *Round) sortBitVotes() {
 
 	sort.Slice(r.bitVotes, func(i, j int) bool {
@@ -76,14 +120,14 @@ func (r *Round) BitVoteHex() (string, error) {
 	bitVote, err := BitVoteFromAttestations(r.Attestations)
 
 	if err != nil {
-		return "", fmt.Errorf("cannot get bitvote for round %d", r.roundId)
+		return "", fmt.Errorf("cannot get bitVote for round %d: %w", r.roundId, err)
 	}
 
 	return bitVote.EncodeBitVoteHex(r.roundId), nil
 }
 
-// ComputeConsensusBitVote computes the consensus BitVote according to the collected bitVotes.
-func (r *Round) ComputeConsensusBitVote() error {
+// ComputeConsensusBitVote computes the consensus BitVote according to the collected bitVotes and sets consensus status to the attestations.
+func (r *Round) ComputeConsensusBitVote(protocolId uint64) error {
 
 	r.sortBitVotes()
 
@@ -99,16 +143,18 @@ func (r *Round) ComputeConsensusBitVote() error {
 		WeightedBitVotes: r.bitVotes,
 		TotalWeight:      r.voterSet.TotalWeight,
 		Fees:             fees,
-	})
+	},
+		protocolId)
 	if err != nil {
 		return err
 
 	}
 	r.ConsensusBitVote = consensus
 
-	return r.SetConsensusStatus()
+	return r.setConsensusStatus(consensus)
 }
 
+// GetConsensusBitVote returns consensus BitVote if it is already computed.
 func (r *Round) GetConsensusBitVote() (bitvotes.BitVote, error) {
 
 	if r.ConsensusBitVote.BitVector == nil {
@@ -118,15 +164,14 @@ func (r *Round) GetConsensusBitVote() (bitvotes.BitVote, error) {
 	return r.ConsensusBitVote, nil
 }
 
-// SetConsensusStatus sets consensus status of the attestations.
+// setConsensusStatus sets consensus status of the attestations.
 // The scenario where a chosen attestation is missing is not possible as in such case, it is not possible to compute the consensus bitVote.
 // It is assumed that the Attestations are already ordered.
-func (r *Round) SetConsensusStatus() error {
+func (r *Round) setConsensusStatus(consensusBitVote bitvotes.BitVote) error {
 
-	consensusBitVote, err := r.GetConsensusBitVote()
-
-	if err != nil {
-		return err
+	// sanity check
+	if consensusBitVote.BitVector.BitLen() > len(r.Attestations) {
+		return fmt.Errorf("missing attestation for round %d", r.roundId)
 	}
 
 	for i := range r.Attestations {
@@ -137,16 +182,14 @@ func (r *Round) SetConsensusStatus() error {
 
 }
 
-// GetMerkleTree computes Merkle tree from sorted hashes of attestations chosen by the consensus bitVote.
+// MerkleTree computes Merkle tree from sorted hashes of attestations chosen by the consensus bitVote.
 // The computed tree is stored in the round.
-// If any of the hash of the chosen attestations is missing, the tree is not computed.
-func (r *Round) GetMerkleTree() (merkle.Tree, error) {
+// If any of the hash of the chosen attestations is not successfully verified, the tree is not computed.
+func (r *Round) MerkleTree() (merkle.Tree, error) {
 
 	r.sortAttestations()
 
 	hashes := []common.Hash{}
-
-	added := make(map[common.Hash]bool)
 
 	for i := range r.Attestations {
 		if r.Attestations[i].Consensus {
@@ -154,18 +197,10 @@ func (r *Round) GetMerkleTree() (merkle.Tree, error) {
 				return merkle.Tree{}, errors.New("cannot build merkle tree")
 			}
 
-			//skip duplicates
-			if _, alreadyAdded := added[r.Attestations[i].Hash]; !alreadyAdded {
-
-				hashes = append(hashes, r.Attestations[i].Hash)
-				added[r.Attestations[i].Hash] = true
-
-			}
+			hashes = append(hashes, r.Attestations[i].Hash)
 
 		}
 	}
-
-	// sort.Slice(hashes, func(i, j int) bool { return compareHash(hashes[i], hashes[j]) })
 
 	merkleTree := merkle.Build(hashes, false)
 
@@ -175,29 +210,21 @@ func (r *Round) GetMerkleTree() (merkle.Tree, error) {
 
 }
 
-// func compareHash(a, b common.Hash) bool {
-
-//		for i := range a {
-//			if a[i] < b[i] {
-//				return true
-//			}
-//		}
-//		return false
-//	}
-
-func (r *Round) GetMerkleTreeCached() (merkle.Tree, error) {
+// MerkleTreeCached gets Merkle tree from cache if it is already computed or computes it.
+func (r *Round) MerkleTreeCached() (merkle.Tree, error) {
 
 	if len(r.merkleTree) != 0 {
 		return r.merkleTree, nil
 	}
 
-	return r.GetMerkleTree()
+	return r.MerkleTree()
 
 }
 
-func (r *Round) GetMerkleRootCached() (common.Hash, error) {
+// MerkleRoot returns Merkle root for a round if there is one.
+func (r *Round) MerkleRoot() (common.Hash, error) {
 
-	tree, err := r.GetMerkleTreeCached()
+	tree, err := r.MerkleTreeCached()
 
 	if err != nil {
 		return common.Hash{}, err
@@ -207,9 +234,10 @@ func (r *Round) GetMerkleRootCached() (common.Hash, error) {
 
 }
 
-func (r *Round) GetMerkleRootCachedHex() (string, error) {
+// MerkleRootHex returns Merkle root for a round as a hex string.
+func (r *Round) MerkleRootHex() (string, error) {
 
-	root, err := r.GetMerkleRootCached()
+	root, err := r.MerkleRoot()
 
 	if err != nil {
 		return "", err
@@ -258,15 +286,20 @@ func (r *Round) ProcessBitVote(message payload.Message) error {
 		weightedBitVote.BitVote = bitVote
 		weightedBitVote.Weight = weight
 		weightedBitVote.Index = voter.Index
-		weightedBitVote.IndexTx = bitvotes.IndexTx{message.BlockNumber, message.TransactionIndex}
-	} else if exists && bitvotes.EarlierTx(weightedBitVote.IndexTx, bitvotes.IndexTx{message.BlockNumber, message.TransactionIndex}) {
+		weightedBitVote.IndexTx = bitvotes.IndexTx{
+			BlockNumber:      message.BlockNumber,
+			TransactionIndex: message.TransactionIndex,
+		}
+	} else if exists && bitvotes.EarlierTx(weightedBitVote.IndexTx, bitvotes.IndexTx{BlockNumber: message.BlockNumber, TransactionIndex: message.TransactionIndex}) {
 		// more than one submission. The later submission is considered to be valid.
 
 		weightedBitVote.BitVote = bitVote
 		weightedBitVote.Weight = weight
 		weightedBitVote.Index = voter.Index
-		weightedBitVote.IndexTx = bitvotes.IndexTx{message.BlockNumber, message.TransactionIndex}
-
+		weightedBitVote.IndexTx = bitvotes.IndexTx{
+			BlockNumber:      message.BlockNumber,
+			TransactionIndex: message.TransactionIndex,
+		}
 	}
 
 	return nil
