@@ -51,7 +51,7 @@ func (r *Round) addAttestation(attestation *Attestation) bool {
 
 	if exists {
 
-		att.Fee = att.Fee.Add(att.Fee, attestation.Fee)
+		att.Fee.Add(att.Fee, attestation.Fee)
 
 		if earlierLog(attestation.index(), att.index()) {
 

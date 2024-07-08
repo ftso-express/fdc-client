@@ -261,6 +261,6 @@ func (a *Attestation) index() IndexLog {
 	if len(a.Indexes) > 0 {
 		return a.Indexes[0]
 	}
-	log.Errorf("attestation without index in round %d with request %s", a.RoundId, hex.EncodeToString(a.Request)) // this should never happen
+	log.Panicf("attestation without index in round %d with request %s", a.RoundId, hex.EncodeToString(a.Request)) // this should never happen
 	return IndexLog{18446744073709551615, 18446744073709551615}
 }
