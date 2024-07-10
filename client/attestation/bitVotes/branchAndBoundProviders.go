@@ -36,26 +36,44 @@ func BranchAndBoundProviders(bitVotes []*WeightedBitVote, fees []*big.Int, assum
 	randPerm := RandPerm(numProviders, randGen)
 	permBitVotes := PermuteBitVotes(bitVotes, randPerm)
 
-	currentBound := &SharedStatus{CurrentBound: Value{CappedValue: big.NewInt(0), UncappedValue: big.NewInt(0)}, NumOperations: 0, MaxOperations: maxOperations,
-		TotalWeight: absoluteTotalWeight, LowerBoundWeight: absoluteTotalWeight / 2, BitVotes: permBitVotes, Fees: fees, RandGen: randGen, NumProviders: numProviders}
+	currentBound := &SharedStatus{
+		CurrentBound:     Value{CappedValue: big.NewInt(0), UncappedValue: big.NewInt(0)},
+		NumOperations:    0,
+		MaxOperations:    maxOperations,
+		TotalWeight:      absoluteTotalWeight,
+		LowerBoundWeight: absoluteTotalWeight / 2,
+		BitVotes:         permBitVotes,
+		Fees:             fees,
+		RandGen:          randGen,
+		NumProviders:     numProviders,
+	}
 
 	permResult := BranchProviders(startingSolution, totalFee, currentBound, 0, totalWeight)
+
+	result := orderResultProviders(permResult, numProviders, numAttestations, randPerm)
+
+	if currentBound.NumOperations < maxOperations {
+		result.Optimal = true
+	} else {
+		result.MaximizeProviders(bitVotes, fees, assumedWeight, absoluteTotalWeight)
+	}
+
+	return result
+}
+
+func orderResultProviders(permResult *BranchAndBoundPartialSolution, numProviders, numAttestations int, permutation []int) *ConsensusSolution {
 
 	result := ConsensusSolution{
 		Participants: make([]bool, numProviders),
 		Solution:     make([]bool, numAttestations),
 		Value:        permResult.Value,
 	}
-	for key, val := range randPerm {
+
+	for key, val := range permutation {
 		result.Participants[key] = permResult.Participants[val]
 	}
 	for key, val := range permResult.Solution {
 		result.Solution[key] = val
-	}
-	if currentBound.NumOperations < maxOperations {
-		result.Optimal = true
-	} else {
-		result.MaximizeProviders(bitVotes, fees, assumedWeight, absoluteTotalWeight)
 	}
 
 	return &result
@@ -98,6 +116,22 @@ func BranchProviders(solution map[int]bool, feeSum *big.Int, currentStatus *Shar
 	}
 
 	// prepare a new branch
+	newSolution, newFeeSum := prepareDataForBranchWithProvider(solution, feeSum, currentStatus, branch)
+
+	result1 = BranchProviders(newSolution, newFeeSum, currentStatus, branch+1, currentMaxWeight)
+
+	if randBit == 1 {
+		if newCurrentMaxWeight > currentStatus.TotalWeight/2 {
+			result0 = BranchProviders(solution, feeSum, currentStatus, branch+1, newCurrentMaxWeight)
+		}
+	}
+
+	// max result
+	return joinResultsProviders(result0, result1, branch)
+}
+
+func prepareDataForBranchWithProvider(solution map[int]bool, feeSum *big.Int, currentStatus *SharedStatus, branch int) (map[int]bool, *big.Int) {
+
 	newSolution := make(map[int]bool)
 	newFeeSum := new(big.Int).Set(feeSum)
 	for sol := range solution {
@@ -109,15 +143,11 @@ func BranchProviders(solution map[int]bool, feeSum *big.Int, currentStatus *Shar
 		currentStatus.NumOperations++
 	}
 
-	result1 = BranchProviders(newSolution, newFeeSum, currentStatus, branch+1, currentMaxWeight)
+	return newSolution, newFeeSum
 
-	if randBit == 1 {
-		if newCurrentMaxWeight > currentStatus.TotalWeight/2 {
-			result0 = BranchProviders(solution, feeSum, currentStatus, branch+1, newCurrentMaxWeight)
-		}
-	}
+}
 
-	// max result
+func joinResultsProviders(result0, result1 *BranchAndBoundPartialSolution, branch int) *BranchAndBoundPartialSolution {
 	if result0 == nil && result1 == nil {
 		return nil
 	} else if result0 != nil && result1 == nil {
@@ -130,4 +160,5 @@ func BranchProviders(solution map[int]bool, feeSum *big.Int, currentStatus *Shar
 		result0.Participants[branch] = false
 		return result0
 	}
+
 }

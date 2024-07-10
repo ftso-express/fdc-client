@@ -83,7 +83,7 @@ func PermuteBits(bitVotes []*WeightedBitVote, randPerm []int) []*WeightedBitVote
 // function is controlled by the given seed.
 func BranchAndBound(bitVotes []*WeightedBitVote, fees []*big.Int, assumedWeight, absoluteTotalWeight uint16, maxOperations int, seed int64) *ConsensusSolution {
 	numAttestations := len(fees)
-	numVoters := len(bitVotes)
+	numProviders := len(bitVotes)
 	weight := assumedWeight
 
 	participants := make(map[int]bool)
@@ -101,24 +101,41 @@ func BranchAndBound(bitVotes []*WeightedBitVote, fees []*big.Int, assumedWeight,
 	randPerm := RandPerm(numAttestations, randGen)
 	permBitVotes := PermuteBits(bitVotes, randPerm)
 
-	currentStatus := &SharedStatus{CurrentBound: Value{CappedValue: big.NewInt(0), UncappedValue: big.NewInt(0)}, NumOperations: 0, MaxOperations: maxOperations,
-		TotalWeight: absoluteTotalWeight, LowerBoundWeight: absoluteTotalWeight / 2, BitVotes: permBitVotes,
-		Fees: fees, RandGen: randGen, NumAttestations: numAttestations}
+	currentStatus := &SharedStatus{
+		CurrentBound:  Value{CappedValue: big.NewInt(0), UncappedValue: big.NewInt(0)},
+		NumOperations: 0, MaxOperations: maxOperations,
+		TotalWeight:      absoluteTotalWeight,
+		LowerBoundWeight: absoluteTotalWeight / 2,
+		BitVotes:         permBitVotes,
+		Fees:             fees, RandGen: randGen, NumAttestations: numAttestations,
+	}
 
 	permResult := Branch(participants, currentStatus, 0, weight, totalFee)
 
-	result := ConsensusSolution{Participants: make([]bool, numVoters),
-		Solution: make([]bool, numAttestations), Value: permResult.Value}
-	for key, val := range permResult.Participants {
-		result.Participants[key] = val
-	}
-	for key, val := range randPerm {
-		result.Solution[key] = permResult.Solution[val]
-	}
+	result := orderResultAttestations(permResult, numProviders, numAttestations, randPerm)
+
 	if currentStatus.NumOperations < maxOperations {
 		result.Optimal = true
 	} else {
 		result.MaximizeSolution(bitVotes, fees, assumedWeight, absoluteTotalWeight)
+	}
+
+	return result
+}
+
+func orderResultAttestations(permResult *BranchAndBoundPartialSolution, numProviders, numAttestations int, permutation []int) *ConsensusSolution {
+
+	result := ConsensusSolution{
+		Participants: make([]bool, numProviders),
+		Solution:     make([]bool, numAttestations),
+		Value:        permResult.Value,
+	}
+
+	for key, val := range permResult.Participants {
+		result.Participants[key] = val
+	}
+	for key, val := range permutation {
+		result.Solution[key] = permResult.Solution[val]
 	}
 
 	return &result
@@ -156,8 +173,26 @@ func Branch(participants map[int]bool, currentStatus *SharedStatus, branch int, 
 	}
 
 	// prepare and check if a branch is possible
+	newParticipants, newCurrentWeight := prepareDataForBranchWithOne(participants, currentStatus, branch, currentWeight)
+
+	if newCurrentWeight > currentStatus.LowerBoundWeight {
+
+		result1 = Branch(newParticipants, currentStatus, branch+1, newCurrentWeight, feeSum)
+	}
+
+	if randBit == 1 {
+		result0 = Branch(participants, currentStatus, branch+1, currentWeight, new(big.Int).Sub(feeSum, currentStatus.Fees[branch]))
+	}
+
+	// max result
+	return joinResultsAttestations(result0, result1, branch)
+}
+
+func prepareDataForBranchWithOne(participants map[int]bool, currentStatus *SharedStatus, branch int, currentWeight uint16) (map[int]bool, uint16) {
+
 	newParticipants := make(map[int]bool)
 	newCurrentWeight := currentWeight
+
 	for participant := range participants {
 		if currentStatus.BitVotes[participant].BitVote.BitVector.Bit(branch) == 1 {
 
@@ -169,16 +204,13 @@ func Branch(participants map[int]bool, currentStatus *SharedStatus, branch int, 
 		}
 		currentStatus.NumOperations++
 	}
-	if newCurrentWeight > currentStatus.LowerBoundWeight {
 
-		result1 = Branch(newParticipants, currentStatus, branch+1, newCurrentWeight, feeSum)
-	}
+	return newParticipants, newCurrentWeight
 
-	if randBit == 1 {
-		result0 = Branch(participants, currentStatus, branch+1, currentWeight, new(big.Int).Sub(feeSum, currentStatus.Fees[branch]))
-	}
+}
 
-	// max result
+func joinResultsAttestations(result0, result1 *BranchAndBoundPartialSolution, branch int) *BranchAndBoundPartialSolution {
+
 	if result0 == nil && result1 == nil {
 		return nil
 	} else if result0 != nil && result1 == nil {
@@ -192,4 +224,5 @@ func Branch(participants map[int]bool, currentStatus *SharedStatus, branch int, 
 		result0.Solution[branch] = false
 		return result0
 	}
+
 }
