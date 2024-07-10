@@ -1,6 +1,7 @@
 package bitvotes
 
 import (
+	"math/big"
 	"math/rand"
 )
 
@@ -16,7 +17,7 @@ func PermuteBitVotes(bitVotes []*WeightedBitVote, randPerm []int) []*WeightedBit
 // BranchAndBoundProviders is similar than BranchAndBound, the difference is that it
 // executes a branch and bound strategy on the space of subsets of attestation providers, hence
 // it is particularly useful when there are not too many distinct providers.
-func BranchAndBoundProviders(bitVotes []*WeightedBitVote, fees []int, assumedWeight, absoluteTotalWeight uint16, maxOperations int, seed int64) *ConsensusSolution {
+func BranchAndBoundProviders(bitVotes []*WeightedBitVote, fees []*big.Int, assumedWeight, absoluteTotalWeight uint16, maxOperations int, seed int64) *ConsensusSolution {
 	numAttestations := len(fees)
 	numProviders := len(bitVotes)
 	totalWeight := assumedWeight
@@ -25,23 +26,26 @@ func BranchAndBoundProviders(bitVotes []*WeightedBitVote, fees []int, assumedWei
 		totalWeight += vote.Weight
 	}
 
-	totalFee := 0
+	totalFee := big.NewInt(0)
 	startingSolution := make(map[int]bool)
 	for i, fee := range fees {
-		totalFee += fee
+		totalFee.Add(totalFee, fee)
 		startingSolution[i] = true
 	}
 	randGen := rand.NewSource(seed)
 	randPerm := RandPerm(numProviders, randGen)
 	permBitVotes := PermuteBitVotes(bitVotes, randPerm)
 
-	currentBound := &SharedStatus{CurrentBound: 0, NumOperations: 0, MaxOperations: maxOperations,
+	currentBound := &SharedStatus{CurrentBound: Value{CappedValue: big.NewInt(0), UncappedValue: big.NewInt(0)}, NumOperations: 0, MaxOperations: maxOperations,
 		TotalWeight: absoluteTotalWeight, LowerBoundWeight: absoluteTotalWeight / 2, BitVotes: permBitVotes, Fees: fees, RandGen: randGen, NumProviders: numProviders}
 
 	permResult := BranchProviders(startingSolution, totalFee, currentBound, 0, totalWeight)
 
-	result := ConsensusSolution{Participants: make([]bool, numProviders),
-		Solution: make([]bool, numAttestations), Value: permResult.Value}
+	result := ConsensusSolution{
+		Participants: make([]bool, numProviders),
+		Solution:     make([]bool, numAttestations),
+		Value:        permResult.Value,
+	}
 	for key, val := range randPerm {
 		result.Participants[key] = permResult.Participants[val]
 	}
@@ -57,21 +61,25 @@ func BranchAndBoundProviders(bitVotes []*WeightedBitVote, fees []int, assumedWei
 	return &result
 }
 
-func BranchProviders(solution map[int]bool, feeSum int, currentStatus *SharedStatus, branch int, currentMaxWeight uint16) *BranchAndBoundPartialSolution {
+func BranchProviders(solution map[int]bool, feeSum *big.Int, currentStatus *SharedStatus, branch int, currentMaxWeight uint16) *BranchAndBoundPartialSolution {
 	currentStatus.NumOperations++
 
 	// end of recursion
 	if branch == currentStatus.NumProviders {
 		value := CalcValue(feeSum, currentMaxWeight, currentStatus.TotalWeight)
-		if value > currentStatus.CurrentBound {
+		if value.Cmp(currentStatus.CurrentBound) == 1 {
 			currentStatus.CurrentBound = value
 		}
 
-		return &BranchAndBoundPartialSolution{Participants: make(map[int]bool), Solution: solution, Value: value}
+		return &BranchAndBoundPartialSolution{
+			Participants: make(map[int]bool),
+			Solution:     solution,
+			Value:        value,
+		}
 	}
 
 	// check if we already reached the maximal search space or if we exceeded the bound of the maximal possible value of the solution
-	if currentStatus.NumOperations >= currentStatus.MaxOperations || CalcValue(feeSum, currentMaxWeight, currentStatus.TotalWeight) < currentStatus.CurrentBound {
+	if currentStatus.NumOperations >= currentStatus.MaxOperations || CalcValue(feeSum, currentMaxWeight, currentStatus.TotalWeight).Cmp(currentStatus.CurrentBound) == -1 {
 		return nil
 	}
 
@@ -91,10 +99,10 @@ func BranchProviders(solution map[int]bool, feeSum int, currentStatus *SharedSta
 
 	// prepare a new branch
 	newSolution := make(map[int]bool)
-	newFeeSum := feeSum
+	newFeeSum := new(big.Int).Set(feeSum)
 	for sol := range solution {
 		if currentStatus.BitVotes[branch].BitVote.BitVector.Bit(sol) == 0 {
-			newFeeSum -= currentStatus.Fees[sol]
+			newFeeSum.Sub(newFeeSum, currentStatus.Fees[sol])
 		} else {
 			newSolution[sol] = true
 		}
@@ -115,7 +123,7 @@ func BranchProviders(solution map[int]bool, feeSum int, currentStatus *SharedSta
 	} else if result0 != nil && result1 == nil {
 		result0.Participants[branch] = false
 		return result0
-	} else if result0 == nil || result0.Value < result1.Value {
+	} else if result0 == nil || result0.Value.Cmp(result1.Value) == -1 {
 		result1.Participants[branch] = true
 		return result1
 	} else {

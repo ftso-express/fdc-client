@@ -1,13 +1,15 @@
 package bitvotes
 
+import "math/big"
+
 type ConsensusSolution struct {
 	Participants []bool
 	Solution     []bool
-	Value        int
+	Value        Value
 	Optimal      bool
 }
 
-func Ensemble(allBitVotes []*WeightedBitVote, fees []int, maxOperations int, seed int64) *ConsensusSolution {
+func Ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, maxOperations int, seed int64) *ConsensusSolution {
 	totalWeight := uint16(0)
 	for _, bitVote := range allBitVotes {
 		totalWeight += bitVote.Weight
@@ -15,7 +17,7 @@ func Ensemble(allBitVotes []*WeightedBitVote, fees []int, maxOperations int, see
 
 	preProcessedBitVotes, newFees, preProccesInfo := PreProcess(allBitVotes, fees)
 
-	var firstMethod, secondMethod func([]*WeightedBitVote, []int, uint16, uint16, int, int64) *ConsensusSolution
+	var firstMethod, secondMethod func([]*WeightedBitVote, []*big.Int, uint16, uint16, int, int64) *ConsensusSolution
 	if len(allBitVotes) < len(fees) {
 		firstMethod = BranchAndBoundProviders
 		secondMethod = BranchAndBound
@@ -27,7 +29,7 @@ func Ensemble(allBitVotes []*WeightedBitVote, fees []int, maxOperations int, see
 	solution := firstMethod(preProcessedBitVotes, newFees, preProccesInfo.RemovedOnesWeight, totalWeight, maxOperations, seed)
 	if !solution.Optimal {
 		solution2 := secondMethod(preProcessedBitVotes, newFees, preProccesInfo.RemovedOnesWeight, totalWeight, maxOperations, seed)
-		if solution2.Value > solution.Value {
+		if solution2.Value.Cmp(solution.Value) == 1 {
 			solution = solution2
 		}
 	}
@@ -38,11 +40,11 @@ func Ensemble(allBitVotes []*WeightedBitVote, fees []int, maxOperations int, see
 	return expandedSolution
 }
 
-func (solution *ConsensusSolution) CalcValueFromFees(allBitVotes []*WeightedBitVote, fees []int, assumedWeight, totalWeight uint16) int {
-	val := 0
+func (solution *ConsensusSolution) CalcValueFromFees(allBitVotes []*WeightedBitVote, fees []*big.Int, assumedWeight, totalWeight uint16) Value {
+	feeSum := big.NewInt(0)
 	for i, attestation := range solution.Solution {
 		if attestation {
-			val += fees[i]
+			feeSum.Add(feeSum, fees[i])
 		}
 	}
 	weight := assumedWeight
@@ -52,12 +54,10 @@ func (solution *ConsensusSolution) CalcValueFromFees(allBitVotes []*WeightedBitV
 		}
 	}
 
-	weightCaped := min(int(float64(totalWeight)*valueCap), int(weight))
-
-	return val * weightCaped
+	return CalcValue(feeSum, weight, totalWeight)
 }
 
-func (solution *ConsensusSolution) MaximizeSolution(allBitVotes []*WeightedBitVote, fees []int, assumedWeight, totalWeight uint16) {
+func (solution *ConsensusSolution) MaximizeSolution(allBitVotes []*WeightedBitVote, fees []*big.Int, assumedWeight, totalWeight uint16) {
 	for i, attestation := range solution.Solution {
 		if !attestation {
 			check := true
@@ -76,7 +76,7 @@ func (solution *ConsensusSolution) MaximizeSolution(allBitVotes []*WeightedBitVo
 	solution.Value = solution.CalcValueFromFees(allBitVotes, fees, assumedWeight, totalWeight)
 }
 
-func (solution *ConsensusSolution) MaximizeProviders(allBitVotes []*WeightedBitVote, fees []int, assumedWeight, totalWeight uint16) {
+func (solution *ConsensusSolution) MaximizeProviders(allBitVotes []*WeightedBitVote, fees []*big.Int, assumedWeight, totalWeight uint16) {
 	for i, provider := range solution.Participants {
 		if !provider {
 			check := true

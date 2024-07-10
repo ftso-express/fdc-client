@@ -3,6 +3,7 @@ package bitvotes_test
 import (
 	"fmt"
 	bitvotes "local/fdc/client/attestation/bitVotes"
+	"math/big"
 	"testing"
 	"time"
 
@@ -23,9 +24,9 @@ func TestEnsembleRandom(t *testing.T) {
 		totalWeight += bitVote.Weight
 	}
 
-	fees := make([]int, numAttestations)
+	fees := make([]*big.Int, numAttestations)
 	for j := 0; j < numAttestations; j++ {
-		fees[j] = 1
+		fees[j] = big.NewInt(1)
 	}
 
 	solution := bitvotes.Ensemble(weightedBitvotes, fees, 100000000, time.Now().Unix())
@@ -58,9 +59,9 @@ func TestEnsembleFixed(t *testing.T) {
 		totalWeight += bitVote.Weight
 	}
 
-	fees := make([]int, numAttestations)
+	fees := make([]*big.Int, numAttestations)
 	for j := 0; j < numAttestations; j++ {
-		fees[j] = 1
+		fees[j] = big.NewInt(1)
 	}
 
 	start := time.Now()
@@ -69,7 +70,7 @@ func TestEnsembleFixed(t *testing.T) {
 	fmt.Println("time passed:", time.Since(start).Seconds())
 	// fmt.Println("solution", solution)
 
-	require.Equal(t, 2*71, solution.Value)
+	require.Equal(t, big.NewInt(2*71), solution.Value)
 	require.Equal(t, []bool{false, true, false, false, true, false, false, false}, solution.Solution)
 	for j := 0; j < numVoters; j++ {
 		if 0.30*float64(numVoters) > float64(j) {

@@ -32,7 +32,7 @@ func AggregateBitVotes(bitVotes []*WeightedBitVote) ([]*WeightedBitVote, map[int
 }
 
 // AggregateAttestations joins attestations among WeightedBitVotes with the same BitVote and sums their fees.
-func AggregateAttestations(bitVotes []*WeightedBitVote, fees []int) ([]*WeightedBitVote, []int, map[int][]int) {
+func AggregateAttestations(bitVotes []*WeightedBitVote, fees []*big.Int) ([]*WeightedBitVote, []*big.Int, map[int][]int) {
 	if len(fees) == 0 {
 		return bitVotes, fees, nil
 	}
@@ -40,7 +40,7 @@ func AggregateAttestations(bitVotes []*WeightedBitVote, fees []int) ([]*Weighted
 	wordToIndex := make(map[string]int)
 	aggregationMap := make(map[int][]int)
 
-	newFees := make([]int, 0)
+	newFees := make([]*big.Int, 0)
 	counter := 0
 	for i := 0; i < len(fees); i++ {
 		word := ""
@@ -50,11 +50,11 @@ func AggregateAttestations(bitVotes []*WeightedBitVote, fees []int) ([]*Weighted
 
 		if index, ok := wordToIndex[word]; ok {
 			aggregationMap[index] = append(aggregationMap[index], i)
-			newFees[index] += fees[i]
+			newFees[index].Add(newFees[index], fees[i])
 		} else {
 			wordToIndex[word] = counter
 			aggregationMap[counter] = []int{i}
-			newFees = append(newFees, fees[i])
+			newFees = append(newFees, new(big.Int).Set(fees[i]))
 			counter++
 		}
 	}
@@ -76,13 +76,13 @@ func AggregateAttestations(bitVotes []*WeightedBitVote, fees []int) ([]*Weighted
 }
 
 // FilterBitVotes filters out those bit votes whose bit vector is all ones or all zeros
-func FilterBitVotes(bitVotes []*WeightedBitVote) ([]*WeightedBitVote, []int, uint16, []int, uint16) {
-	removedOnes := make([]int, 0)
-	removedOnesWeight := uint16(0)
-	removedZeros := make([]int, 0)
-	removedZerosWeight := uint16(0)
+func FilterBitVotes(bitVotes []*WeightedBitVote) (newBitVotes []*WeightedBitVote, removedOnes []int, removedOnesWeight uint16, removedZeros []int, removedZerosWeight uint16) {
+	removedOnes = make([]int, 0)
+	removedOnesWeight = uint16(0)
+	removedZeros = make([]int, 0)
+	removedZerosWeight = uint16(0)
 
-	newBitVotes := make([]*WeightedBitVote, 0)
+	newBitVotes = make([]*WeightedBitVote, 0)
 
 	ones := new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(bitVotes[0].BitVote.Length)), nil)
 	ones.Sub(ones, big.NewInt(1))
@@ -104,11 +104,11 @@ func FilterBitVotes(bitVotes []*WeightedBitVote) ([]*WeightedBitVote, []int, uin
 }
 
 // FilterAttestations filters out those attestations that are confirmed by all or by less than half
-func FilterAttestations(bitVotes []*WeightedBitVote, fees []int, totalWeight uint16) ([]*WeightedBitVote, []int, int, []int, []int) {
-	removedOnes := make([]int, 0)
-	removedLowWeight := make([]int, 0)
+func FilterAttestations(bitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16) (newBitVotes []*WeightedBitVote, newFees []*big.Int, removedOnesFees *big.Int, removedOnes []int, removedLowWeight []int) {
+	removedOnes = make([]int, 0)
+	removedLowWeight = make([]int, 0)
 	remains := make([]int, 0)
-	removedOnesFees := 0
+	removedOnesFees = big.NewInt(0)
 
 	for i := 0; i < int(bitVotes[0].BitVote.Length); i++ {
 		checkOnes := true
@@ -122,7 +122,7 @@ func FilterAttestations(bitVotes []*WeightedBitVote, fees []int, totalWeight uin
 		}
 		if checkOnes {
 			removedOnes = append(removedOnes, i)
-			removedOnesFees += fees[i]
+			removedOnesFees.Add(removedOnesFees, fees[i])
 		} else if weight < totalWeight/2 {
 			removedLowWeight = append(removedLowWeight, i)
 		} else {
@@ -131,7 +131,7 @@ func FilterAttestations(bitVotes []*WeightedBitVote, fees []int, totalWeight uin
 	}
 
 	newLength := uint16(len(remains))
-	newBitVotes := make([]*WeightedBitVote, len(bitVotes))
+	newBitVotes = make([]*WeightedBitVote, len(bitVotes))
 	for i, e := range bitVotes {
 		newBitVotes[i] = &WeightedBitVote{Index: e.Index, IndexTx: e.IndexTx, Weight: e.Weight, BitVote: BitVote{Length: newLength, BitVector: big.NewInt(0)}}
 		for j := 0; j < int(newLength); j++ {
@@ -142,9 +142,9 @@ func FilterAttestations(bitVotes []*WeightedBitVote, fees []int, totalWeight uin
 		}
 	}
 
-	newFees := make([]int, newLength)
+	newFees = make([]*big.Int, newLength)
 	for j := 0; j < int(newLength); j++ {
-		newFees[j] = fees[remains[j]]
+		newFees[j] = new(big.Int).Set(fees[remains[j]])
 	}
 
 	return newBitVotes, newFees, removedOnesFees, removedOnes, removedLowWeight
@@ -162,13 +162,13 @@ type PreProcessInfo struct {
 	RemovedZerosWeight uint16
 	RemovedOnesWeight  uint16
 
-	RemovedOnesFees int
+	RemovedOnesFees *big.Int
 
 	NumAttestationsBeforeAggregation int
 	NumBitVotesBeforeAggregation     int
 }
 
-func PreProcess(bitVotes []*WeightedBitVote, fees []int) ([]*WeightedBitVote, []int, *PreProcessInfo) {
+func PreProcess(bitVotes []*WeightedBitVote, fees []*big.Int) ([]*WeightedBitVote, []*big.Int, *PreProcessInfo) {
 	totalWeight := uint16(0)
 	for _, bitVote := range bitVotes {
 		totalWeight += bitVote.Weight
@@ -181,11 +181,17 @@ func PreProcess(bitVotes []*WeightedBitVote, fees []int) ([]*WeightedBitVote, []
 	aggregateBitVotes2, bitVotesAggregationMap := AggregateBitVotes(aggregatedBitVotes1)
 
 	info := &PreProcessInfo{
-		RemovedBitVotesOnes: removedBitVotesOnes, RemovedBitVotesZeros: removedBitVotesZeros,
-		BitVotesAggregationMap: bitVotesAggregationMap, RemovedAttestationsOnes: removedAttestationsOnes,
-		RemovedAttestationsLowWeight: removedLowWeight, AttestationsAggregationMap: attestationsAggregationMap,
-		RemovedZerosWeight: removedZerosWeight, RemovedOnesWeight: removedOnesWeight,
-		RemovedOnesFees: removedOnesFee, NumAttestationsBeforeAggregation: len(filteredFees), NumBitVotesBeforeAggregation: len(filteredBitVotes2),
+		RemovedBitVotesOnes:              removedBitVotesOnes,
+		RemovedBitVotesZeros:             removedBitVotesZeros,
+		BitVotesAggregationMap:           bitVotesAggregationMap,
+		RemovedAttestationsOnes:          removedAttestationsOnes,
+		RemovedAttestationsLowWeight:     removedLowWeight,
+		AttestationsAggregationMap:       attestationsAggregationMap,
+		RemovedZerosWeight:               removedZerosWeight,
+		RemovedOnesWeight:                removedOnesWeight,
+		RemovedOnesFees:                  removedOnesFee,
+		NumAttestationsBeforeAggregation: len(filteredFees),
+		NumBitVotesBeforeAggregation:     len(filteredBitVotes2),
 	}
 
 	return aggregateBitVotes2, aggregatedFees, info

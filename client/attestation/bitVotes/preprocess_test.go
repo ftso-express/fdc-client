@@ -3,6 +3,7 @@ package bitvotes_test
 import (
 	"fmt"
 	bitvotes "local/fdc/client/attestation/bitVotes"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -45,9 +46,9 @@ func TestAggregateAttestations(t *testing.T) {
 		weightedBitvotes[j] = bitVote
 	}
 
-	fees := make([]int, numAttestations)
+	fees := make([]*big.Int, numAttestations)
 	for j := 0; j < numAttestations; j++ {
-		fees[j] = 1
+		fees[j] = big.NewInt(1)
 	}
 
 	aggregatedBitVotes, aggregatedFees, _ := bitvotes.AggregateAttestations(weightedBitvotes, fees)
@@ -103,9 +104,9 @@ func TestFilterAttestations(t *testing.T) {
 		weightedBitvotes[j] = bitVote
 		totalWeight += bitVote.Weight
 	}
-	fees := make([]int, numAttestations)
+	fees := make([]*big.Int, numAttestations)
 	for j := 0; j < numAttestations; j++ {
-		fees[j] = 1
+		fees[j] = big.NewInt(1)
 	}
 
 	filtered, _, _, removedOnes, removedLowWeight := bitvotes.FilterAttestations(weightedBitvotes, fees, totalWeight)
@@ -135,17 +136,19 @@ func TestPreProcess(t *testing.T) {
 		weightedBitvotes[j] = bitVote
 		totalWeight += bitVote.Weight
 	}
-	fees := make([]int, numAttestations)
+	fees := make([]*big.Int, numAttestations)
 	for j := 0; j < numAttestations; j++ {
-		fees[j] = 1
+		fees[j] = big.NewInt(1)
 	}
 
 	preProcessedBitVotes, newFees, preProccesInfo := bitvotes.PreProcess(weightedBitvotes, fees)
 	fmt.Println(preProcessedBitVotes[0], preProcessedBitVotes[1])
 	fmt.Println(preProcessedBitVotes, newFees, preProccesInfo)
 
-	require.Equal(t, len(preProcessedBitVotes), 2)
-	require.Equal(t, len(newFees), 2)
+	fmt.Printf("newFees: %v\n", newFees)
+
+	require.Equal(t, 2, len(preProcessedBitVotes))
+	require.Equal(t, 2, len(newFees))
 
 	require.Equal(t, preProccesInfo.RemovedZerosWeight, uint16(0))
 }

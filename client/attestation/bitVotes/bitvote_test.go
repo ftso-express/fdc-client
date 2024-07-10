@@ -256,7 +256,7 @@ func TestConsensusAllEqual(t *testing.T) {
 		WeightedBitVotes: weightedBitvotes,
 		TotalWeight:      totalWeight,
 		Fees:             fees,
-	})
+	}, 200)
 
 	require.NoError(t, err)
 
@@ -289,7 +289,7 @@ func TestConsensusNotMoreThanHalf(t *testing.T) {
 		WeightedBitVotes: weightedBitvotes,
 		TotalWeight:      2 * totalWeight,
 		Fees:             fees,
-	})
+	}, 200)
 
 	require.Error(t, err)
 
@@ -321,7 +321,7 @@ func TestConsensusMissingAttestation(t *testing.T) {
 		WeightedBitVotes: weightedBitvotes,
 		TotalWeight:      totalWeight,
 		Fees:             fees[:3],
-	})
+	}, 200)
 
 	t.Log("err:", err)
 
@@ -362,7 +362,7 @@ func TestConsensusMixed(t *testing.T) {
 		WeightedBitVotes: weightedBitvotes,
 		TotalWeight:      totalWeight,
 		Fees:             fees,
-	})
+	}, 200)
 
 	fmt.Printf("time passed: %v\n", time.Since(start).Seconds())
 
@@ -500,7 +500,7 @@ func BenchmarkConsensusMixed(b *testing.B) {
 			WeightedBitVotes: weightedBitvotes,
 			TotalWeight:      totalWeight,
 			Fees:             fees,
-		})
+		}, 200)
 	}
 
 }

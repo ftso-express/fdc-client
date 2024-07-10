@@ -3,6 +3,7 @@ package bitvotes_test
 import (
 	"fmt"
 	bitvotes "local/fdc/client/attestation/bitVotes"
+	"math/big"
 	"testing"
 	"time"
 
@@ -32,9 +33,9 @@ func TestBranchAndBoundProvidersFix(t *testing.T) {
 		totalWeight += bitVote.Weight
 	}
 
-	fees := make([]int, numAttestations)
+	fees := make([]*big.Int, numAttestations)
 	for j := 0; j < numAttestations; j++ {
-		fees[j] = 1
+		fees[j] = big.NewInt(1)
 	}
 
 	start := time.Now()
@@ -65,9 +66,9 @@ func TestBranchAndBoundProvidersRandom(t *testing.T) {
 		totalWeight += bitVote.Weight
 	}
 
-	fees := make([]int, numAttestations)
+	fees := make([]*big.Int, numAttestations)
 	for j := 0; j < numAttestations; j++ {
-		fees[j] = 1
+		fees[j] = big.NewInt(1)
 	}
 
 	start := time.Now()
