@@ -70,7 +70,7 @@ func TestEnsembleFixed(t *testing.T) {
 	fmt.Println("time passed:", time.Since(start).Seconds())
 	// fmt.Println("solution", solution)
 
-	require.Equal(t, big.NewInt(2*71), solution.Value)
+	require.Equal(t, bitvotes.Value{big.NewInt(2 * 71), big.NewInt(2 * 71)}, solution.Value)
 	require.Equal(t, []bool{false, true, false, false, true, false, false, false}, solution.Solution)
 	for j := 0; j < numVoters; j++ {
 		if 0.30*float64(numVoters) > float64(j) {
