@@ -17,24 +17,23 @@ func PermuteBitVotes(bitVotes []*WeightedBitVote, randPerm []int) []*WeightedBit
 // BranchAndBoundProviders is similar than BranchAndBound, the difference is that it
 // executes a branch and bound strategy on the space of subsets of attestation providers, hence
 // it is particularly useful when there are not too many distinct providers.
-func BranchAndBoundProviders(bitVotes []*WeightedBitVote, fees []*big.Int, assumedWeight, absoluteTotalWeight uint16, maxOperations int, seed int64) *ConsensusSolution {
-	numAttestations := len(fees)
+func BranchAndBoundProviders(bitVotes []*AggregatedBitVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, seed int64) *ConsensusSolution {
 	numProviders := len(bitVotes)
 	totalWeight := assumedWeight
 
 	for _, vote := range bitVotes {
-		totalWeight += vote.Weight
+		totalWeight += vote.weight
 	}
 
-	totalFee := big.NewInt(0)
+	totalFee := big.NewInt(0).Set(assumedFees)
 	startingSolution := make(map[int]bool)
 	for i, fee := range fees {
-		totalFee.Add(totalFee, fee)
+		totalFee.Add(totalFee, fee.fee)
 		startingSolution[i] = true
 	}
 	randGen := rand.NewSource(seed)
-	randPerm := RandPerm(numProviders, randGen)
-	permBitVotes := PermuteBitVotes(bitVotes, randPerm)
+	// randPerm := RandPerm(numProviders, randGen)
+	// permBitVotes := PermuteBitVotes(bitVotes, randPerm)
 
 	currentBound := &SharedStatus{
 		CurrentBound:     Value{CappedValue: big.NewInt(0), UncappedValue: big.NewInt(0)},
@@ -42,7 +41,7 @@ func BranchAndBoundProviders(bitVotes []*WeightedBitVote, fees []*big.Int, assum
 		MaxOperations:    maxOperations,
 		TotalWeight:      absoluteTotalWeight,
 		LowerBoundWeight: absoluteTotalWeight / 2,
-		BitVotes:         permBitVotes,
+		BitVotes:         bitVotes,
 		Fees:             fees,
 		RandGen:          randGen,
 		NumProviders:     numProviders,
@@ -50,30 +49,21 @@ func BranchAndBoundProviders(bitVotes []*WeightedBitVote, fees []*big.Int, assum
 
 	permResult := BranchProviders(startingSolution, totalFee, currentBound, 0, totalWeight)
 
-	result := orderResultProviders(permResult, numProviders, numAttestations, randPerm)
-
+	result := ConsensusSolution{
+		Participants: make(map[int]bool),
+		Solution:     make(map[int]bool),
+		Value:        permResult.Value,
+	}
+	// for key, val := range randPerm {
+	// 	result.Participants[key] = permResult.Participants[val]
+	// }
+	// for key, val := range permResult.Solution {
+	// 	result.Solution[key] = val
+	// }
 	if currentBound.NumOperations < maxOperations {
 		result.Optimal = true
 	} else {
 		result.MaximizeProviders(bitVotes, fees, assumedWeight, absoluteTotalWeight)
-	}
-
-	return result
-}
-
-func orderResultProviders(permResult *BranchAndBoundPartialSolution, numProviders, numAttestations int, permutation []int) *ConsensusSolution {
-
-	result := ConsensusSolution{
-		Participants: make([]bool, numProviders),
-		Solution:     make([]bool, numAttestations),
-		Value:        permResult.Value,
-	}
-
-	for key, val := range permutation {
-		result.Participants[key] = permResult.Participants[val]
-	}
-	for key, val := range permResult.Solution {
-		result.Solution[key] = val
 	}
 
 	return &result
@@ -104,7 +94,7 @@ func BranchProviders(solution map[int]bool, feeSum *big.Int, currentStatus *Shar
 	var result0 *BranchAndBoundPartialSolution
 	var result1 *BranchAndBoundPartialSolution
 
-	newCurrentMaxWeight := currentMaxWeight - currentStatus.BitVotes[branch].Weight
+	newCurrentMaxWeight := currentMaxWeight - currentStatus.BitVotes[branch].weight
 
 	// decide randomly which branch is first
 	randBit := currentStatus.RandGen.Int63() % 2
@@ -135,8 +125,8 @@ func prepareDataForBranchWithProvider(solution map[int]bool, feeSum *big.Int, cu
 	newSolution := make(map[int]bool)
 	newFeeSum := new(big.Int).Set(feeSum)
 	for sol := range solution {
-		if currentStatus.BitVotes[branch].BitVote.BitVector.Bit(sol) == 0 {
-			newFeeSum.Sub(newFeeSum, currentStatus.Fees[sol])
+		if currentStatus.BitVotes[branch].bitVector.Bit(sol) == 0 {
+			newFeeSum.Sub(newFeeSum, currentStatus.Fees[sol].fee)
 		} else {
 			newSolution[sol] = true
 		}

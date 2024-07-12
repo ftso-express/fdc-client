@@ -5,6 +5,7 @@ import (
 	"flare-common/policy"
 	"fmt"
 	"local/fdc/client/attestation"
+	"local/fdc/client/utils"
 	"math/big"
 
 	"testing"
@@ -173,7 +174,7 @@ func TestPrepend(t *testing.T) {
 		array := make([]int, 0)
 		for _, j := range test.added {
 
-			array = attestation.PrependInt(array, j)
+			array = utils.Prepend(array, j)
 
 		}
 

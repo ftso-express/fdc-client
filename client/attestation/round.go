@@ -7,6 +7,7 @@ import (
 	"flare-common/policy"
 	"fmt"
 	bitvotes "local/fdc/client/attestation/bitVotes"
+	"local/fdc/client/utils"
 	"sort"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -57,7 +58,7 @@ func (r *Round) addAttestation(attestation *Attestation) bool {
 
 		if earlierLog(attestation.index(), att.index()) {
 
-			att.Indexes = prepend(att.Indexes, attestation.index())
+			att.Indexes = utils.Prepend(att.Indexes, attestation.index())
 		}
 
 		att.Indexes = append(att.Indexes, attestation.index())
@@ -70,22 +71,6 @@ func (r *Round) addAttestation(attestation *Attestation) bool {
 	r.Attestations = append(r.Attestations, attestation)
 
 	return true
-}
-
-// prepend places the element at the beginning of the slice and moves the potentially replaced element to the end.
-func prepend[T any](slice []T, element T) []T {
-
-	if len(slice) == 0 {
-		slice = append(slice, element)
-		return slice
-	}
-
-	slice = append(slice, slice[0])
-
-	slice[0] = element
-
-	return slice
-
 }
 
 // sortAttestations sorts round's attestations according to their IndexLog.

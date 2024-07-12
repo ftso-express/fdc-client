@@ -3,21 +3,21 @@ package bitvotes
 import "math/big"
 
 type ConsensusSolution struct {
-	Participants []bool
-	Solution     []bool
+	Participants map[int]bool
+	Solution     map[int]bool
 	Value        Value
 	Optimal      bool
 }
 
-func Ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, maxOperations int, seed int64) *ConsensusSolution {
+func Ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, maxOperations int, seed int64) *big.Int {
 	totalWeight := uint16(0)
 	for _, bitVote := range allBitVotes {
 		totalWeight += bitVote.Weight
 	}
 
-	preProcessedBitVotes, newFees, preProccesInfo := PreProcess(allBitVotes, fees)
+	aggregatedVotes, aggregatedFees, filterResults := FilterAndAggregate(allBitVotes, fees, totalWeight)
 
-	var firstMethod, secondMethod func([]*WeightedBitVote, []*big.Int, uint16, uint16, int, int64) *ConsensusSolution
+	var firstMethod, secondMethod func([]*AggregatedBitVote, []*AggregatedFee, uint16, uint16, *big.Int, int, int64) *ConsensusSolution
 	if len(allBitVotes) < len(fees) {
 		firstMethod = BranchAndBoundProviders
 		secondMethod = BranchAndBound
@@ -26,43 +26,42 @@ func Ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, maxOperations int
 		secondMethod = BranchAndBoundProviders
 	}
 
-	solution := firstMethod(preProcessedBitVotes, newFees, preProccesInfo.RemovedOnesWeight, totalWeight, maxOperations, seed)
+	solution := firstMethod(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, maxOperations, seed)
 	if !solution.Optimal {
-		solution2 := secondMethod(preProcessedBitVotes, newFees, preProccesInfo.RemovedOnesWeight, totalWeight, maxOperations, seed)
+		solution2 := secondMethod(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, maxOperations, seed)
 		if solution2.Value.Cmp(solution.Value) == 1 {
 			solution = solution2
 		}
 	}
 
-	expandedSolution := ExpandSolution(solution, preProccesInfo)
-	expandedSolution.Value = expandedSolution.CalcValueFromFees(allBitVotes, fees, 0, totalWeight)
+	consensusBitVote := AssembleSolution(filterResults, *solution, aggregatedFees)
 
-	return expandedSolution
+	return consensusBitVote
 }
 
-func (solution *ConsensusSolution) CalcValueFromFees(allBitVotes []*WeightedBitVote, fees []*big.Int, assumedWeight, totalWeight uint16) Value {
+func (solution *ConsensusSolution) CalcValueFromFees(allBitVotes []*AggregatedBitVote, fees []*AggregatedFee, assumedWeight, totalWeight uint16) Value {
 	feeSum := big.NewInt(0)
 	for i, attestation := range solution.Solution {
 		if attestation {
-			feeSum.Add(feeSum, fees[i])
+			feeSum.Add(feeSum, fees[i].fee)
 		}
 	}
 	weight := assumedWeight
 	for j, voter := range solution.Participants {
 		if voter {
-			weight += allBitVotes[j].Weight
+			weight += allBitVotes[j].weight
 		}
 	}
 
 	return CalcValue(feeSum, weight, totalWeight)
 }
 
-func (solution *ConsensusSolution) MaximizeSolution(allBitVotes []*WeightedBitVote, fees []*big.Int, assumedWeight, totalWeight uint16) {
+func (solution *ConsensusSolution) MaximizeSolution(allBitVotes []*AggregatedBitVote, fees []*AggregatedFee, assumedWeight, totalWeight uint16) {
 	for i, attestation := range solution.Solution {
 		if !attestation {
 			check := true
 			for j, voter := range solution.Participants {
-				if voter && allBitVotes[j].BitVote.BitVector.Bit(i) == 0 {
+				if voter && allBitVotes[j].bitVector.Bit(i) == 0 {
 					check = false
 					break
 				}
@@ -76,12 +75,12 @@ func (solution *ConsensusSolution) MaximizeSolution(allBitVotes []*WeightedBitVo
 	solution.Value = solution.CalcValueFromFees(allBitVotes, fees, assumedWeight, totalWeight)
 }
 
-func (solution *ConsensusSolution) MaximizeProviders(allBitVotes []*WeightedBitVote, fees []*big.Int, assumedWeight, totalWeight uint16) {
+func (solution *ConsensusSolution) MaximizeProviders(allBitVotes []*AggregatedBitVote, fees []*AggregatedFee, assumedWeight, totalWeight uint16) {
 	for i, provider := range solution.Participants {
 		if !provider {
 			check := true
 			for j, solution := range solution.Solution {
-				if solution && allBitVotes[i].BitVote.BitVector.Bit(j) == 0 {
+				if solution && allBitVotes[i].bitVector.Bit(j) == 0 {
 					check = false
 					break
 				}
