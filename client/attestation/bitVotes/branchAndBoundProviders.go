@@ -22,13 +22,13 @@ func BranchAndBoundProviders(bitVotes []*AggregatedBitVote, fees []*AggregatedFe
 	totalWeight := assumedWeight
 
 	for _, vote := range bitVotes {
-		totalWeight += vote.weight
+		totalWeight += vote.Weight
 	}
 
 	totalFee := big.NewInt(0).Set(assumedFees)
 	startingSolution := make(map[int]bool)
 	for i, fee := range fees {
-		totalFee.Add(totalFee, fee.fee)
+		totalFee.Add(totalFee, fee.Fee)
 		startingSolution[i] = true
 	}
 	randGen := rand.NewSource(seed)
@@ -50,8 +50,8 @@ func BranchAndBoundProviders(bitVotes []*AggregatedBitVote, fees []*AggregatedFe
 	permResult := BranchProviders(startingSolution, totalFee, currentBound, 0, totalWeight)
 
 	result := ConsensusSolution{
-		Participants: make(map[int]bool),
-		Solution:     make(map[int]bool),
+		Participants: permResult.Participants,
+		Solution:     permResult.Solution,
 		Value:        permResult.Value,
 	}
 	// for key, val := range randPerm {
@@ -63,7 +63,7 @@ func BranchAndBoundProviders(bitVotes []*AggregatedBitVote, fees []*AggregatedFe
 	if currentBound.NumOperations < maxOperations {
 		result.Optimal = true
 	} else {
-		result.MaximizeProviders(bitVotes, fees, assumedWeight, absoluteTotalWeight)
+		result.MaximizeProviders(bitVotes, fees, assumedFees, assumedWeight, absoluteTotalWeight)
 	}
 
 	return &result
@@ -94,7 +94,7 @@ func BranchProviders(solution map[int]bool, feeSum *big.Int, currentStatus *Shar
 	var result0 *BranchAndBoundPartialSolution
 	var result1 *BranchAndBoundPartialSolution
 
-	newCurrentMaxWeight := currentMaxWeight - currentStatus.BitVotes[branch].weight
+	newCurrentMaxWeight := currentMaxWeight - currentStatus.BitVotes[branch].Weight
 
 	// decide randomly which branch is first
 	randBit := currentStatus.RandGen.Int63() % 2
@@ -125,8 +125,8 @@ func prepareDataForBranchWithProvider(solution map[int]bool, feeSum *big.Int, cu
 	newSolution := make(map[int]bool)
 	newFeeSum := new(big.Int).Set(feeSum)
 	for sol := range solution {
-		if currentStatus.BitVotes[branch].bitVector.Bit(sol) == 0 {
-			newFeeSum.Sub(newFeeSum, currentStatus.Fees[sol].fee)
+		if currentStatus.BitVotes[branch].BitVector.Bit(sol) == 0 {
+			newFeeSum.Sub(newFeeSum, currentStatus.Fees[sol].Fee)
 		} else {
 			newSolution[sol] = true
 		}

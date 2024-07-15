@@ -169,8 +169,8 @@ func Filter(bitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16) *F
 }
 
 type AggregatedFee struct {
-	fee     *big.Int
-	indexes []int
+	Fee     *big.Int
+	Indexes []int
 }
 
 func AggregateBits(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults *FilterResults) []*AggregatedFee {
@@ -200,7 +200,7 @@ func AggregateBits(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults *
 		if !exists {
 			aggregator[state] = counter
 
-			newIndexedFee := AggregatedFee{fee: new(big.Int).Set(fees[i]), indexes: []int{i}}
+			newIndexedFee := AggregatedFee{Fee: new(big.Int).Set(fees[i]), Indexes: []int{i}}
 			aggregatedFees = append(aggregatedFees, &newIndexedFee)
 
 			index[counter] = []int{i}
@@ -209,12 +209,12 @@ func AggregateBits(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults *
 
 		} else {
 			index[k] = append(index[k], i)
-			aggregatedFees[k].fee.Add(aggregatedFees[k].fee, fees[i])
+			aggregatedFees[k].Fee.Add(aggregatedFees[k].Fee, fees[i])
 
-			if i < aggregatedFees[k].indexes[0] {
-				aggregatedFees[k].indexes = utils.Prepend(aggregatedFees[k].indexes, i)
+			if i < aggregatedFees[k].Indexes[0] {
+				aggregatedFees[k].Indexes = utils.Prepend(aggregatedFees[k].Indexes, i)
 			} else {
-				aggregatedFees[k].indexes = append(aggregatedFees[k].indexes, i)
+				aggregatedFees[k].Indexes = append(aggregatedFees[k].Indexes, i)
 
 			}
 
@@ -227,9 +227,9 @@ func AggregateBits(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults *
 }
 
 type AggregatedBitVote struct {
-	bitVector *big.Int
-	weight    uint16
-	indexes   []int
+	BitVector *big.Int
+	Weight    uint16
+	Indexes   []int
 }
 
 func AggregateVotes(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults *FilterResults) []*AggregatedBitVote {
@@ -253,21 +253,21 @@ func AggregateVotes(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults 
 
 		if !exists {
 			newAggregatedBitVote := AggregatedBitVote{
-				bitVector: new(big.Int).Set(bitVotes[i].BitVote.BitVector),
-				weight:    bitVotes[i].Weight,
-				indexes:   []int{i},
+				BitVector: new(big.Int).Set(bitVotes[i].BitVote.BitVector),
+				Weight:    bitVotes[i].Weight,
+				Indexes:   []int{i},
 			}
 			aggregatedVotes = append(aggregatedVotes, &newAggregatedBitVote)
 
 		} else {
 
-			aggregatedVotes[k].weight += bitVotes[i].Weight
+			aggregatedVotes[k].Weight += bitVotes[i].Weight
 
-			if bitVotes[i].Index < aggregatedVotes[k].indexes[0] { // indexes[0] always exists!
-				aggregatedVotes[k].indexes = utils.Prepend(aggregatedVotes[k].indexes, i)
+			if bitVotes[i].Index < aggregatedVotes[k].Indexes[0] { // indexes[0] always exists!
+				aggregatedVotes[k].Indexes = utils.Prepend(aggregatedVotes[k].Indexes, i)
 			} else {
-				aggregatedVotes[k].indexes =
-					append(aggregatedVotes[k].indexes, i)
+				aggregatedVotes[k].Indexes =
+					append(aggregatedVotes[k].Indexes, i)
 
 			}
 		}
@@ -300,7 +300,7 @@ func AssembleSolution(filterResults *FilterResults, filteredSolution ConsensusSo
 	}
 
 	for k := range filteredSolution.Solution {
-		indexes := aggregatedFees[k].indexes
+		indexes := aggregatedFees[k].Indexes
 
 		for _, i := range indexes {
 			consensusBitVote.SetBit(consensusBitVote, i, 1)
@@ -309,5 +309,45 @@ func AssembleSolution(filterResults *FilterResults, filteredSolution ConsensusSo
 	}
 
 	return consensusBitVote
+
+}
+
+type Solution struct {
+	Bits    []int
+	Votes   []int
+	Value   Value
+	Optimal bool
+}
+
+func AssembleSolutionFull(filterResults *FilterResults, filteredSolution ConsensusSolution, aggregatedFees []*AggregatedFee, aggregatedVotes []*AggregatedBitVote) Solution {
+
+	bits := []int{}
+
+	bits = append(bits, filterResults.AlwaysInBits...)
+
+	for k := range filteredSolution.Solution {
+		indexes := aggregatedFees[k].Indexes
+
+		bits = append(bits, indexes...)
+
+	}
+
+	voters := []int{}
+
+	voters = append(voters, filterResults.AlwaysInVotes...)
+
+	for k := range filteredSolution.Participants {
+		indexes := aggregatedVotes[k].Indexes
+
+		voters = append(voters, indexes...)
+
+	}
+
+	return Solution{
+		Bits:    bits,
+		Votes:   voters,
+		Value:   filteredSolution.Value,
+		Optimal: filteredSolution.Optimal,
+	}
 
 }

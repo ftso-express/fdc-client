@@ -1,6 +1,9 @@
 package bitvotes
 
-import "math/big"
+import (
+	"fmt"
+	"math/big"
+)
 
 type ConsensusSolution struct {
 	Participants map[int]bool
@@ -9,7 +12,7 @@ type ConsensusSolution struct {
 	Optimal      bool
 }
 
-func Ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, maxOperations int, seed int64) *big.Int {
+func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, maxOperations int, seed int64) ([]*AggregatedBitVote, []*AggregatedFee, *FilterResults, *ConsensusSolution) {
 	totalWeight := uint16(0)
 	for _, bitVote := range allBitVotes {
 		totalWeight += bitVote.Weight
@@ -34,34 +37,48 @@ func Ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, maxOperations int
 		}
 	}
 
-	consensusBitVote := AssembleSolution(filterResults, *solution, aggregatedFees)
+	fmt.Printf("solution: %v\n", solution)
 
-	return consensusBitVote
+	return aggregatedVotes, aggregatedFees, filterResults, solution
 }
 
-func (solution *ConsensusSolution) CalcValueFromFees(allBitVotes []*AggregatedBitVote, fees []*AggregatedFee, assumedWeight, totalWeight uint16) Value {
-	feeSum := big.NewInt(0)
+func EnsembleFull(allBitVotes []*WeightedBitVote, fees []*big.Int, maxOperations int, seed int64) Solution {
+
+	aggregatedVotes, aggregadedFees, filterResults, filterSolution := ensemble(allBitVotes, fees, maxOperations, seed)
+
+	return AssembleSolutionFull(filterResults, *filterSolution, aggregadedFees, aggregatedVotes)
+}
+
+func EnsembleConsensulBitVote(allBitVotes []*WeightedBitVote, fees []*big.Int, maxOperations int, seed int64) *big.Int {
+
+	_, aggregadedFees, filterResults, filterSolution := ensemble(allBitVotes, fees, maxOperations, seed)
+
+	return AssembleSolution(filterResults, *filterSolution, aggregadedFees)
+}
+
+func (solution *ConsensusSolution) CalcValueFromFees(allBitVotes []*AggregatedBitVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) Value {
+	feeSum := big.NewInt(0).Set(assumedFees)
 	for i, attestation := range solution.Solution {
 		if attestation {
-			feeSum.Add(feeSum, fees[i].fee)
+			feeSum.Add(feeSum, fees[i].Fee)
 		}
 	}
 	weight := assumedWeight
 	for j, voter := range solution.Participants {
 		if voter {
-			weight += allBitVotes[j].weight
+			weight += allBitVotes[j].Weight
 		}
 	}
 
 	return CalcValue(feeSum, weight, totalWeight)
 }
 
-func (solution *ConsensusSolution) MaximizeSolution(allBitVotes []*AggregatedBitVote, fees []*AggregatedFee, assumedWeight, totalWeight uint16) {
+func (solution *ConsensusSolution) MaximizeSolution(allBitVotes []*AggregatedBitVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) {
 	for i, attestation := range solution.Solution {
 		if !attestation {
 			check := true
 			for j, voter := range solution.Participants {
-				if voter && allBitVotes[j].bitVector.Bit(i) == 0 {
+				if voter && allBitVotes[j].BitVector.Bit(i) == 0 {
 					check = false
 					break
 				}
@@ -72,15 +89,15 @@ func (solution *ConsensusSolution) MaximizeSolution(allBitVotes []*AggregatedBit
 		}
 	}
 
-	solution.Value = solution.CalcValueFromFees(allBitVotes, fees, assumedWeight, totalWeight)
+	solution.Value = solution.CalcValueFromFees(allBitVotes, fees, assumedFees, assumedWeight, totalWeight)
 }
 
-func (solution *ConsensusSolution) MaximizeProviders(allBitVotes []*AggregatedBitVote, fees []*AggregatedFee, assumedWeight, totalWeight uint16) {
+func (solution *ConsensusSolution) MaximizeProviders(allBitVotes []*AggregatedBitVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) {
 	for i, provider := range solution.Participants {
 		if !provider {
 			check := true
 			for j, solution := range solution.Solution {
-				if solution && allBitVotes[i].bitVector.Bit(j) == 0 {
+				if solution && allBitVotes[i].BitVector.Bit(j) == 0 {
 					check = false
 					break
 				}
@@ -91,5 +108,5 @@ func (solution *ConsensusSolution) MaximizeProviders(allBitVotes []*AggregatedBi
 		}
 	}
 
-	solution.Value = solution.CalcValueFromFees(allBitVotes, fees, assumedWeight, totalWeight)
+	solution.Value = solution.CalcValueFromFees(allBitVotes, fees, assumedFees, assumedWeight, totalWeight)
 }

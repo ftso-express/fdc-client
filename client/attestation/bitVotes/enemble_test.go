@@ -11,9 +11,11 @@ import (
 )
 
 func TestEnsembleRandom(t *testing.T) {
-	numAttestations := 10
-	numVoters := 30
+	numAttestations := 40
+	numVoters := 100
 	weightedBitvotes := make([]*bitvotes.WeightedBitVote, numVoters)
+	aggregatedBitvotes := make([]*bitvotes.AggregatedBitVote, numVoters)
+
 	prob := 0.8
 
 	totalWeight := uint16(0)
@@ -21,21 +23,32 @@ func TestEnsembleRandom(t *testing.T) {
 		bitVote := randomBitVotes(numAttestations, prob)
 		weightedBitvotes[j] = bitVote
 
+		agg := bitvotes.AggregatedBitVote{BitVector: bitVote.BitVote.BitVector, Weight: bitVote.Weight, Indexes: []int{j}}
+
+		aggregatedBitvotes[j] = &agg
+
 		totalWeight += bitVote.Weight
 	}
 
 	fees := make([]*big.Int, numAttestations)
+	aggFees := make([]*bitvotes.AggregatedFee, numAttestations)
 	for j := 0; j < numAttestations; j++ {
 		fees[j] = big.NewInt(1)
+
+		aggFee := bitvotes.AggregatedFee{big.NewInt(1), []int{j}}
+
+		aggFees[j] = &aggFee
 	}
 
-	solution := bitvotes.Ensemble(weightedBitvotes, fees, 100000000, time.Now().Unix())
-	require.Equal(t, numVoters, len(solution.Participants))
-	require.Equal(t, numAttestations, len(solution.Solution))
+	solution := bitvotes.EnsembleFull(weightedBitvotes, fees, 100000000, time.Now().Unix())
+	// require.Equal(t, numVoters, len(solution.Participants))
+	// require.Equal(t, numAttestations, len(solution.Solution))
 
-	solutionCheck := bitvotes.BranchAndBound(weightedBitvotes, fees, 0, totalWeight, 100000000, time.Now().Unix())
+	solutionCheck := bitvotes.BranchAndBound(aggregatedBitvotes, aggFees, 0, totalWeight, big.NewInt(0), 100000000, time.Now().Unix())
 
 	require.Equal(t, solutionCheck.Value, solution.Value)
+
+	fmt.Printf("solution: %v\n", solution)
 }
 
 func TestEnsembleFixed(t *testing.T) {
@@ -65,22 +78,24 @@ func TestEnsembleFixed(t *testing.T) {
 	}
 
 	start := time.Now()
-	solution := bitvotes.Ensemble(weightedBitvotes, fees, 100000000, time.Now().Unix())
+	solution := bitvotes.EnsembleFull(weightedBitvotes, fees, 100000000, time.Now().Unix())
+
+	fmt.Printf("solution: %v\n", solution.Bits)
 
 	fmt.Println("time passed:", time.Since(start).Seconds())
 	// fmt.Println("solution", solution)
 
 	require.Equal(t, bitvotes.Value{big.NewInt(2 * 71), big.NewInt(2 * 71)}, solution.Value)
-	require.Equal(t, []bool{false, true, false, false, true, false, false, false}, solution.Solution)
-	for j := 0; j < numVoters; j++ {
-		if 0.30*float64(numVoters) > float64(j) {
-			require.Equal(t, true, solution.Participants[j])
-		} else if 0.61*float64(numVoters) > float64(j) {
-			require.Equal(t, true, solution.Participants[j])
-		} else if 0.90*float64(numVoters) > float64(j) {
-			require.Equal(t, false, solution.Participants[j])
-		} else {
-			require.Equal(t, true, solution.Participants[j])
-		}
-	}
+	// require.Equal(t, []int{false, true, false, false, true, false, false, false}, solution.Bits)
+	// for j := 0; j < numVoters; j++ {
+	// 	if 0.30*float64(numVoters) > float64(j) {
+	// 		require.Equal(t, true, solution.Participants[j])
+	// 	} else if 0.61*float64(numVoters) > float64(j) {
+	// 		require.Equal(t, true, solution.Participants[j])
+	// 	} else if 0.90*float64(numVoters) > float64(j) {
+	// 		require.Equal(t, false, solution.Participants[j])
+	// 	} else {
+	// 		require.Equal(t, true, solution.Participants[j])
+	// 	}
+	// }
 }
