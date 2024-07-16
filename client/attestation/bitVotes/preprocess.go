@@ -3,6 +3,7 @@ package bitvotes
 import (
 	"local/fdc/client/utils"
 	"math/big"
+	"slices"
 	"strconv"
 )
 
@@ -177,17 +178,23 @@ func AggregateBits(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults *
 
 	aggregator := map[string]int{}
 
-	index := map[int][]int{}
+	aggregatedFees := []*AggregatedFee{}
+
+	remainingBitsSorted := utils.Keys(filterResults.RemainingBits)
+
+	slices.Sort(remainingBitsSorted)
+
+	remainingVotesSorted := utils.Keys(filterResults.RemainingVotes)
+
+	slices.Sort(remainingVotesSorted)
 
 	counter := 0
 
-	aggregatedFees := []*AggregatedFee{}
-
-	for i := range filterResults.RemainingBits {
+	for _, i := range remainingBitsSorted {
 
 		state := ""
 
-		for j := range filterResults.RemainingVotes {
+		for _, j := range remainingVotesSorted {
 
 			bit := bitVotes[j].BitVote.BitVector.Bit(i)
 
@@ -203,12 +210,9 @@ func AggregateBits(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults *
 			newIndexedFee := AggregatedFee{Fee: new(big.Int).Set(fees[i]), Indexes: []int{i}}
 			aggregatedFees = append(aggregatedFees, &newIndexedFee)
 
-			index[counter] = []int{i}
-
 			counter++
 
 		} else {
-			index[k] = append(index[k], i)
 			aggregatedFees[k].Fee.Add(aggregatedFees[k].Fee, fees[i])
 
 			if i < aggregatedFees[k].Indexes[0] {
@@ -237,11 +241,21 @@ func AggregateVotes(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults 
 
 	aggregatedVotes := []*AggregatedBitVote{}
 
-	for i := range filterResults.RemainingVotes {
+	remainingBitsSorted := utils.Keys(filterResults.RemainingBits)
+
+	slices.Sort(remainingBitsSorted)
+
+	remainingVotesSorted := utils.Keys(filterResults.RemainingVotes)
+
+	slices.Sort(remainingVotesSorted)
+
+	counter := 0
+
+	for _, i := range remainingVotesSorted {
 
 		state := ""
 
-		for j := range filterResults.RemainingBits {
+		for _, j := range remainingBitsSorted {
 
 			bit := bitVotes[i].BitVote.BitVector.Bit(j)
 
@@ -258,6 +272,10 @@ func AggregateVotes(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults 
 				Indexes:   []int{i},
 			}
 			aggregatedVotes = append(aggregatedVotes, &newAggregatedBitVote)
+
+			aggregator[state] = counter
+
+			counter++
 
 		} else {
 
@@ -326,6 +344,7 @@ func AssembleSolutionFull(filterResults *FilterResults, filteredSolution Consens
 	bits = append(bits, filterResults.AlwaysInBits...)
 
 	for k := range filteredSolution.Solution {
+
 		indexes := aggregatedFees[k].Indexes
 
 		bits = append(bits, indexes...)

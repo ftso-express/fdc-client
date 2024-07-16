@@ -1,7 +1,6 @@
 package bitvotes
 
 import (
-	"fmt"
 	"math/big"
 )
 
@@ -20,7 +19,7 @@ func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, maxOperations int
 
 	aggregatedVotes, aggregatedFees, filterResults := FilterAndAggregate(allBitVotes, fees, totalWeight)
 
-	var firstMethod, secondMethod func([]*AggregatedBitVote, []*AggregatedFee, uint16, uint16, *big.Int, int, int64) *ConsensusSolution
+	var firstMethod, secondMethod func([]*AggregatedBitVote, []*AggregatedFee, uint16, uint16, *big.Int, int, int64, Value) *ConsensusSolution
 	if len(allBitVotes) < len(fees) {
 		firstMethod = BranchAndBoundProviders
 		secondMethod = BranchAndBound
@@ -29,15 +28,13 @@ func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, maxOperations int
 		secondMethod = BranchAndBoundProviders
 	}
 
-	solution := firstMethod(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, maxOperations, seed)
+	solution := firstMethod(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, maxOperations, seed, Value{big.NewInt(0), big.NewInt(0)})
 	if !solution.Optimal {
-		solution2 := secondMethod(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, maxOperations, seed)
-		if solution2.Value.Cmp(solution.Value) == 1 {
+		solution2 := secondMethod(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, maxOperations, seed, solution.Value)
+		if solution2 != nil && solution2.Value.Cmp(solution.Value) == 1 {
 			solution = solution2
 		}
 	}
-
-	fmt.Printf("solution: %v\n", solution)
 
 	return aggregatedVotes, aggregatedFees, filterResults, solution
 }

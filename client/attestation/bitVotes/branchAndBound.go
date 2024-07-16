@@ -1,7 +1,6 @@
 package bitvotes
 
 import (
-	"fmt"
 	"math"
 	"math/big"
 	"math/rand"
@@ -87,7 +86,7 @@ func RandPerm(n int, randGen rand.Source) []int {
 // gives an optimal solution. In the case that the solution space is too big, the algorithm gives a
 // the best solution it finds. The search strategy is pseudo-randomized, where the pseudo-random
 // function is controlled by the given seed.
-func BranchAndBound(bitVotes []*AggregatedBitVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, seed int64) *ConsensusSolution {
+func BranchAndBound(bitVotes []*AggregatedBitVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, seed int64, initialBound Value) *ConsensusSolution {
 
 	numAttestations := len(fees)
 	weight := assumedWeight
@@ -108,7 +107,7 @@ func BranchAndBound(bitVotes []*AggregatedBitVote, fees []*AggregatedFee, assume
 	// permBitVotes := PermuteBits(bitVotes, randPerm)
 
 	currentStatus := &SharedStatus{
-		CurrentBound:     Value{CappedValue: big.NewInt(0), UncappedValue: big.NewInt(0)},
+		CurrentBound:     initialBound,
 		NumOperations:    0,
 		MaxOperations:    maxOperations,
 		TotalWeight:      absoluteTotalWeight,
@@ -120,6 +119,10 @@ func BranchAndBound(bitVotes []*AggregatedBitVote, fees []*AggregatedFee, assume
 	}
 
 	permResult := Branch(participants, currentStatus, 0, weight, totalFee)
+
+	if permResult == nil {
+		return nil
+	}
 
 	result := ConsensusSolution{
 		Participants: permResult.Participants,
@@ -179,7 +182,7 @@ func Branch(participants map[int]bool, currentStatus *SharedStatus, branch int, 
 	}
 
 	// prepare and check if a branch is possible
-	newParticipants, newCurrentWeight := prepareDataForBranchWithOne(participants, currentStatus, branch, currentWeight)
+	newParticipants, newCurrentWeight := prepareDataForBranchWithOne(participants, currentStatus, currentStatus.Fees[branch].Indexes[0], currentWeight)
 
 	if newCurrentWeight > currentStatus.LowerBoundWeight {
 
@@ -194,13 +197,13 @@ func Branch(participants map[int]bool, currentStatus *SharedStatus, branch int, 
 	return joinResultsAttestations(result0, result1, branch)
 }
 
-func prepareDataForBranchWithOne(participants map[int]bool, currentStatus *SharedStatus, branch int, currentWeight uint16) (map[int]bool, uint16) {
+func prepareDataForBranchWithOne(participants map[int]bool, currentStatus *SharedStatus, bit int, currentWeight uint16) (map[int]bool, uint16) {
 
 	newParticipants := make(map[int]bool)
 	newCurrentWeight := currentWeight
 
 	for participant := range participants {
-		if currentStatus.BitVotes[participant].BitVector.Bit(branch) == 1 {
+		if currentStatus.BitVotes[participant].BitVector.Bit(bit) == 1 {
 
 			newParticipants[participant] = true
 		} else {
@@ -224,11 +227,6 @@ func joinResultsAttestations(result0, result1 *BranchAndBoundPartialSolution, br
 		return result0
 	} else if result0 == nil || result0.Value.Cmp(result1.Value) == -1 {
 		result1.Solution[branch] = true
-
-		fmt.Println("tuku")
-		fmt.Printf("branch: %v\n", branch)
-
-		fmt.Printf("result1.Value: %v\n", result1.Value)
 
 		return result1
 	} else {

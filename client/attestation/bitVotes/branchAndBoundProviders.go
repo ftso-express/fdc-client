@@ -17,7 +17,7 @@ func PermuteBitVotes(bitVotes []*WeightedBitVote, randPerm []int) []*WeightedBit
 // BranchAndBoundProviders is similar than BranchAndBound, the difference is that it
 // executes a branch and bound strategy on the space of subsets of attestation providers, hence
 // it is particularly useful when there are not too many distinct providers.
-func BranchAndBoundProviders(bitVotes []*AggregatedBitVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, seed int64) *ConsensusSolution {
+func BranchAndBoundProviders(bitVotes []*AggregatedBitVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, seed int64, initialBound Value) *ConsensusSolution {
 	numProviders := len(bitVotes)
 	totalWeight := assumedWeight
 
@@ -36,7 +36,7 @@ func BranchAndBoundProviders(bitVotes []*AggregatedBitVote, fees []*AggregatedFe
 	// permBitVotes := PermuteBitVotes(bitVotes, randPerm)
 
 	currentBound := &SharedStatus{
-		CurrentBound:     Value{CappedValue: big.NewInt(0), UncappedValue: big.NewInt(0)},
+		CurrentBound:     initialBound,
 		NumOperations:    0,
 		MaxOperations:    maxOperations,
 		TotalWeight:      absoluteTotalWeight,
@@ -106,7 +106,7 @@ func BranchProviders(solution map[int]bool, feeSum *big.Int, currentStatus *Shar
 	}
 
 	// prepare a new branch
-	newSolution, newFeeSum := prepareDataForBranchWithProvider(solution, feeSum, currentStatus, branch)
+	newSolution, newFeeSum := prepareDataForBranchWithProvider(solution, feeSum, currentStatus, currentStatus.BitVotes[branch].Indexes[0])
 
 	result1 = BranchProviders(newSolution, newFeeSum, currentStatus, branch+1, currentMaxWeight)
 
@@ -120,12 +120,12 @@ func BranchProviders(solution map[int]bool, feeSum *big.Int, currentStatus *Shar
 	return joinResultsProviders(result0, result1, branch)
 }
 
-func prepareDataForBranchWithProvider(solution map[int]bool, feeSum *big.Int, currentStatus *SharedStatus, branch int) (map[int]bool, *big.Int) {
+func prepareDataForBranchWithProvider(solution map[int]bool, feeSum *big.Int, currentStatus *SharedStatus, providerIndex int) (map[int]bool, *big.Int) {
 
 	newSolution := make(map[int]bool)
 	newFeeSum := new(big.Int).Set(feeSum)
 	for sol := range solution {
-		if currentStatus.BitVotes[branch].BitVector.Bit(sol) == 0 {
+		if currentStatus.BitVotes[providerIndex].BitVector.Bit(sol) == 0 {
 			newFeeSum.Sub(newFeeSum, currentStatus.Fees[sol].Fee)
 		} else {
 			newSolution[sol] = true

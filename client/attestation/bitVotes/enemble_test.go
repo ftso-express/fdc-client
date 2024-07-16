@@ -44,7 +44,7 @@ func TestEnsembleRandom(t *testing.T) {
 	// require.Equal(t, numVoters, len(solution.Participants))
 	// require.Equal(t, numAttestations, len(solution.Solution))
 
-	solutionCheck := bitvotes.BranchAndBound(aggregatedBitvotes, aggFees, 0, totalWeight, big.NewInt(0), 100000000, time.Now().Unix())
+	solutionCheck := bitvotes.BranchAndBound(aggregatedBitvotes, aggFees, 0, totalWeight, big.NewInt(0), 100000000, time.Now().Unix(), bitvotes.Value{big.NewInt(0), big.NewInt(0)})
 
 	require.Equal(t, solutionCheck.Value, solution.Value)
 
@@ -83,19 +83,21 @@ func TestEnsembleFixed(t *testing.T) {
 	fmt.Printf("solution: %v\n", solution.Bits)
 
 	fmt.Println("time passed:", time.Since(start).Seconds())
-	// fmt.Println("solution", solution)
+	fmt.Println("solution", solution)
 
 	require.Equal(t, bitvotes.Value{big.NewInt(2 * 71), big.NewInt(2 * 71)}, solution.Value)
-	// require.Equal(t, []int{false, true, false, false, true, false, false, false}, solution.Bits)
-	// for j := 0; j < numVoters; j++ {
-	// 	if 0.30*float64(numVoters) > float64(j) {
-	// 		require.Equal(t, true, solution.Participants[j])
-	// 	} else if 0.61*float64(numVoters) > float64(j) {
-	// 		require.Equal(t, true, solution.Participants[j])
-	// 	} else if 0.90*float64(numVoters) > float64(j) {
-	// 		require.Equal(t, false, solution.Participants[j])
-	// 	} else {
-	// 		require.Equal(t, true, solution.Participants[j])
-	// 	}
-	// }
+
+	fmt.Println(solution.Bits)
+	require.ElementsMatch(t, []int{1, 4}, solution.Bits)
+	for j := 0; j < numVoters; j++ {
+		if 0.30*float64(numVoters) > float64(j) {
+			require.Contains(t, solution.Votes, j)
+		} else if 0.61*float64(numVoters) > float64(j) {
+			require.Contains(t, solution.Votes, j)
+		} else if 0.90*float64(numVoters) > float64(j) {
+			require.NotContains(t, solution.Votes, j)
+		} else {
+			require.Contains(t, solution.Votes, j)
+		}
+	}
 }
