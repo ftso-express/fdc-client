@@ -12,7 +12,7 @@ type SharedStatus struct {
 	MaxOperations    int
 	TotalWeight      uint16
 	LowerBoundWeight uint16
-	BitVotes         []*AggregatedBitVote
+	BitVotes         []*AggregatedVote
 	Fees             []*AggregatedFee
 	RandGen          rand.Source
 	NumAttestations  int
@@ -86,7 +86,7 @@ func RandPerm(n int, randGen rand.Source) []int {
 // gives an optimal solution. In the case that the solution space is too big, the algorithm gives a
 // the best solution it finds. The search strategy is pseudo-randomized, where the pseudo-random
 // function is controlled by the given seed.
-func BranchAndBound(bitVotes []*AggregatedBitVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, seed int64, initialBound Value) *ConsensusSolution {
+func BranchAndBound(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, seed int64, initialBound Value) *ConsensusSolution {
 
 	numAttestations := len(fees)
 	weight := assumedWeight

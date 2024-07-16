@@ -11,15 +11,15 @@ type ConsensusSolution struct {
 	Optimal      bool
 }
 
-func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, maxOperations int, seed int64) ([]*AggregatedBitVote, []*AggregatedFee, *FilterResults, *ConsensusSolution) {
-	totalWeight := uint16(0)
+func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16, maxOperations int, seed int64) ([]*AggregatedVote, []*AggregatedFee, *FilterResults, *ConsensusSolution) {
+	participationWeight := uint16(0)
 	for _, bitVote := range allBitVotes {
-		totalWeight += bitVote.Weight
+		participationWeight += bitVote.Weight
 	}
 
 	aggregatedVotes, aggregatedFees, filterResults := FilterAndAggregate(allBitVotes, fees, totalWeight)
 
-	var firstMethod, secondMethod func([]*AggregatedBitVote, []*AggregatedFee, uint16, uint16, *big.Int, int, int64, Value) *ConsensusSolution
+	var firstMethod, secondMethod func([]*AggregatedVote, []*AggregatedFee, uint16, uint16, *big.Int, int, int64, Value) *ConsensusSolution
 	if len(allBitVotes) < len(fees) {
 		firstMethod = BranchAndBoundProviders
 		secondMethod = BranchAndBound
@@ -39,21 +39,21 @@ func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, maxOperations int
 	return aggregatedVotes, aggregatedFees, filterResults, solution
 }
 
-func EnsembleFull(allBitVotes []*WeightedBitVote, fees []*big.Int, maxOperations int, seed int64) Solution {
+func EnsembleFull(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16, maxOperations int, seed int64) Solution {
 
-	aggregatedVotes, aggregadedFees, filterResults, filterSolution := ensemble(allBitVotes, fees, maxOperations, seed)
+	aggregatedVotes, aggregadedFees, filterResults, filterSolution := ensemble(allBitVotes, fees, totalWeight, maxOperations, seed)
 
 	return AssembleSolutionFull(filterResults, *filterSolution, aggregadedFees, aggregatedVotes)
 }
 
-func EnsembleConsensulBitVote(allBitVotes []*WeightedBitVote, fees []*big.Int, maxOperations int, seed int64) *big.Int {
+func EnsembleConsensulBitVote(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16, maxOperations int, seed int64) *big.Int {
 
-	_, aggregadedFees, filterResults, filterSolution := ensemble(allBitVotes, fees, maxOperations, seed)
+	_, aggregadedFees, filterResults, filterSolution := ensemble(allBitVotes, fees, totalWeight, maxOperations, seed)
 
 	return AssembleSolution(filterResults, *filterSolution, aggregadedFees)
 }
 
-func (solution *ConsensusSolution) CalcValueFromFees(allBitVotes []*AggregatedBitVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) Value {
+func (solution *ConsensusSolution) CalcValueFromFees(allBitVotes []*AggregatedVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) Value {
 	feeSum := big.NewInt(0).Set(assumedFees)
 	for i, attestation := range solution.Solution {
 		if attestation {
@@ -70,7 +70,7 @@ func (solution *ConsensusSolution) CalcValueFromFees(allBitVotes []*AggregatedBi
 	return CalcValue(feeSum, weight, totalWeight)
 }
 
-func (solution *ConsensusSolution) MaximizeSolution(allBitVotes []*AggregatedBitVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) {
+func (solution *ConsensusSolution) MaximizeSolution(allBitVotes []*AggregatedVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) {
 	for i, attestation := range solution.Solution {
 		if !attestation {
 			check := true
@@ -89,7 +89,7 @@ func (solution *ConsensusSolution) MaximizeSolution(allBitVotes []*AggregatedBit
 	solution.Value = solution.CalcValueFromFees(allBitVotes, fees, assumedFees, assumedWeight, totalWeight)
 }
 
-func (solution *ConsensusSolution) MaximizeProviders(allBitVotes []*AggregatedBitVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) {
+func (solution *ConsensusSolution) MaximizeProviders(allBitVotes []*AggregatedVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) {
 	for i, provider := range solution.Participants {
 		if !provider {
 			check := true
