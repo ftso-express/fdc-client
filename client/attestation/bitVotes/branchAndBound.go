@@ -7,22 +7,26 @@ import (
 )
 
 type SharedStatus struct {
-	CurrentBound     Value
-	NumOperations    int
-	MaxOperations    int
+	CurrentBound  Value
+	NumOperations int
+	RandGen       rand.Source
+}
+
+type ProcessInfo struct {
 	TotalWeight      uint16
 	LowerBoundWeight uint16
 	BitVotes         []*AggregatedVote
 	Fees             []*AggregatedFee
-	RandGen          rand.Source
 	NumAttestations  int
 	NumProviders     int
+
+	MaxOperations int
 }
 
 type BranchAndBoundPartialSolution struct {
-	Participants map[int]bool
-	Solution     map[int]bool
-	Value        Value
+	Votes map[int]bool
+	Bits  map[int]bool
+	Value Value
 }
 
 type Value struct {
@@ -88,13 +92,12 @@ func RandPerm(n int, randGen rand.Source) []int {
 // function is controlled by the given seed.
 func BranchAndBound(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, seed int64, initialBound Value) *ConsensusSolution {
 
-	numAttestations := len(fees)
 	weight := assumedWeight
 
-	participants := make(map[int]bool)
+	votes := make(map[int]bool)
 	for i, vote := range bitVotes {
 		weight += vote.Weight
-		participants[i] = true
+		votes[i] = true
 	}
 
 	totalFee := big.NewInt(0).Set(assumedFees)
@@ -107,26 +110,30 @@ func BranchAndBound(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWe
 	// permBitVotes := PermuteBits(bitVotes, randPerm)
 
 	currentStatus := &SharedStatus{
-		CurrentBound:     initialBound,
-		NumOperations:    0,
-		MaxOperations:    maxOperations,
+		CurrentBound:  initialBound,
+		NumOperations: 0,
+		RandGen:       randGen,
+	}
+
+	processInfo := &ProcessInfo{
 		TotalWeight:      absoluteTotalWeight,
 		LowerBoundWeight: absoluteTotalWeight / 2,
 		BitVotes:         bitVotes,
 		Fees:             fees,
-		RandGen:          randGen,
-		NumAttestations:  numAttestations,
+		NumAttestations:  len(fees),
+		NumProviders:     len(bitVotes),
+		MaxOperations:    maxOperations,
 	}
 
-	permResult := Branch(participants, currentStatus, 0, weight, totalFee)
+	permResult := Branch(processInfo, currentStatus, 0, votes, weight, totalFee)
 
 	if permResult == nil {
 		return nil
 	}
 
 	result := ConsensusSolution{
-		Participants: permResult.Participants,
-		Solution:     permResult.Solution,
+		Participants: permResult.Votes,
+		Solution:     permResult.Bits,
 		Value:        permResult.Value,
 	}
 
@@ -145,29 +152,29 @@ func BranchAndBound(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWe
 	return &result
 }
 
-func Branch(participants map[int]bool, currentStatus *SharedStatus, branch int, currentWeight uint16, feeSum *big.Int) *BranchAndBoundPartialSolution {
+func Branch(processInfo *ProcessInfo, currentStatus *SharedStatus, branch int, participants map[int]bool, currentWeight uint16, feeSum *big.Int) *BranchAndBoundPartialSolution {
 
 	currentStatus.NumOperations++
 
 	// end of recursion
-	if branch == currentStatus.NumAttestations {
+	if branch == processInfo.NumAttestations {
 
-		value := CalcValue(feeSum, currentWeight, currentStatus.TotalWeight)
+		value := CalcValue(feeSum, currentWeight, processInfo.TotalWeight)
 
 		if value.Cmp(currentStatus.CurrentBound) == 1 {
 			currentStatus.CurrentBound = value
 		}
 
-		return &BranchAndBoundPartialSolution{Participants: participants, Solution: make(map[int]bool), Value: value}
+		return &BranchAndBoundPartialSolution{Votes: participants, Bits: make(map[int]bool), Value: value}
 	}
 
 	// check if we already reached the maximal search space
-	if currentStatus.NumOperations >= currentStatus.MaxOperations {
+	if currentStatus.NumOperations >= processInfo.MaxOperations {
 		return nil
 	}
 
 	// check if the estimated maximal value of a branch is lower, then the current highest value
-	if CalcValue(feeSum, currentWeight, currentStatus.TotalWeight).Cmp(currentStatus.CurrentBound) == -1 {
+	if CalcValue(feeSum, currentWeight, processInfo.TotalWeight).Cmp(currentStatus.CurrentBound) == -1 {
 		return nil
 	}
 
@@ -178,37 +185,37 @@ func Branch(participants map[int]bool, currentStatus *SharedStatus, branch int, 
 	randBit := currentStatus.RandGen.Int63() % 2
 	if randBit == 0 {
 
-		result0 = Branch(participants, currentStatus, branch+1, currentWeight, new(big.Int).Sub(feeSum, currentStatus.Fees[branch].Fee))
+		result0 = Branch(processInfo, currentStatus, branch+1, participants, currentWeight, new(big.Int).Sub(feeSum, processInfo.Fees[branch].Fee))
 	}
 
 	// prepare and check if a branch is possible
-	newParticipants, newCurrentWeight := prepareDataForBranchWithOne(participants, currentStatus, currentStatus.Fees[branch].Indexes[0], currentWeight)
+	newParticipants, newCurrentWeight := prepareDataForBranchWithOne(processInfo, currentStatus, participants, processInfo.Fees[branch].Indexes[0], currentWeight)
 
-	if newCurrentWeight > currentStatus.LowerBoundWeight {
+	if newCurrentWeight > processInfo.LowerBoundWeight {
 
-		result1 = Branch(newParticipants, currentStatus, branch+1, newCurrentWeight, feeSum)
+		result1 = Branch(processInfo, currentStatus, branch+1, newParticipants, newCurrentWeight, feeSum)
 	}
 
 	if randBit == 1 {
-		result0 = Branch(participants, currentStatus, branch+1, currentWeight, new(big.Int).Sub(feeSum, currentStatus.Fees[branch].Fee))
+		result0 = Branch(processInfo, currentStatus, branch+1, participants, currentWeight, new(big.Int).Sub(feeSum, processInfo.Fees[branch].Fee))
 	}
 
 	// max result
 	return joinResultsAttestations(result0, result1, branch)
 }
 
-func prepareDataForBranchWithOne(participants map[int]bool, currentStatus *SharedStatus, bit int, currentWeight uint16) (map[int]bool, uint16) {
+func prepareDataForBranchWithOne(processInfo *ProcessInfo, currentStatus *SharedStatus, participants map[int]bool, bit int, currentWeight uint16) (map[int]bool, uint16) {
 
 	newParticipants := make(map[int]bool)
 	newCurrentWeight := currentWeight
 
 	for participant := range participants {
-		if currentStatus.BitVotes[participant].BitVector.Bit(bit) == 1 {
+		if processInfo.BitVotes[participant].BitVector.Bit(bit) == 1 {
 
 			newParticipants[participant] = true
 		} else {
 
-			newCurrentWeight -= currentStatus.BitVotes[participant].Weight
+			newCurrentWeight -= processInfo.BitVotes[participant].Weight
 
 		}
 		currentStatus.NumOperations++
@@ -223,14 +230,14 @@ func joinResultsAttestations(result0, result1 *BranchAndBoundPartialSolution, br
 	if result0 == nil && result1 == nil {
 		return nil
 	} else if result0 != nil && result1 == nil {
-		delete(result0.Solution, branch)
+		delete(result0.Bits, branch)
 		return result0
 	} else if result0 == nil || result0.Value.Cmp(result1.Value) == -1 {
-		result1.Solution[branch] = true
+		result1.Bits[branch] = true
 
 		return result1
 	} else {
-		delete(result0.Solution, branch)
+		delete(result0.Bits, branch)
 		return result0
 	}
 
