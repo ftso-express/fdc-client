@@ -14,7 +14,7 @@ func PermuteBitVotes(bitVotes []*WeightedBitVote, randPerm []int) []*WeightedBit
 	return permBitVotes
 }
 
-// BranchAndBoundProviders is similar than BranchAndBound, the difference is that it
+// BranchAndBoundProviders is similar to BranchAndBound, the difference is that it
 // executes a branch and bound strategy on the space of subsets of attestation providers, hence
 // it is particularly useful when there are not too many distinct providers.
 func BranchAndBoundProviders(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, seed int64, initialBound Value) *ConsensusSolution {
@@ -53,9 +53,9 @@ func BranchAndBoundProviders(bitVotes []*AggregatedVote, fees []*AggregatedFee, 
 	permResult := BranchProviders(processInfo, currentStatus, 0, bits, totalFee, totalWeight)
 
 	result := ConsensusSolution{
-		Participants: permResult.Votes,
-		Solution:     permResult.Bits,
-		Value:        permResult.Value,
+		Votes: permResult.Votes,
+		Bits:  permResult.Bits,
+		Value: permResult.Value,
 	}
 	// for key, val := range randPerm {
 	// 	result.Participants[key] = permResult.Participants[val]
@@ -66,7 +66,7 @@ func BranchAndBoundProviders(bitVotes []*AggregatedVote, fees []*AggregatedFee, 
 	if currentStatus.NumOperations < maxOperations {
 		result.Optimal = true
 	} else {
-		result.MaximizeProviders(bitVotes, fees, assumedFees, assumedWeight, absoluteTotalWeight)
+		result.MaximizeVotes(bitVotes, fees, assumedFees, assumedWeight, absoluteTotalWeight)
 	}
 
 	return &result
@@ -154,4 +154,25 @@ func joinResultsProviders(result0, result1 *BranchAndBoundPartialSolution, branc
 		return result0
 	}
 
+}
+
+// MaximizeVotes adds all votes that confirm all bits in the solution and updates the value.
+func (solution *ConsensusSolution) MaximizeVotes(votes []*AggregatedVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) {
+	for i := range votes {
+
+		if _, isIncluded := solution.Votes[i]; !isIncluded {
+			check := true
+			for j := range solution.Bits {
+				if votes[i].BitVector.Bit(fees[i].Indexes[j]) == 0 {
+					check = false
+					break
+				}
+			}
+			if check {
+				solution.Votes[i] = true
+			}
+		}
+	}
+
+	solution.Value = solution.CalcValueFromFees(votes, fees, assumedFees, assumedWeight, totalWeight)
 }

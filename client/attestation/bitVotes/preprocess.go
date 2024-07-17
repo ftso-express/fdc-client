@@ -313,7 +313,7 @@ func AssembleSolution(filterResults *FilterResults, filteredSolution ConsensusSo
 
 	}
 
-	for k := range filteredSolution.Solution {
+	for k := range filteredSolution.Bits {
 		indexes := aggregatedFees[k].Indexes
 
 		for _, i := range indexes {
@@ -339,7 +339,7 @@ func AssembleSolutionFull(filterResults *FilterResults, filteredSolution Consens
 
 	bits = append(bits, filterResults.AlwaysInBits...)
 
-	for k := range filteredSolution.Solution {
+	for k := range filteredSolution.Bits {
 
 		indexes := aggregatedFees[k].Indexes
 
@@ -351,7 +351,7 @@ func AssembleSolutionFull(filterResults *FilterResults, filteredSolution Consens
 
 	voters = append(voters, filterResults.AlwaysInVotes...)
 
-	for k := range filteredSolution.Participants {
+	for k := range filteredSolution.Votes {
 		indexes := aggregatedVotes[k].Indexes
 
 		voters = append(voters, indexes...)
