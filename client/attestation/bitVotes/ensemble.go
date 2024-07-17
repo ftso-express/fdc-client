@@ -21,11 +21,11 @@ func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint1
 
 	var firstMethod, secondMethod func([]*AggregatedVote, []*AggregatedFee, uint16, uint16, *big.Int, int, int64, Value) *ConsensusSolution
 	if len(allBitVotes) < len(fees) {
-		firstMethod = BranchAndBoundProviders
-		secondMethod = BranchAndBound
+		firstMethod = BranchAndBoundVotes
+		secondMethod = BranchAndBoundBits
 	} else {
-		firstMethod = BranchAndBound
-		secondMethod = BranchAndBoundProviders
+		firstMethod = BranchAndBoundBits
+		secondMethod = BranchAndBoundVotes
 	}
 
 	solution := firstMethod(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, maxOperations, seed, Value{big.NewInt(0), big.NewInt(0)})
@@ -41,30 +41,27 @@ func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint1
 
 func EnsembleFull(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16, maxOperations int, seed int64) Solution {
 
-	aggregatedVotes, aggregadedFees, filterResults, filterSolution := ensemble(allBitVotes, fees, totalWeight, maxOperations, seed)
+	aggregatedVotes, aggregatedFees, filterResults, filterSolution := ensemble(allBitVotes, fees, totalWeight, maxOperations, seed)
 
-	return AssembleSolutionFull(filterResults, *filterSolution, aggregadedFees, aggregatedVotes)
+	return AssembleSolutionFull(filterResults, *filterSolution, aggregatedFees, aggregatedVotes)
 }
 
-func EnsembleConsensulBitVote(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16, maxOperations int, seed int64) *big.Int {
+func EnsembleConsensusBitVote(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16, maxOperations int, seed int64) *big.Int {
 
-	_, aggregadedFees, filterResults, filterSolution := ensemble(allBitVotes, fees, totalWeight, maxOperations, seed)
+	_, aggregatedFees, filterResults, filterSolution := ensemble(allBitVotes, fees, totalWeight, maxOperations, seed)
 
-	return AssembleSolution(filterResults, *filterSolution, aggregadedFees)
+	return AssembleSolution(filterResults, *filterSolution, aggregatedFees)
 }
 
 func (solution *ConsensusSolution) CalcValueFromFees(allBitVotes []*AggregatedVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) Value {
 	feeSum := big.NewInt(0).Set(assumedFees)
-	for i, attestation := range solution.Bits {
-		if attestation {
-			feeSum.Add(feeSum, fees[i].Fee)
-		}
+	for i := range solution.Bits {
+		feeSum.Add(feeSum, fees[i].Fee)
+
 	}
 	weight := assumedWeight
-	for j, voter := range solution.Votes {
-		if voter {
-			weight += allBitVotes[j].Weight
-		}
+	for j := range solution.Votes {
+		weight += allBitVotes[j].Weight
 	}
 
 	return CalcValue(feeSum, weight, totalWeight)

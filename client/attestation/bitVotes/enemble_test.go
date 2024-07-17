@@ -44,7 +44,7 @@ func TestEnsembleRandom(t *testing.T) {
 	// require.Equal(t, numVoters, len(solution.Participants))
 	// require.Equal(t, numAttestations, len(solution.Solution))
 
-	solutionCheck := bitvotes.BranchAndBound(aggregatedBitvotes, aggFees, 0, totalWeight, big.NewInt(0), 100000000, time.Now().Unix(), bitvotes.Value{big.NewInt(0), big.NewInt(0)})
+	solutionCheck := bitvotes.BranchAndBoundBits(aggregatedBitvotes, aggFees, 0, totalWeight, big.NewInt(0), 100000000, time.Now().Unix(), bitvotes.Value{big.NewInt(0), big.NewInt(0)})
 
 	require.Equal(t, solutionCheck.Value, solution.Value)
 

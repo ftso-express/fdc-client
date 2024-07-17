@@ -14,10 +14,10 @@ func PermuteBitVotes(bitVotes []*WeightedBitVote, randPerm []int) []*WeightedBit
 	return permBitVotes
 }
 
-// BranchAndBoundProviders is similar to BranchAndBound, the difference is that it
-// executes a branch and bound strategy on the space of subsets of attestation providers, hence
-// it is particularly useful when there are not too many distinct providers.
-func BranchAndBoundProviders(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, seed int64, initialBound Value) *ConsensusSolution {
+// BranchAndBoundVotes is similar to BranchAndBound, the difference is that it
+// executes a branch and bound strategy on the space of subsets of bitVotes, hence
+// it is particularly useful when there are not too many distinct bitVotes.
+func BranchAndBoundVotes(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, seed int64, initialBound Value) *ConsensusSolution {
 	totalWeight := assumedWeight
 
 	for _, vote := range bitVotes {
@@ -50,7 +50,7 @@ func BranchAndBoundProviders(bitVotes []*AggregatedVote, fees []*AggregatedFee, 
 		MaxOperations:    maxOperations,
 	}
 
-	permResult := BranchProviders(processInfo, currentStatus, 0, bits, totalFee, totalWeight)
+	permResult := BranchVotes(processInfo, currentStatus, 0, bits, totalFee, totalWeight)
 
 	result := ConsensusSolution{
 		Votes: permResult.Votes,
@@ -72,7 +72,7 @@ func BranchAndBoundProviders(bitVotes []*AggregatedVote, fees []*AggregatedFee, 
 	return &result
 }
 
-func BranchProviders(processInfo *ProcessInfo, currentStatus *SharedStatus, branch int, bits map[int]bool, feeSum *big.Int, weight uint16) *BranchAndBoundPartialSolution {
+func BranchVotes(processInfo *ProcessInfo, currentStatus *SharedStatus, branch int, bits map[int]bool, feeSum *big.Int, weight uint16) *BranchAndBoundPartialSolution {
 	currentStatus.NumOperations++
 
 	// end of recursion
@@ -104,53 +104,57 @@ func BranchProviders(processInfo *ProcessInfo, currentStatus *SharedStatus, bran
 	if randBit == 0 {
 		// check if a branch is possible
 		if newWeight > processInfo.LowerBoundWeight {
-			result0 = BranchProviders(processInfo, currentStatus, branch+1, bits, feeSum, newWeight)
+			result0 = BranchVotes(processInfo, currentStatus, branch+1, bits, feeSum, newWeight)
 		}
 	}
 
 	// prepare a new branch
-	newBits, newFeeSum := prepareDataForBranchWithProvider(processInfo, currentStatus, bits, feeSum, processInfo.BitVotes[branch].Indexes[0])
+	newBits, newFeeSum := prepareDataForBranchWithVote(processInfo, currentStatus, bits, feeSum, processInfo.BitVotes[branch].Indexes[0])
 
-	result1 = BranchProviders(processInfo, currentStatus, branch+1, newBits, newFeeSum, weight)
+	result1 = BranchVotes(processInfo, currentStatus, branch+1, newBits, newFeeSum, weight)
 
 	if randBit == 1 {
 		if newWeight > processInfo.LowerBoundWeight {
-			result0 = BranchProviders(processInfo, currentStatus, branch+1, bits, feeSum, newWeight)
+			result0 = BranchVotes(processInfo, currentStatus, branch+1, bits, feeSum, newWeight)
 		}
 	}
 
 	// max result
-	return joinResultsProviders(result0, result1, branch)
+	return joinResultsVotes(result0, result1, branch)
 }
 
-func prepareDataForBranchWithProvider(processInfo *ProcessInfo, currentStatus *SharedStatus, bits map[int]bool, feeSum *big.Int, providerIndex int) (map[int]bool, *big.Int) {
+// prepareDataForBranchWithVote prepares data for branch in which the vote on voteIndex is included.
+func prepareDataForBranchWithVote(processInfo *ProcessInfo, currentStatus *SharedStatus, bits map[int]bool, feeSum *big.Int, voteIndex int) (map[int]bool, *big.Int) {
 
-	newSolution := make(map[int]bool)
+	newBits := make(map[int]bool)
 	newFeeSum := new(big.Int).Set(feeSum)
 	for sol := range bits {
-		if processInfo.BitVotes[providerIndex].BitVector.Bit(sol) == 0 {
+		if processInfo.BitVotes[voteIndex].BitVector.Bit(sol) == 0 {
 			newFeeSum.Sub(newFeeSum, processInfo.Fees[sol].Fee)
 		} else {
-			newSolution[sol] = true
+			newBits[sol] = true
 		}
 		currentStatus.NumOperations++
 	}
 
-	return newSolution, newFeeSum
+	return newBits, newFeeSum
 
 }
 
-func joinResultsProviders(result0, result1 *BranchAndBoundPartialSolution, branch int) *BranchAndBoundPartialSolution {
+// joinResultsVotes compares two solutions.
+// If result1 (the result in which the vote on place branch is included) is greater, result1 with updated votes is returned.
+// Otherwise, result0 without the vote on branch place is returned.
+func joinResultsVotes(result0, result1 *BranchAndBoundPartialSolution, branch int) *BranchAndBoundPartialSolution {
 	if result0 == nil && result1 == nil {
 		return nil
 	} else if result0 != nil && result1 == nil {
-		result0.Votes[branch] = false
+		delete(result0.Votes, branch)
 		return result0
 	} else if result0 == nil || result0.Value.Cmp(result1.Value) == -1 {
 		result1.Votes[branch] = true
 		return result1
 	} else {
-		result0.Votes[branch] = false
+		delete(result0.Votes, branch)
 		return result0
 	}
 

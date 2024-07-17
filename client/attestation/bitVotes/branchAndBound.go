@@ -82,7 +82,7 @@ func RandPerm(n int, randGen rand.Source) []int {
 // 	return permBitVotes
 // }
 
-// BranchAndBound is a function that takes a set of weighted bit votes and a list of fees and
+// BranchAndBoundBits is a function that takes a set of weighted bit votes and a list of fees and
 // tries to get an optimal subset of votes with the weight more than the half of the total weight.
 // The algorithm executes a branch and bound strategy on the space of subsets of attestations, hence
 // it is particularly useful when there are not too many attestations. In the case the algorithm is able search
@@ -90,7 +90,7 @@ func RandPerm(n int, randGen rand.Source) []int {
 // gives an optimal solution. In the case that the solution space is too big, the algorithm gives a
 // the best solution it finds. The search strategy is pseudo-randomized, where the pseudo-random
 // function is controlled by the given seed.
-func BranchAndBound(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, seed int64, initialBound Value) *ConsensusSolution {
+func BranchAndBoundBits(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, seed int64, initialBound Value) *ConsensusSolution {
 
 	weight := assumedWeight
 
@@ -125,7 +125,7 @@ func BranchAndBound(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWe
 		MaxOperations:    maxOperations,
 	}
 
-	permResult := Branch(processInfo, currentStatus, 0, votes, weight, totalFee)
+	permResult := BranchBits(processInfo, currentStatus, 0, votes, weight, totalFee)
 
 	if permResult == nil {
 		return nil
@@ -152,7 +152,7 @@ func BranchAndBound(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWe
 	return &result
 }
 
-func Branch(processInfo *ProcessInfo, currentStatus *SharedStatus, branch int, participants map[int]bool, currentWeight uint16, feeSum *big.Int) *BranchAndBoundPartialSolution {
+func BranchBits(processInfo *ProcessInfo, currentStatus *SharedStatus, branch int, participants map[int]bool, currentWeight uint16, feeSum *big.Int) *BranchAndBoundPartialSolution {
 
 	currentStatus.NumOperations++
 
@@ -185,37 +185,39 @@ func Branch(processInfo *ProcessInfo, currentStatus *SharedStatus, branch int, p
 	randBit := currentStatus.RandGen.Int63() % 2
 	if randBit == 0 {
 
-		result0 = Branch(processInfo, currentStatus, branch+1, participants, currentWeight, new(big.Int).Sub(feeSum, processInfo.Fees[branch].Fee))
+		result0 = BranchBits(processInfo, currentStatus, branch+1, participants, currentWeight, new(big.Int).Sub(feeSum, processInfo.Fees[branch].Fee))
 	}
 
 	// prepare and check if a branch is possible
-	newParticipants, newCurrentWeight := prepareDataForBranchWithOne(processInfo, currentStatus, participants, processInfo.Fees[branch].Indexes[0], currentWeight)
+	newParticipants, newCurrentWeight := prepareDataForBranchWithOne(processInfo, currentStatus, participants, currentWeight, branch)
 
 	if newCurrentWeight > processInfo.LowerBoundWeight {
 
-		result1 = Branch(processInfo, currentStatus, branch+1, newParticipants, newCurrentWeight, feeSum)
+		result1 = BranchBits(processInfo, currentStatus, branch+1, newParticipants, newCurrentWeight, feeSum)
 	}
 
 	if randBit == 1 {
-		result0 = Branch(processInfo, currentStatus, branch+1, participants, currentWeight, new(big.Int).Sub(feeSum, processInfo.Fees[branch].Fee))
+		result0 = BranchBits(processInfo, currentStatus, branch+1, participants, currentWeight, new(big.Int).Sub(feeSum, processInfo.Fees[branch].Fee))
 	}
 
 	// max result
 	return joinResultsAttestations(result0, result1, branch)
 }
 
-func prepareDataForBranchWithOne(processInfo *ProcessInfo, currentStatus *SharedStatus, participants map[int]bool, bit int, currentWeight uint16) (map[int]bool, uint16) {
+// prepareDataForBranchWithOne prepares data for branch in which the bit on bitIndex place is included.
+func prepareDataForBranchWithOne(processInfo *ProcessInfo, currentStatus *SharedStatus, votes map[int]bool, currentWeight uint16, bitIndex int) (map[int]bool, uint16) {
 
+	bit := processInfo.Fees[bitIndex].Indexes[0]
 	newParticipants := make(map[int]bool)
 	newCurrentWeight := currentWeight
 
-	for participant := range participants {
-		if processInfo.BitVotes[participant].BitVector.Bit(bit) == 1 {
+	for i := range votes {
+		if processInfo.BitVotes[i].BitVector.Bit(bit) == 1 {
 
-			newParticipants[participant] = true
+			newParticipants[i] = true
 		} else {
 
-			newCurrentWeight -= processInfo.BitVotes[participant].Weight
+			newCurrentWeight -= processInfo.BitVotes[i].Weight
 
 		}
 		currentStatus.NumOperations++
@@ -225,6 +227,9 @@ func prepareDataForBranchWithOne(processInfo *ProcessInfo, currentStatus *Shared
 
 }
 
+// joinResultsAttestations compares two solutions.
+// If result1 (branch in which the bit in place branch is included) is greater, result1 with updated bits is returned.
+// Otherwise, result0 without the bit it the branch place is returned.
 func joinResultsAttestations(result0, result1 *BranchAndBoundPartialSolution, branch int) *BranchAndBoundPartialSolution {
 
 	if result0 == nil && result1 == nil {
