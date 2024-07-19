@@ -25,6 +25,19 @@ func randomBitVotes(numAttest int, prob float64) *bitvotes.WeightedBitVote {
 	return &bitvotes.WeightedBitVote{Weight: weight, BitVote: bitvotes.BitVote{uint16(numAttest), bitVector}}
 }
 
+func randomBitVoteAggregated(numAttest int, prob float64, index int) *bitvotes.AggregatedVote {
+	weight := uint16(1)
+	bitVector := big.NewInt(0)
+
+	for j := 0; j < numAttest; j++ {
+		if rand.Float64() < prob {
+			bitVector.SetBit(bitVector, j, 1)
+		}
+	}
+
+	return &bitvotes.AggregatedVote{Weight: weight, BitVector: bitVector, Indexes: []int{index}}
+}
+
 func setBitVoteFromPositions(numAttest int, rules []int) *bitvotes.WeightedBitVote {
 	weight := uint16(1)
 	bitVector := big.NewInt(0)
@@ -38,6 +51,21 @@ func setBitVoteFromPositions(numAttest int, rules []int) *bitvotes.WeightedBitVo
 	}
 
 	return &bitvotes.WeightedBitVote{Weight: weight, BitVote: bitvotes.BitVote{uint16(numAttest), bitVector}}
+}
+
+func setBitVoteFromPositionAgg(numAttest int, rules []int, index int) *bitvotes.AggregatedVote {
+	weight := uint16(1)
+	bitVector := big.NewInt(0)
+
+	for j := 0; j < numAttest; j++ {
+		for i := range rules {
+			if j == rules[i] {
+				bitVector.SetBit(bitVector, j, 1)
+			}
+		}
+	}
+
+	return &bitvotes.AggregatedVote{Weight: weight, BitVector: bitVector, Indexes: []int{index}}
 }
 
 func setBitVoteFromRules(n int, rules []int) *bitvotes.WeightedBitVote {

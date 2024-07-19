@@ -19,20 +19,23 @@ func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint1
 
 	aggregatedVotes, aggregatedFees, filterResults := FilterAndAggregate(allBitVotes, fees, totalWeight)
 
-	var firstMethod, secondMethod func([]*AggregatedVote, []*AggregatedFee, uint16, uint16, *big.Int, int, int64, Value) *ConsensusSolution
-	if len(allBitVotes) < len(fees) {
-		firstMethod = BranchAndBoundVotes
-		secondMethod = BranchAndBoundBits
-	} else {
-		firstMethod = BranchAndBoundBits
-		secondMethod = BranchAndBoundVotes
-	}
+	var solution *ConsensusSolution
 
-	solution := firstMethod(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, maxOperations, seed, Value{big.NewInt(0), big.NewInt(0)})
-	if !solution.Optimal {
-		solution2 := secondMethod(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, maxOperations, seed, solution.Value)
-		if solution2 != nil && solution2.Value.Cmp(solution.Value) == 1 {
-			solution = solution2
+	if len(allBitVotes) < len(fees) {
+		solution = BranchAndBoundVotes(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, maxOperations, seed, solution.Value)
+		if !solution.Optimal {
+			solution2 := BranchAndBoundBitsDouble(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, maxOperations, Value{big.NewInt(0), big.NewInt(0)})
+			if solution2 != nil && solution2.Value.Cmp(solution.Value) == 1 {
+				solution = solution2
+			}
+		}
+	} else {
+		solution = BranchAndBoundBitsDouble(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, maxOperations, Value{big.NewInt(0), big.NewInt(0)})
+		if !solution.Optimal {
+			solution2 := BranchAndBoundVotes(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, maxOperations, seed, solution.Value)
+			if solution2 != nil && solution2.Value.Cmp(solution.Value) == 1 {
+				solution = solution2
+			}
 		}
 	}
 

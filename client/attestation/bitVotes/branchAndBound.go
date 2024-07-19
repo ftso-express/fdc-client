@@ -4,6 +4,8 @@ import (
 	"math"
 	"math/big"
 	"math/rand"
+	"slices"
+	"sync"
 )
 
 type SharedStatus struct {
@@ -21,6 +23,7 @@ type ProcessInfo struct {
 	NumProviders     int
 
 	MaxOperations int
+	Strategy      func(...interface{}) bool
 }
 
 type BranchAndBoundPartialSolution struct {
@@ -54,7 +57,7 @@ func CalcValue(feeSum *big.Int, weight, totalWeight uint16) Value {
 	weightCaped := min(int64(math.Ceil(float64(totalWeight)*valueCap)), int64(weight))
 
 	return Value{CappedValue: new(big.Int).Mul(feeSum, big.NewInt(weightCaped)),
-		UncappedValue: new(big.Int).Mul(feeSum, big.NewInt(weightCaped)),
+		UncappedValue: new(big.Int).Mul(feeSum, big.NewInt(int64(weight))),
 	}
 }
 
@@ -82,6 +85,92 @@ func RandPerm(n int, randGen rand.Source) []int {
 // 	return permBitVotes
 // }
 
+func cmpVal(totalWeight uint16, sign int) func(*AggregatedFee, *AggregatedFee) int {
+
+	return func(fee0, fee1 *AggregatedFee) int {
+
+		val0 := CalcValue(fee0.Fee, fee0.Support, totalWeight)
+
+		val1 := CalcValue(fee1.Fee, fee1.Support, totalWeight)
+
+		cmp := val0.Cmp(val1)
+
+		if cmp != 0 {
+			return sign * cmp
+		}
+
+		if fee0.Indexes[0] < fee1.Indexes[0] {
+			return -1
+		}
+		if fee0.Indexes[0] > fee1.Indexes[0] {
+			return 1
+		}
+
+		return 0
+
+	}
+
+}
+
+func cmpValAsc(totalWeight uint16) func(*AggregatedFee, *AggregatedFee) int {
+	return cmpVal(totalWeight, 1)
+}
+func cmpValDsc(totalWeight uint16) func(*AggregatedFee, *AggregatedFee) int {
+	return cmpVal(totalWeight, -1)
+}
+
+func BranchAndBoundBitsDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, initialBound Value) *ConsensusSolution {
+
+	solutions := make([]*ConsensusSolution, 2)
+
+	feesAscVal := make([]*AggregatedFee, len(fees))
+	copy(feesAscVal, fees)
+	slices.SortStableFunc(feesAscVal, cmpValAsc(absoluteTotalWeight))
+
+	feesDscVal := make([]*AggregatedFee, len(fees))
+	copy(feesDscVal, fees)
+	slices.SortStableFunc(feesDscVal, cmpValDsc(absoluteTotalWeight))
+
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+	go func() {
+
+		defer wg.Done()
+
+		solution := BranchAndBoundBits(bitVotes, feesAscVal, assumedWeight, absoluteTotalWeight, assumedFees, maxOperations, initialBound, func(...interface{}) bool { return true })
+
+		solutions[0] = solution
+
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		solution := BranchAndBoundBits(bitVotes, feesDscVal, assumedWeight, absoluteTotalWeight, assumedFees, maxOperations, initialBound, func(...interface{}) bool { return false })
+
+		solutions[1] = solution
+
+	}()
+
+	wg.Wait()
+
+	if solutions[0] == nil {
+		return solutions[1]
+	}
+	if solutions[1] == nil {
+		return solutions[0]
+	}
+
+	if solutions[0].Value.Cmp(solutions[1].Value) == -1 {
+
+		return solutions[1]
+	}
+
+	return solutions[0]
+
+}
+
 // BranchAndBoundBits is a function that takes a set of weighted bit votes and a list of fees and
 // tries to get an optimal subset of votes with the weight more than the half of the total weight.
 // The algorithm executes a branch and bound strategy on the space of subsets of attestations, hence
@@ -90,7 +179,7 @@ func RandPerm(n int, randGen rand.Source) []int {
 // gives an optimal solution. In the case that the solution space is too big, the algorithm gives a
 // the best solution it finds. The search strategy is pseudo-randomized, where the pseudo-random
 // function is controlled by the given seed.
-func BranchAndBoundBits(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, seed int64, initialBound Value) *ConsensusSolution {
+func BranchAndBoundBits(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, initialBound Value, strategy func(...interface{}) bool) *ConsensusSolution {
 
 	weight := assumedWeight
 
@@ -105,14 +194,14 @@ func BranchAndBoundBits(bitVotes []*AggregatedVote, fees []*AggregatedFee, assum
 		totalFee.Add(totalFee, fee.Fee)
 	}
 
-	randGen := rand.NewSource(seed)
+	// randGen := rand.NewSource(seed)
 	// randPerm := RandPerm(numAttestations, randGen)
 	// permBitVotes := PermuteBits(bitVotes, randPerm)
 
 	currentStatus := &SharedStatus{
 		CurrentBound:  initialBound,
 		NumOperations: 0,
-		RandGen:       randGen,
+		// RandGen:       randGen,
 	}
 
 	processInfo := &ProcessInfo{
@@ -123,6 +212,7 @@ func BranchAndBoundBits(bitVotes []*AggregatedVote, fees []*AggregatedFee, assum
 		NumAttestations:  len(fees),
 		NumProviders:     len(bitVotes),
 		MaxOperations:    maxOperations,
+		Strategy:         strategy,
 	}
 
 	permResult := BranchBits(processInfo, currentStatus, 0, votes, weight, totalFee)
@@ -181,9 +271,7 @@ func BranchBits(processInfo *ProcessInfo, currentStatus *SharedStatus, branch in
 	var result0 *BranchAndBoundPartialSolution
 	var result1 *BranchAndBoundPartialSolution
 
-	// decide randomly which branch is first
-	randBit := currentStatus.RandGen.Int63() % 2
-	if randBit == 0 {
+	if processInfo.Strategy() {
 
 		result0 = BranchBits(processInfo, currentStatus, branch+1, participants, currentWeight, new(big.Int).Sub(feeSum, processInfo.Fees[branch].Fee))
 	}
@@ -196,7 +284,7 @@ func BranchBits(processInfo *ProcessInfo, currentStatus *SharedStatus, branch in
 		result1 = BranchBits(processInfo, currentStatus, branch+1, newParticipants, newCurrentWeight, feeSum)
 	}
 
-	if randBit == 1 {
+	if !processInfo.Strategy() {
 		result0 = BranchBits(processInfo, currentStatus, branch+1, participants, currentWeight, new(big.Int).Sub(feeSum, processInfo.Fees[branch].Fee))
 	}
 

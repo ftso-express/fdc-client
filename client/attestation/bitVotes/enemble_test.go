@@ -35,7 +35,7 @@ func TestEnsembleRandom(t *testing.T) {
 	for j := 0; j < numAttestations; j++ {
 		fees[j] = big.NewInt(1)
 
-		aggFee := bitvotes.AggregatedFee{big.NewInt(1), []int{j}}
+		aggFee := bitvotes.AggregatedFee{big.NewInt(1), []int{j}, 0}
 
 		aggFees[j] = &aggFee
 	}
@@ -44,7 +44,7 @@ func TestEnsembleRandom(t *testing.T) {
 	// require.Equal(t, numVoters, len(solution.Participants))
 	// require.Equal(t, numAttestations, len(solution.Solution))
 
-	solutionCheck := bitvotes.BranchAndBoundBits(aggregatedBitvotes, aggFees, 0, totalWeight, big.NewInt(0), 100000000, time.Now().Unix(), bitvotes.Value{big.NewInt(0), big.NewInt(0)})
+	solutionCheck := bitvotes.BranchAndBoundBits(aggregatedBitvotes, aggFees, 0, totalWeight, big.NewInt(0), 100000000, bitvotes.Value{big.NewInt(0), big.NewInt(0)}, func(...interface{}) bool { return true })
 
 	require.Equal(t, solutionCheck.Value, solution.Value)
 
