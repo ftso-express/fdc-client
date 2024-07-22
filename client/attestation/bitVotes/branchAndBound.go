@@ -259,8 +259,8 @@ func BranchBits(processInfo *ProcessInfo, currentStatus *SharedStatus, branch in
 		return nil
 	}
 
-	// check if the estimated maximal value of a branch is lower, then the current highest value
-	if CalcValue(feeSum, currentWeight, processInfo.TotalWeight).Cmp(currentStatus.CurrentBound) == -1 {
+	// check if the potential maximal value of a branch in not higher than the current bound
+	if CalcValue(feeSum, currentWeight, processInfo.TotalWeight).Cmp(currentStatus.CurrentBound) != 1 {
 		return nil
 	}
 

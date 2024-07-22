@@ -197,8 +197,13 @@ func BranchVotes(processInfo *ProcessInfo, currentStatus *SharedStatus, branch i
 		}
 	}
 
-	// check if we already reached the maximal search space or if we exceeded the bound of the maximal possible value of the solution
-	if currentStatus.NumOperations >= processInfo.MaxOperations || CalcValue(feeSum, weight, processInfo.TotalWeight).Cmp(currentStatus.CurrentBound) == -1 {
+	// check if we already reached the maximal search space
+	if currentStatus.NumOperations >= processInfo.MaxOperations {
+		return nil
+	}
+
+	// check if the potential maximal value of a branch in not higher than the current bound
+	if CalcValue(feeSum, weight, processInfo.TotalWeight).Cmp(currentStatus.CurrentBound) != 1 {
 		return nil
 	}
 
