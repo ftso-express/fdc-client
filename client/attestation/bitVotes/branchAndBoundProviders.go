@@ -53,20 +53,23 @@ func BranchAndBoundVotes(bitVotes []*AggregatedVote, fees []*AggregatedFee, assu
 	permResult := BranchVotes(processInfo, currentStatus, 0, bits, totalFee, totalWeight)
 
 	result := ConsensusSolution{
-		Votes: permResult.Votes,
-		Bits:  permResult.Bits,
-		Value: permResult.Value,
+		Votes: make([]*AggregatedVote, 0),
+		Bits:  make([]*AggregatedFee, 0),
 	}
-	// for key, val := range randPerm {
-	// 	result.Participants[key] = permResult.Participants[val]
-	// }
-	// for key, val := range permResult.Solution {
-	// 	result.Solution[key] = val
-	// }
+
 	if currentStatus.NumOperations < maxOperations {
 		result.Optimal = true
 	} else {
-		result.MaximizeVotes(bitVotes, fees, assumedFees, assumedWeight, absoluteTotalWeight)
+		permResult.MaximizeVotes(bitVotes, fees, assumedFees, assumedWeight, absoluteTotalWeight)
+	}
+
+	result.Value = permResult.Value
+
+	for key := range permResult.Votes {
+		result.Votes = append(result.Votes, bitVotes[key])
+	}
+	for key := range permResult.Bits {
+		result.Bits = append(result.Bits, fees[key])
 	}
 
 	return &result
@@ -161,7 +164,7 @@ func joinResultsVotes(result0, result1 *BranchAndBoundPartialSolution, branch in
 }
 
 // MaximizeVotes adds all votes that confirm all bits in the solution and updates the value.
-func (solution *ConsensusSolution) MaximizeVotes(votes []*AggregatedVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) {
+func (solution *BranchAndBoundPartialSolution) MaximizeVotes(votes []*AggregatedVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) {
 	for i := range votes {
 
 		if _, isIncluded := solution.Votes[i]; !isIncluded {

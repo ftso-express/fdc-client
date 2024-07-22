@@ -39,14 +39,8 @@ func TestBranchAndBoundRandom(t *testing.T) {
 	fmt.Println("time passed:", time.Since(start).Seconds())
 	fmt.Println("solution", solution)
 	fmt.Println("value", solution.Value)
-	count := 0
-	for _, e := range solution.Bits {
-		if e {
-			count += 1
-		}
-	}
 
-	fmt.Println("num attestations", count)
+	fmt.Println("num attestations", len(solution.Bits))
 }
 
 // func TestBranchAndBound65(t *testing.T) {
@@ -126,17 +120,11 @@ func TestBranchAndBoundFix(t *testing.T) {
 	solution := bitvotes.BranchAndBoundBits(weightedBitvotes, fees, 0, totalWeight, big.NewInt(0), 50000000, initialBound, func(_ ...interface{}) bool { return true })
 
 	fmt.Println("time passed:", time.Since(start).Seconds())
-	count := 0
-	for _, e := range solution.Bits {
-		if e {
-			count += 1
-		}
-	}
 
 	require.Equal(t, 3, len(solution.Bits), "not enough bits in solution")
 
 	for _, j := range []int{0, 1, 2} {
-		require.Contains(t, solution.Bits, j, "wrong bits in solution")
+		require.Contains(t, solution.Bits, fees[j], "wrong bits in solution")
 	}
 
 	require.Equal(t, bitvotes.Value{big.NewInt(240), big.NewInt(240)}, solution.Value)

@@ -308,7 +308,7 @@ func FilterAndAggregate(bitVotes []*WeightedBitVote, fees []*big.Int, totalWeigh
 	return aggregatedVotes, aggregatedFees, filterResults
 }
 
-func AssembleSolution(filterResults *FilterResults, filteredSolution ConsensusSolution, aggregatedFees []*AggregatedFee) *big.Int {
+func AssembleSolution(filterResults *FilterResults, filteredSolution ConsensusSolution) *big.Int {
 
 	consensusBitVote := big.NewInt(0)
 
@@ -319,7 +319,7 @@ func AssembleSolution(filterResults *FilterResults, filteredSolution ConsensusSo
 	}
 
 	for k := range filteredSolution.Bits {
-		indexes := aggregatedFees[k].Indexes
+		indexes := filteredSolution.Bits[k].Indexes
 
 		for _, i := range indexes {
 			consensusBitVote.SetBit(consensusBitVote, i, 1)
@@ -338,7 +338,7 @@ type Solution struct {
 	Optimal bool
 }
 
-func AssembleSolutionFull(filterResults *FilterResults, filteredSolution ConsensusSolution, aggregatedFees []*AggregatedFee, aggregatedVotes []*AggregatedVote) Solution {
+func AssembleSolutionFull(filterResults *FilterResults, filteredSolution ConsensusSolution) Solution {
 
 	bits := []int{}
 
@@ -346,7 +346,7 @@ func AssembleSolutionFull(filterResults *FilterResults, filteredSolution Consens
 
 	for k := range filteredSolution.Bits {
 
-		indexes := aggregatedFees[k].Indexes
+		indexes := filteredSolution.Bits[k].Indexes
 
 		bits = append(bits, indexes...)
 
@@ -357,7 +357,7 @@ func AssembleSolutionFull(filterResults *FilterResults, filteredSolution Consens
 	voters = append(voters, filterResults.AlwaysInVotes...)
 
 	for k := range filteredSolution.Votes {
-		indexes := aggregatedVotes[k].Indexes
+		indexes := filteredSolution.Votes[k].Indexes
 
 		voters = append(voters, indexes...)
 
