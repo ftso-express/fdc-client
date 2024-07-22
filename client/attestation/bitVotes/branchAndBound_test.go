@@ -109,7 +109,7 @@ func TestBranchAndBoundFix(t *testing.T) {
 	fees := make([]*bitvotes.AggregatedFee, numAttestations)
 	for j := 0; j < numAttestations; j++ {
 
-		fee := bitvotes.AggregatedFee{big.NewInt(1), []int{j}, 1}
+		fee := bitvotes.AggregatedFee{Fee: big.NewInt(1), Indexes: []int{j}, Support: 1}
 
 		fees[j] = &fee
 	}

@@ -184,6 +184,22 @@ type AggregatedFee struct {
 	Fee     *big.Int
 	Indexes []int
 	Support uint16
+	value   Value
+}
+
+func (f *AggregatedFee) Value(totalWeight uint16, cache bool) Value {
+	if cache && f.value.CappedValue != nil {
+		return f.value
+	} else if cache {
+
+		f.value = CalcValue(f.Fee, f.Support, totalWeight)
+
+		return f.value
+
+	}
+
+	return CalcValue(f.Fee, f.Support, totalWeight)
+
 }
 
 // AggregateBits aggregates fees of the bits that agree on all the RemainingVotes.
@@ -243,6 +259,7 @@ type AggregatedVote struct {
 	BitVector *big.Int
 	Weight    uint16
 	Indexes   []int //places of the voted in initial []*WeightedBitVotes
+	Fees      *big.Int
 }
 
 func AggregateVotes(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults *FilterResults) []*AggregatedVote {
@@ -258,6 +275,8 @@ func AggregateVotes(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults 
 
 	for _, i := range remainingVotesSorted {
 
+		feesVote := big.NewInt(0).Set(filterResults.GuaranteedFees)
+
 		identifier := ""
 
 		for _, j := range remainingBitsSorted {
@@ -265,6 +284,12 @@ func AggregateVotes(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults 
 			bit := bitVotes[i].BitVote.BitVector.Bit(j)
 
 			identifier += strconv.FormatUint(uint64(bit), 10)
+
+			if bit == 1 {
+
+				feesVote.Add(feesVote, fees[j])
+
+			}
 
 		}
 
@@ -275,6 +300,7 @@ func AggregateVotes(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults 
 				BitVector: new(big.Int).Set(bitVotes[i].BitVote.BitVector),
 				Weight:    bitVotes[i].Weight,
 				Indexes:   []int{i},
+				Fees:      feesVote,
 			}
 
 			aggregator[identifier] = &newAggregatedBitVote

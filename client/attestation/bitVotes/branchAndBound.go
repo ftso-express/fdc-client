@@ -60,37 +60,13 @@ func CalcValue(feeSum *big.Int, weight, totalWeight uint16) Value {
 	}
 }
 
-func RandPerm(n int, randGen rand.Source) []int {
-	m := make([]int, n)
-	for i := 0; i < n; i++ {
-		j := randGen.Int63() % int64(i+1)
-		m[i] = m[j]
-		m[j] = i
-	}
-	return m
-}
-
-// func PermuteBits(bitVotes []*AggregatedBitVote, randPerm []int) []*WeightedBitVote {
-// 	permBitVotes := make([]*AggregatedBitVote, len(bitVotes))
-// 	for i, e := range bitVotes {
-// 		permBitVotes[i] = &AggregatedBitVote{Weight: e.Weight, BitVector: big.NewInt(0)}}
-// 		for key, val := range randPerm {
-// 			if e.BitVote.BitVector.Bit(key) == 1 {
-// 				permBitVotes[i].BitVote.BitVector.Add(permBitVotes[i].BitVote.BitVector, new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(val)), nil))
-// 			}
-// 		}
-// 	}
-
-// 	return permBitVotes
-// }
-
 func cmpVal(totalWeight uint16, sign int) func(*AggregatedFee, *AggregatedFee) int {
 
 	return func(fee0, fee1 *AggregatedFee) int {
 
-		val0 := CalcValue(fee0.Fee, fee0.Support, totalWeight)
+		val0 := fee0.Value(totalWeight, true)
 
-		val1 := CalcValue(fee1.Fee, fee1.Support, totalWeight)
+		val1 := fee1.Value(totalWeight, true)
 
 		cmp := val0.Cmp(val1)
 

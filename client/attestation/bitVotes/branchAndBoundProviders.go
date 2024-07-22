@@ -2,7 +2,7 @@ package bitvotes
 
 import (
 	"math/big"
-	"math/rand"
+	"slices"
 )
 
 func PermuteBitVotes(bitVotes []*WeightedBitVote, randPerm []int) []*WeightedBitVote {
@@ -14,10 +14,119 @@ func PermuteBitVotes(bitVotes []*WeightedBitVote, randPerm []int) []*WeightedBit
 	return permBitVotes
 }
 
+func CalcValueVote(feeSum *big.Int, weight uint16) *big.Int {
+
+	return new(big.Int).Mul(feeSum, big.NewInt(int64(weight)))
+
+}
+
+func cmpValVote(sign int) func(*AggregatedVote, *AggregatedVote) int {
+
+	return func(vote0, vote1 *AggregatedVote) int {
+
+		val0 := CalcValueVote(vote0.Fees, vote0.Weight)
+
+		val1 := CalcValueVote(vote1.Fees, vote1.Weight)
+
+		cmp := val0.Cmp(val1)
+
+		if cmp != 0 {
+			return sign * cmp
+		}
+
+		if vote0.Indexes[0] < vote1.Indexes[0] {
+			return -1
+		}
+		if vote0.Indexes[0] > vote1.Indexes[0] {
+			return 1
+		}
+
+		return 0
+
+	}
+}
+
+func cmpValVoteAsc() func(*AggregatedVote, *AggregatedVote) int {
+	return cmpValVote(1)
+}
+func cmpValVoteDsc() func(*AggregatedVote, *AggregatedVote) int {
+	return cmpValVote(-1)
+}
+
+func sortVotes(votes []*AggregatedVote, sortFunc func(*AggregatedVote, *AggregatedVote) int) []*AggregatedVote {
+
+	sortedFees := make([]*AggregatedVote, len(votes))
+	copy(sortedFees, votes)
+	slices.SortStableFunc(sortedFees, sortFunc)
+
+	return sortedFees
+}
+
+// BranchAndBoundProvidersDouble runs two branch and bound strategies on votes in parallel and returns the better result.
+//
+// The first strategy sorts the aggregated votes by the descending value (weight * fee) and at depth k the branch in which k-th vote is included is explored first.
+// The second strategy sorts the aggregated votes by the ascending value (weight * fee) and at depth k the branch in which does not include k-th vote is explored first.
+//
+// If both strategies find an optimal but different solutions, the solution of the first strategy is returned.
+func BranchAndBoundProvidersDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, initialBound Value) *ConsensusSolution {
+
+	solutions := make([]*ConsensusSolution, 2)
+
+	firstDone := make(chan bool, 1)
+	secondDone := make(chan bool, 1)
+
+	votesAscVal := sortVotes(bitVotes, cmpValVoteAsc())
+
+	votesDscVal := sortVotes(bitVotes, cmpValVoteDsc())
+
+	go func() {
+
+		solution := BranchAndBoundBits(votesDscVal, fees, assumedWeight, absoluteTotalWeight, assumedFees, maxOperations, initialBound, func(...interface{}) bool { return true })
+
+		solutions[0] = solution
+
+		firstDone <- true
+
+		if solution.Optimal {
+			solutions[1] = nil
+			secondDone <- true // do not wait on the other solution
+		}
+
+	}()
+
+	go func() {
+
+		solution := BranchAndBoundBits(votesAscVal, fees, assumedWeight, absoluteTotalWeight, assumedFees, maxOperations, initialBound, func(...interface{}) bool { return false })
+
+		solutions[1] = solution
+
+		secondDone <- true
+
+	}()
+
+	<-firstDone
+	<-secondDone
+
+	if solutions[0] == nil {
+		return solutions[1]
+	}
+	if solutions[1] == nil {
+		return solutions[0]
+	}
+
+	if solutions[0].Value.Cmp(solutions[1].Value) == -1 {
+
+		return solutions[1]
+	}
+
+	return solutions[0]
+
+}
+
 // BranchAndBoundVotes is similar to BranchAndBound, the difference is that it
 // executes a branch and bound strategy on the space of subsets of bitVotes, hence
 // it is particularly useful when there are not too many distinct bitVotes.
-func BranchAndBoundVotes(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, seed int64, initialBound Value) *ConsensusSolution {
+func BranchAndBoundVotes(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, initialBound Value) *ConsensusSolution {
 	totalWeight := assumedWeight
 
 	for _, vote := range bitVotes {
@@ -30,14 +139,10 @@ func BranchAndBoundVotes(bitVotes []*AggregatedVote, fees []*AggregatedFee, assu
 		totalFee.Add(totalFee, fee.Fee)
 		bits[i] = true
 	}
-	randGen := rand.NewSource(seed)
-	// randPerm := RandPerm(numProviders, randGen)
-	// permBitVotes := PermuteBitVotes(bitVotes, randPerm)
 
 	currentStatus := &SharedStatus{
 		CurrentBound:  initialBound,
 		NumOperations: 0,
-		RandGen:       randGen,
 	}
 
 	processInfo := &ProcessInfo{

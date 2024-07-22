@@ -13,19 +13,19 @@ import (
 func TestEnsembleRandom(t *testing.T) {
 	numAttestations := 40
 	numVoters := 100
-	weightedBitvotes := make([]*bitvotes.WeightedBitVote, numVoters)
-	aggregatedBitvotes := make([]*bitvotes.AggregatedVote, numVoters)
+	weightedBitVotes := make([]*bitvotes.WeightedBitVote, numVoters)
+	aggregatedBitVotes := make([]*bitvotes.AggregatedVote, numVoters)
 
 	prob := 0.8
 
 	totalWeight := uint16(0)
 	for j := 0; j < numVoters; j++ {
 		bitVote := randomBitVotes(numAttestations, prob)
-		weightedBitvotes[j] = bitVote
+		weightedBitVotes[j] = bitVote
 
 		agg := bitvotes.AggregatedVote{BitVector: bitVote.BitVote.BitVector, Weight: bitVote.Weight, Indexes: []int{j}}
 
-		aggregatedBitvotes[j] = &agg
+		aggregatedBitVotes[j] = &agg
 
 		totalWeight += bitVote.Weight
 	}
@@ -35,16 +35,16 @@ func TestEnsembleRandom(t *testing.T) {
 	for j := 0; j < numAttestations; j++ {
 		fees[j] = big.NewInt(1)
 
-		aggFee := bitvotes.AggregatedFee{big.NewInt(1), []int{j}, 0}
+		aggFee := bitvotes.AggregatedFee{Fee: big.NewInt(1), Indexes: []int{j}, Support: 1}
 
 		aggFees[j] = &aggFee
 	}
 
-	solution := bitvotes.EnsembleFull(weightedBitvotes, fees, totalWeight, 100000000, time.Now().Unix())
+	solution := bitvotes.EnsembleFull(weightedBitVotes, fees, totalWeight, 100000000)
 	// require.Equal(t, numVoters, len(solution.Participants))
 	// require.Equal(t, numAttestations, len(solution.Solution))
 
-	solutionCheck := bitvotes.BranchAndBoundBits(aggregatedBitvotes, aggFees, 0, totalWeight, big.NewInt(0), 100000000, bitvotes.Value{big.NewInt(0), big.NewInt(0)}, func(...interface{}) bool { return true })
+	solutionCheck := bitvotes.BranchAndBoundBits(aggregatedBitVotes, aggFees, 0, totalWeight, big.NewInt(0), 100000000, bitvotes.Value{big.NewInt(0), big.NewInt(0)}, func(...interface{}) bool { return true })
 
 	require.Equal(t, solutionCheck.Value, solution.Value)
 
@@ -78,7 +78,7 @@ func TestEnsembleFixed(t *testing.T) {
 	}
 
 	start := time.Now()
-	solution := bitvotes.EnsembleFull(weightedBitvotes, fees, totalWeight, 100000000, time.Now().Unix())
+	solution := bitvotes.EnsembleFull(weightedBitvotes, fees, totalWeight, 100000000)
 
 	fmt.Printf("solution: %v\n", solution.Bits)
 
