@@ -224,8 +224,9 @@ func BranchAndBoundBits(bitVotes []*AggregatedVote, fees []*AggregatedFee, assum
 	}
 
 	result := ConsensusSolution{
-		Votes: make([]*AggregatedVote, 0),
-		Bits:  make([]*AggregatedFee, 0),
+		Votes:   make([]*AggregatedVote, 0),
+		Bits:    make([]*AggregatedFee, 0),
+		Optimal: isOptimal,
 	}
 
 	if !isOptimal {

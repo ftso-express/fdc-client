@@ -62,13 +62,13 @@ func sortVotes(votes []*AggregatedVote, sortFunc func(*AggregatedVote, *Aggregat
 	return sortedFees
 }
 
-// BranchAndBoundProvidersDouble runs two branch and bound strategies on votes in parallel and returns the better result.
+// BranchAndBoundVotesDouble runs two branch and bound strategies on votes in parallel and returns the better result.
 //
 // The first strategy sorts the aggregated votes by the descending value (weight * fee) and at depth k the branch in which k-th vote is included is explored first.
 // The second strategy sorts the aggregated votes by the ascending value (weight * fee) and at depth k the branch in which does not include k-th vote is explored first.
 //
 // If both strategies find an optimal but different solutions, the solution of the first strategy is returned.
-func BranchAndBoundProvidersDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, initialBound Value) *ConsensusSolution {
+func BranchAndBoundVotesDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, initialBound Value) *ConsensusSolution {
 
 	solutions := make([]*ConsensusSolution, 2)
 

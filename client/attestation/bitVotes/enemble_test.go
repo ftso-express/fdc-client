@@ -11,7 +11,7 @@ import (
 )
 
 func TestEnsembleRandom(t *testing.T) {
-	numAttestations := 40
+	numAttestations := 70
 	numVoters := 100
 	weightedBitVotes := make([]*bitvotes.WeightedBitVote, numVoters)
 	aggregatedBitVotes := make([]*bitvotes.AggregatedVote, numVoters)
@@ -38,17 +38,27 @@ func TestEnsembleRandom(t *testing.T) {
 		aggFee := bitvotes.AggregatedFee{Fee: big.NewInt(1), Indexes: []int{j}, Support: 1}
 
 		aggFees[j] = &aggFee
+
 	}
 
-	solution := bitvotes.EnsembleFull(weightedBitVotes, fees, totalWeight, 100000000)
+	start := time.Now()
+
+	solution := bitvotes.EnsembleFull(weightedBitVotes, fees, totalWeight, 50000000)
 	// require.Equal(t, numVoters, len(solution.Participants))
 	// require.Equal(t, numAttestations, len(solution.Solution))
 
+	fmt.Println("time passed:", time.Since(start).Seconds())
+
+	start = time.Now()
+
 	solutionCheck := bitvotes.BranchAndBoundBits(aggregatedBitVotes, aggFees, 0, totalWeight, big.NewInt(0), 100000000, bitvotes.Value{big.NewInt(0), big.NewInt(0)}, func(...interface{}) bool { return true })
+
+	fmt.Println("time passed:", time.Since(start).Seconds())
+
+	fmt.Printf("solution: %v\n", solution)
 
 	require.Equal(t, solutionCheck.Value, solution.Value)
 
-	fmt.Printf("solution: %v\n", solution)
 }
 
 func TestEnsembleFixed(t *testing.T) {
