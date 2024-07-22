@@ -131,51 +131,105 @@ func TestBranchAndBoundFix(t *testing.T) {
 
 }
 
-// func TestCalcValue(t *testing.T) {
-// 	const totalWeight = 100
+func TestCalcValue(t *testing.T) {
+	const totalWeight = 100
 
-// 	tests := []struct {
-// 		feeSum        *big.Int
-// 		weight        uint16
-// 		uncappedValue *big.Int
-// 		cappedValue   *big.Int
-// 	}{
-// 		{
-// 			big.NewInt(0),
-// 			0,
-// 			big.NewInt(0),
-// 			big.NewInt(0),
-// 		},
-// 		{
-// 			big.NewInt(0),
-// 			15,
-// 			big.NewInt(0),
-// 			big.NewInt(0),
-// 		},
-// 		{
-// 			big.NewInt(1),
-// 			0,
-// 			big.NewInt(0),
-// 			big.NewInt(0),
-// 		},
-// 		{
-// 			big.NewInt(1),
-// 			1,
-// 			big.NewInt(1),
-// 			big.NewInt(1),
-// 		},
-// 		{
-// 			big.NewInt(1),
-// 			90,
-// 			big.NewInt(80),
-// 			big.NewInt(90),
-// 		},
-// 	}
+	tests := []struct {
+		feeSum        *big.Int
+		weight        uint16
+		uncappedValue *big.Int
+		cappedValue   *big.Int
+	}{
+		{
+			big.NewInt(0),
+			0,
+			big.NewInt(0),
+			big.NewInt(0),
+		},
+		{
+			big.NewInt(0),
+			15,
+			big.NewInt(0),
+			big.NewInt(0),
+		},
+		{
+			big.NewInt(1),
+			0,
+			big.NewInt(0),
+			big.NewInt(0),
+		},
+		{
+			big.NewInt(1),
+			1,
+			big.NewInt(1),
+			big.NewInt(1),
+		},
+		{
+			big.NewInt(1),
+			90,
+			big.NewInt(90),
+			big.NewInt(80),
+		},
+	}
 
-// 	for i, test := range tests {
-// 		value := bitvotes.CalcValue(test.feeSum, test.weight, totalWeight)
+	for i, test := range tests {
+		value := bitvotes.CalcValue(test.feeSum, test.weight, totalWeight)
 
-// 		require.Equal(t, test.uncappedValue, value.UncappedValue, fmt.Sprintf("error in test %d", i))
-// 	}
+		require.Equal(t, test.cappedValue, value.CappedValue, fmt.Sprintf("error in test %d", i))
 
-// }
+		require.Equal(t, test.uncappedValue, value.UncappedValue, fmt.Sprintf("error in test %d", i))
+	}
+
+}
+
+func TestSort(t *testing.T) {
+
+	fee0 := bitvotes.AggregatedFee{
+		Fee:     big.NewInt(1),
+		Indexes: []int{0},
+		Support: 10,
+	}
+
+	fee1 := bitvotes.AggregatedFee{
+		Fee:     big.NewInt(3),
+		Indexes: []int{1},
+		Support: 5,
+	}
+
+	fee2 := bitvotes.AggregatedFee{
+		Fee:     big.NewInt(1),
+		Indexes: []int{2},
+		Support: 10,
+	}
+
+	fee3 := bitvotes.AggregatedFee{
+		Fee:     big.NewInt(1),
+		Indexes: []int{2},
+		Support: 8,
+	}
+	tests := []struct {
+		totalWeight uint16
+		fees        []*bitvotes.AggregatedFee
+		asc         []*bitvotes.AggregatedFee
+		dsc         []*bitvotes.AggregatedFee
+	}{
+		{11,
+			[]*bitvotes.AggregatedFee{&fee0, &fee1, &fee2, &fee3},
+			[]*bitvotes.AggregatedFee{&fee3, &fee0, &fee2, &fee1},
+			[]*bitvotes.AggregatedFee{&fee1, &fee0, &fee2, &fee3},
+		},
+	}
+
+	for _, test := range tests {
+
+		asc := bitvotes.SortFees(test.fees, bitvotes.CmpValAsc(test.totalWeight))
+
+		dsc := bitvotes.SortFees(test.fees, bitvotes.CmpValDsc(test.totalWeight))
+
+		require.Equal(t, test.asc, asc)
+
+		require.Equal(t, test.dsc, dsc)
+
+	}
+
+}
