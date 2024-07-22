@@ -157,14 +157,27 @@ func BranchAndBoundVotes(bitVotes []*AggregatedVote, fees []*AggregatedFee, assu
 
 	permResult := BranchVotes(processInfo, currentStatus, 0, bits, totalFee, totalWeight)
 
-	result := ConsensusSolution{
-		Votes: make([]*AggregatedVote, 0),
-		Bits:  make([]*AggregatedFee, 0),
+	isOptimal := currentStatus.NumOperations < maxOperations
+
+	// empty solution
+	if permResult == nil {
+
+		return &ConsensusSolution{
+			Votes:   bitVotes,
+			Bits:    []*AggregatedFee{},
+			Value:   Value{big.NewInt(0), big.NewInt(0)},
+			Optimal: isOptimal,
+		}
+
 	}
 
-	if currentStatus.NumOperations < maxOperations {
-		result.Optimal = true
-	} else {
+	result := ConsensusSolution{
+		Votes:   make([]*AggregatedVote, 0),
+		Bits:    make([]*AggregatedFee, 0),
+		Optimal: isOptimal,
+	}
+
+	if !isOptimal {
 		permResult.MaximizeVotes(bitVotes, fees, assumedFees, assumedWeight, absoluteTotalWeight)
 	}
 
@@ -186,15 +199,21 @@ func BranchVotes(processInfo *ProcessInfo, currentStatus *SharedStatus, branch i
 	// end of recursion
 	if branch == processInfo.NumProviders {
 		value := CalcValue(feeSum, weight, processInfo.TotalWeight)
+
 		if value.Cmp(currentStatus.CurrentBound) == 1 {
+
 			currentStatus.CurrentBound = value
+
+			return &BranchAndBoundPartialSolution{
+				Votes: make(map[int]bool),
+				Bits:  bits,
+				Value: value,
+			}
+
 		}
 
-		return &BranchAndBoundPartialSolution{
-			Votes: make(map[int]bool),
-			Bits:  bits,
-			Value: value,
-		}
+		return nil
+
 	}
 
 	// check if we already reached the maximal search space

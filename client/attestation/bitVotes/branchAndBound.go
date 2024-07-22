@@ -209,8 +209,18 @@ func BranchAndBoundBits(bitVotes []*AggregatedVote, fees []*AggregatedFee, assum
 
 	permResult := BranchBits(processInfo, currentStatus, 0, votes, weight, totalFee)
 
+	isOptimal := currentStatus.NumOperations < maxOperations
+
+	// empty solution
 	if permResult == nil {
-		return nil
+
+		return &ConsensusSolution{
+			Votes:   bitVotes,
+			Bits:    []*AggregatedFee{},
+			Value:   Value{big.NewInt(0), big.NewInt(0)},
+			Optimal: isOptimal,
+		}
+
 	}
 
 	result := ConsensusSolution{
@@ -218,9 +228,7 @@ func BranchAndBoundBits(bitVotes []*AggregatedVote, fees []*AggregatedFee, assum
 		Bits:  make([]*AggregatedFee, 0),
 	}
 
-	if currentStatus.NumOperations < maxOperations {
-		result.Optimal = true
-	} else {
+	if !isOptimal {
 		permResult.MaximizeBits(bitVotes, fees, assumedFees, assumedWeight, absoluteTotalWeight)
 	}
 
@@ -248,10 +256,15 @@ func BranchBits(processInfo *ProcessInfo, currentStatus *SharedStatus, branch in
 		if value.Cmp(currentStatus.CurrentBound) == 1 {
 			currentStatus.CurrentBound = value
 
-			return &BranchAndBoundPartialSolution{Votes: participants, Bits: make(map[int]bool), Value: value}
+			return &BranchAndBoundPartialSolution{
+				Votes: participants,
+				Bits:  make(map[int]bool),
+				Value: value,
+			}
 		}
 
 		return nil
+
 	}
 
 	// check if we already reached the maximal search space
