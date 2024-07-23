@@ -1,6 +1,7 @@
 package bitvotes
 
 import (
+	"fmt"
 	"math/big"
 	"slices"
 )
@@ -72,7 +73,16 @@ func BranchAndBoundVotesDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee
 
 	go func() {
 
-		solution := BranchAndBoundVotes(votesDscVal, fees, assumedWeight, absoluteTotalWeight, assumedFees, maxOperations, initialBound, func(...interface{}) bool { return true })
+		solution := BranchAndBoundVotes(
+			votesDscVal,
+			fees,
+			assumedWeight,
+			absoluteTotalWeight,
+			assumedFees,
+			maxOperations,
+			initialBound,
+			func(...interface{}) bool { return true },
+		)
 
 		solutions[0] = solution
 
@@ -118,10 +128,11 @@ func BranchAndBoundVotesDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee
 // executes a branch and bound strategy on the space of subsets of bitVotes, hence
 // it is particularly useful when there are not too many distinct bitVotes.
 func BranchAndBoundVotes(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, initialBound Value, strategy func(...interface{}) bool) *ConsensusSolution {
-	totalWeight := assumedWeight
+
+	weight := assumedWeight
 
 	for _, vote := range bitVotes {
-		totalWeight += vote.Weight
+		weight += vote.Weight
 	}
 
 	totalFee := big.NewInt(0).Set(assumedFees)
@@ -147,7 +158,7 @@ func BranchAndBoundVotes(bitVotes []*AggregatedVote, fees []*AggregatedFee, assu
 		Strategy:         strategy,
 	}
 
-	permResult := BranchVotes(processInfo, currentStatus, 0, bits, totalFee, totalWeight)
+	permResult := BranchVotes(processInfo, currentStatus, 0, bits, totalFee, weight)
 
 	isOptimal := currentStatus.NumOperations < maxOperations
 
@@ -163,22 +174,22 @@ func BranchAndBoundVotes(bitVotes []*AggregatedVote, fees []*AggregatedFee, assu
 
 	}
 
-	result := ConsensusSolution{
-		Votes:   make([]*AggregatedVote, 0),
-		Bits:    make([]*AggregatedFee, 0),
-		Optimal: isOptimal,
-	}
-
 	if !isOptimal {
 		permResult.MaximizeVotes(bitVotes, fees, assumedFees, assumedWeight, absoluteTotalWeight)
 	}
 
-	result.Value = permResult.Value
+	result := ConsensusSolution{
+		Votes:   make([]*AggregatedVote, 0),
+		Bits:    make([]*AggregatedFee, 0),
+		Optimal: isOptimal,
+		Value:   permResult.Value,
+	}
 
 	for key := range permResult.Votes {
 		result.Votes = append(result.Votes, bitVotes[key])
 	}
 	for key := range permResult.Bits {
+		fmt.Printf("key: %v\n", key)
 		result.Bits = append(result.Bits, fees[key])
 	}
 
@@ -186,6 +197,7 @@ func BranchAndBoundVotes(bitVotes []*AggregatedVote, fees []*AggregatedFee, assu
 }
 
 func BranchVotes(processInfo *ProcessInfo, currentStatus *SharedStatus, branch int, bits map[int]bool, feeSum *big.Int, weight uint16) *BranchAndBoundPartialSolution {
+
 	currentStatus.NumOperations++
 
 	// end of recursion
@@ -232,7 +244,8 @@ func BranchVotes(processInfo *ProcessInfo, currentStatus *SharedStatus, branch i
 	}
 
 	// prepare a new branch
-	newBits, newFeeSum := prepareDataForBranchWithVote(processInfo, currentStatus, bits, feeSum, processInfo.BitVotes[branch].Indexes[0])
+
+	newBits, newFeeSum := prepareDataForBranchWithVote(processInfo, currentStatus, bits, feeSum, branch)
 
 	result1 = BranchVotes(processInfo, currentStatus, branch+1, newBits, newFeeSum, weight)
 
@@ -252,7 +265,8 @@ func prepareDataForBranchWithVote(processInfo *ProcessInfo, currentStatus *Share
 	newBits := make(map[int]bool)
 	newFeeSum := new(big.Int).Set(feeSum)
 	for sol := range bits {
-		if processInfo.BitVotes[voteIndex].BitVector.Bit(sol) == 0 {
+		if processInfo.BitVotes[voteIndex].BitVector.Bit(processInfo.Fees[sol].Indexes[0]) == 0 {
+
 			newFeeSum.Sub(newFeeSum, processInfo.Fees[sol].Fee)
 		} else {
 			newBits[sol] = true
@@ -290,7 +304,7 @@ func (solution *BranchAndBoundPartialSolution) MaximizeVotes(votes []*Aggregated
 		if _, isIncluded := solution.Votes[i]; !isIncluded {
 			check := true
 			for j := range solution.Bits {
-				if votes[i].BitVector.Bit(fees[i].Indexes[j]) == 0 {
+				if votes[i].BitVector.Bit(fees[j].Indexes[0]) == 0 {
 					check = false
 					break
 				}

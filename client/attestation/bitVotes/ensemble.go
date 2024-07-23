@@ -12,10 +12,6 @@ type ConsensusSolution struct {
 }
 
 func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16, maxOperations int) (*FilterResults, *ConsensusSolution) {
-	participationWeight := uint16(0)
-	for _, bitVote := range allBitVotes {
-		participationWeight += bitVote.Weight
-	}
 
 	aggregatedVotes, aggregatedFees, filterResults := FilterAndAggregate(allBitVotes, fees, totalWeight)
 
@@ -33,7 +29,9 @@ func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint1
 	} else {
 
 		solution = BranchAndBoundBitsDouble(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, maxOperations, Value{big.NewInt(0), big.NewInt(0)})
+
 		if !solution.Optimal {
+
 			solution2 := BranchAndBoundVotesDouble(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, maxOperations, solution.Value)
 			if solution2 != nil && solution2.Value.Cmp(solution.Value) == 1 {
 				solution = solution2

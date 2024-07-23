@@ -223,17 +223,16 @@ func BranchAndBoundBits(bitVotes []*AggregatedVote, fees []*AggregatedFee, assum
 
 	}
 
-	result := ConsensusSolution{
-		Votes:   make([]*AggregatedVote, 0),
-		Bits:    make([]*AggregatedFee, 0),
-		Optimal: isOptimal,
-	}
-
 	if !isOptimal {
 		permResult.MaximizeBits(bitVotes, fees, assumedFees, assumedWeight, absoluteTotalWeight)
 	}
 
-	result.Value = permResult.Value
+	result := ConsensusSolution{
+		Votes:   make([]*AggregatedVote, 0),
+		Bits:    make([]*AggregatedFee, 0),
+		Optimal: isOptimal,
+		Value:   permResult.Value,
+	}
 
 	for key := range permResult.Votes {
 		result.Votes = append(result.Votes, bitVotes[key])

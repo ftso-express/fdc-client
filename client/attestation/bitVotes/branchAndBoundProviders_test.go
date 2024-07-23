@@ -1,110 +1,151 @@
 package bitvotes_test
 
-// import (
-// 	"fmt"
-// 	bitvotes "local/fdc/client/attestation/bitVotes"
-// 	"math/big"
-// 	"testing"
-// 	"time"
+import (
+	"fmt"
+	bitvotes "local/fdc/client/attestation/bitVotes"
+	"math/big"
+	"testing"
+	"time"
 
-// 	"github.com/stretchr/testify/require"
-// )
+	"github.com/stretchr/testify/require"
+)
 
-// func TestBranchAndBoundProvidersFix(t *testing.T) {
-// 	numAttestations := 100
-// 	numVoters := 30
-// 	weightedBitvotes := make([]*bitvotes.WeightedBitVote, numVoters)
+func TestBranchAndBoundProvidersFix(t *testing.T) {
+	numAttestations := 100
+	numVoters := 30
+	weightedBitVotes := make([]*bitvotes.WeightedBitVote, numVoters)
 
-// 	totalWeight := uint16(0)
-// 	for j := 0; j < numVoters; j++ {
-// 		var bitVote *bitvotes.WeightedBitVote
+	totalWeight := uint16(0)
+	for j := 0; j < numVoters; j++ {
+		var bitVote *bitvotes.WeightedBitVote
 
-// 		if 0.30*float64(numVoters) > float64(j) {
-// 			bitVote = setBitVoteFromPositions(numAttestations, []int{0, 1, 2, 4})
-// 		} else if 0.60*float64(numVoters) > float64(j) {
-// 			bitVote = setBitVoteFromPositions(numAttestations, []int{0, 1, 2, 3})
-// 		} else if 0.90*float64(numVoters) > float64(j) {
-// 			bitVote = setBitVoteFromPositions(numAttestations, []int{0, 2})
-// 		} else {
-// 			bitVote = setBitVoteFromPositions(numAttestations, []int{1, 3})
-// 		}
-// 		weightedBitvotes[j] = bitVote
+		if 0.30*float64(numVoters) > float64(j) {
+			bitVote = setBitVoteFromPositions(numAttestations, []int{0, 1, 2, 4})
+		} else if 0.60*float64(numVoters) > float64(j) {
+			bitVote = setBitVoteFromPositions(numAttestations, []int{0, 1, 2, 3})
+		} else if 0.90*float64(numVoters) > float64(j) {
+			bitVote = setBitVoteFromPositions(numAttestations, []int{0, 2})
+		} else {
+			bitVote = setBitVoteFromPositions(numAttestations, []int{1, 3})
+		}
 
-// 		totalWeight += bitVote.Weight
-// 	}
+		bitVote.Index = j
+		weightedBitVotes[j] = bitVote
 
-// 	fees := make([]*big.Int, numAttestations)
-// 	for j := 0; j < numAttestations; j++ {
-// 		fees[j] = big.NewInt(1)
-// 	}
+		totalWeight += bitVote.Weight
+	}
 
-// 	start := time.Now()
-// 	solution := bitvotes.BranchAndBoundProviders(weightedBitvotes, fees, 0, totalWeight, 50000000, time.Now().Unix())
+	fees := make([]*big.Int, numAttestations)
+	for j := 0; j < numAttestations; j++ {
+		fees[j] = big.NewInt(1)
+	}
 
-// 	fmt.Println("time passed:", time.Since(start).Seconds())
-// 	fmt.Println("solution", solution)
-// 	fmt.Println(solution.Value)
-// 	count := 0
-// 	for _, e := range solution.Solution {
-// 		if e {
-// 			count += 1
-// 		}
-// 	}
-// 	fmt.Println("num attestations", count)
-// }
+	aggregatedVotes, aggregatedFees, filterResults := bitvotes.FilterAndAggregate(weightedBitVotes, fees, totalWeight)
 
-// func TestBranchAndBoundProvidersRandom(t *testing.T) {
-// 	numAttestations := 30
-// 	numVoters := 30
-// 	weightedBitvotes := make([]*bitvotes.WeightedBitVote, numVoters)
-// 	prob := 0.8
+	initialBound := bitvotes.Value{big.NewInt(0), big.NewInt(0)}
 
-// 	totalWeight := uint16(0)
-// 	for j := 0; j < numVoters; j++ {
-// 		bitVote := randomBitVotes(numAttestations, prob)
-// 		weightedBitvotes[j] = bitVote
-// 		totalWeight += bitVote.Weight
-// 	}
+	start := time.Now()
+	solution := bitvotes.BranchAndBoundVotes(
+		aggregatedVotes,
+		aggregatedFees,
+		filterResults.GuaranteedWeight,
+		totalWeight,
+		filterResults.GuaranteedFees,
+		50000000,
+		initialBound,
+		func(_ ...interface{}) bool { return true },
+	)
 
-// 	fees := make([]*big.Int, numAttestations)
-// 	for j := 0; j < numAttestations; j++ {
-// 		fees[j] = big.NewInt(1)
-// 	}
+	fmt.Println("time passed:", time.Since(start).Seconds())
+	fmt.Println("solution", solution)
+	fmt.Println(solution.Value)
 
-// 	start := time.Now()
-// 	solution := bitvotes.BranchAndBoundProviders(weightedBitvotes, fees, 0, totalWeight, 100000000, time.Now().Unix())
+	finalSolution := bitvotes.AssembleSolutionFull(filterResults, *solution)
 
-// 	fmt.Println("time passed:", time.Since(start).Seconds())
-// 	fmt.Println("solution", solution)
-// 	fmt.Println(solution.Value)
-// 	count := 0
-// 	for _, e := range solution.Solution {
-// 		if e {
-// 			count += 1
-// 		}
-// 	}
-// 	count2 := 0
-// 	for _, e := range solution.Participants {
-// 		if e {
-// 			count2 += 1
-// 		}
-// 	}
-// 	fmt.Println("num attestations, providers", count, count2)
+	fmt.Printf("finalSolution.Bits: %v\n", finalSolution.Bits)
 
-// 	solution2 := bitvotes.BranchAndBound(weightedBitvotes, fees, 0, totalWeight, 100000000, time.Now().Unix())
-// 	fmt.Println("solution2", solution2)
-// 	count = 0
-// 	for _, e := range solution2.Solution {
-// 		if e {
-// 			count += 1
-// 		}
-// 	}
-// 	count2 = 0
-// 	for _, e := range solution2.Participants {
-// 		if e {
-// 			count2 += 1
-// 		}
-// 	}
-// 	fmt.Println("2 num attestations, providers", count, count2)
-// 	require.Equal(t, solution.Value, solution2.Value)
-// }
+	initialBound2 := bitvotes.Value{big.NewInt(0), big.NewInt(0)}
+
+	solution2 := bitvotes.BranchAndBoundBits(
+		aggregatedVotes,
+		aggregatedFees,
+		filterResults.GuaranteedWeight,
+		totalWeight,
+		filterResults.GuaranteedFees,
+		50000000,
+		initialBound2,
+		func(_ ...interface{}) bool { return true },
+	)
+
+	finalSolution2 := bitvotes.AssembleSolutionFull(filterResults, *solution2)
+
+	fmt.Printf("finalSolution2.Bits: %v\n", finalSolution2.Bits)
+
+}
+
+func TestBranchAndBoundProvidersRandom(t *testing.T) {
+	numAttestations := 70
+	numVoters := 70
+	weightedBitVotes := make([]*bitvotes.WeightedBitVote, numVoters)
+	prob := 0.86
+
+	totalWeight := uint16(0)
+	for j := 0; j < numVoters; j++ {
+		bitVote := randomBitVotes(numAttestations, prob)
+		weightedBitVotes[j] = bitVote
+		totalWeight += bitVote.Weight
+	}
+
+	fees := make([]*big.Int, numAttestations)
+	for j := 0; j < numAttestations; j++ {
+		fees[j] = big.NewInt(1)
+	}
+
+	aggregatedVotes, aggregatedFees, filterResults := bitvotes.FilterAndAggregate(weightedBitVotes, fees, totalWeight)
+
+	fmt.Printf("len(aggregatedFees): %v\n", len(aggregatedFees))
+
+	fmt.Printf("aggregatedVotes: %v\n", len(aggregatedVotes))
+
+	initialBound := bitvotes.Value{big.NewInt(0), big.NewInt(0)}
+
+	start := time.Now()
+	solution := bitvotes.BranchAndBoundVotes(
+		aggregatedVotes,
+		aggregatedFees,
+		filterResults.GuaranteedWeight,
+		totalWeight,
+		filterResults.GuaranteedFees,
+		100000000,
+		initialBound,
+		func(_ ...interface{}) bool { return true },
+	)
+	fmt.Println("time passed:", time.Since(start).Seconds())
+	fmt.Println("solution", solution)
+	fmt.Println(solution.Value)
+
+	initialBound2 := bitvotes.Value{big.NewInt(0), big.NewInt(0)}
+
+	solution2 := bitvotes.BranchAndBoundBits(
+		aggregatedVotes,
+		aggregatedFees,
+		filterResults.GuaranteedWeight,
+		totalWeight,
+		filterResults.GuaranteedFees,
+		100000000,
+		initialBound2,
+		func(_ ...interface{}) bool { return true },
+	)
+	fmt.Println("solution2", solution2)
+
+	finalSolution := bitvotes.AssembleSolutionFull(filterResults, *solution)
+
+	fmt.Printf("finalSolution.Bits: %v\n", finalSolution.Bits)
+
+	finalSolution2 := bitvotes.AssembleSolutionFull(filterResults, *solution2)
+
+	fmt.Printf("finalSolution2.Bits: %v\n", finalSolution2.Bits)
+
+	require.Equal(t, solution.Value, solution2.Value)
+
+}

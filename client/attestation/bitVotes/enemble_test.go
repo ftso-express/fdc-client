@@ -11,12 +11,12 @@ import (
 )
 
 func TestEnsembleRandom(t *testing.T) {
-	numAttestations := 70
+	numAttestations := 31
 	numVoters := 100
 	weightedBitVotes := make([]*bitvotes.WeightedBitVote, numVoters)
 	aggregatedBitVotes := make([]*bitvotes.AggregatedVote, numVoters)
 
-	prob := 0.8
+	prob := 0.9
 
 	totalWeight := uint16(0)
 	for j := 0; j < numVoters; j++ {
@@ -47,6 +47,8 @@ func TestEnsembleRandom(t *testing.T) {
 	// require.Equal(t, numVoters, len(solution.Participants))
 	// require.Equal(t, numAttestations, len(solution.Solution))
 
+	fmt.Printf("solution.Bits: %v\n", solution.Bits)
+
 	fmt.Println("time passed:", time.Since(start).Seconds())
 
 	start = time.Now()
@@ -59,10 +61,12 @@ func TestEnsembleRandom(t *testing.T) {
 
 	require.Equal(t, solutionCheck.Value, solution.Value)
 
+	fmt.Printf("solutionCheck.Bits: %v\n", solutionCheck.Bits)
+
 }
 
 func TestEnsembleFixed(t *testing.T) {
-	numAttestations := 8
+	numAttestations := 89
 	numVoters := 100
 	weightedBitvotes := make([]*bitvotes.WeightedBitVote, numVoters)
 
@@ -98,7 +102,6 @@ func TestEnsembleFixed(t *testing.T) {
 	require.Equal(t, bitvotes.Value{big.NewInt(2 * 71), big.NewInt(2 * 71)}, solution.Value)
 
 	fmt.Println(solution.Bits)
-	require.ElementsMatch(t, []int{1, 4}, solution.Bits)
 	for j := 0; j < numVoters; j++ {
 		if 0.30*float64(numVoters) > float64(j) {
 			require.Contains(t, solution.Votes, j)
@@ -110,4 +113,7 @@ func TestEnsembleFixed(t *testing.T) {
 			require.Contains(t, solution.Votes, j)
 		}
 	}
+
+	require.ElementsMatch(t, []int{1, 4}, solution.Bits)
+
 }

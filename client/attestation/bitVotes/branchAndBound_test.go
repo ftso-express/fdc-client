@@ -13,13 +13,13 @@ import (
 func TestBranchAndBoundRandom(t *testing.T) {
 	numAttestations := 70
 	numVoters := 100
-	aggBitvotes := make([]*bitvotes.AggregatedVote, numVoters)
+	aggBitVotes := make([]*bitvotes.AggregatedVote, numVoters)
 	prob := 0.8
 
 	totalWeight := uint16(0)
 	for j := 0; j < numVoters; j++ {
 		bitVote := randomBitVoteAggregated(numAttestations, prob, j)
-		aggBitvotes[j] = bitVote
+		aggBitVotes[j] = bitVote
 
 		totalWeight += bitVote.Weight
 	}
@@ -34,7 +34,16 @@ func TestBranchAndBoundRandom(t *testing.T) {
 	initialBound := bitvotes.Value{big.NewInt(0), big.NewInt(0)}
 
 	start := time.Now()
-	solution := bitvotes.BranchAndBoundBits(aggBitvotes, fees, 0, totalWeight, big.NewInt(0), 100000000, initialBound, func(_ ...interface{}) bool { return true })
+	solution := bitvotes.BranchAndBoundBits(
+		aggBitVotes,
+		fees,
+		0,
+		totalWeight,
+		big.NewInt(0),
+		100000000,
+		initialBound,
+		func(_ ...interface{}) bool { return true },
+	)
 
 	fmt.Println("time passed:", time.Since(start).Seconds())
 	fmt.Println("solution", solution)
