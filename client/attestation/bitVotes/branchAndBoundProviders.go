@@ -5,15 +5,6 @@ import (
 	"slices"
 )
 
-func PermuteBitVotes(bitVotes []*WeightedBitVote, randPerm []int) []*WeightedBitVote {
-	permBitVotes := make([]*WeightedBitVote, len(bitVotes))
-	for i, e := range bitVotes {
-		permBitVotes[randPerm[i]] = e
-	}
-
-	return permBitVotes
-}
-
 func CalcValueVote(feeSum *big.Int, weight uint16) *big.Int {
 
 	return new(big.Int).Mul(feeSum, big.NewInt(int64(weight)))
@@ -81,7 +72,7 @@ func BranchAndBoundVotesDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee
 
 	go func() {
 
-		solution := BranchAndBoundBits(votesDscVal, fees, assumedWeight, absoluteTotalWeight, assumedFees, maxOperations, initialBound, func(...interface{}) bool { return true })
+		solution := BranchAndBoundVotes(votesDscVal, fees, assumedWeight, absoluteTotalWeight, assumedFees, maxOperations, initialBound, func(...interface{}) bool { return true })
 
 		solutions[0] = solution
 
@@ -96,7 +87,7 @@ func BranchAndBoundVotesDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee
 
 	go func() {
 
-		solution := BranchAndBoundBits(votesAscVal, fees, assumedWeight, absoluteTotalWeight, assumedFees, maxOperations, initialBound, func(...interface{}) bool { return false })
+		solution := BranchAndBoundVotes(votesAscVal, fees, assumedWeight, absoluteTotalWeight, assumedFees, maxOperations, initialBound, func(...interface{}) bool { return false })
 
 		solutions[1] = solution
 
