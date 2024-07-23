@@ -126,7 +126,7 @@ func BranchAndBoundVotesDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee
 // BranchAndBoundVotes is similar to BranchAndBound, the difference is that it
 // executes a branch and bound strategy on the space of subsets of bitVotes, hence
 // it is particularly useful when there are not too many distinct bitVotes.
-func BranchAndBoundVotes(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, initialBound Value) *ConsensusSolution {
+func BranchAndBoundVotes(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, initialBound Value, strategy func(...interface{}) bool) *ConsensusSolution {
 	totalWeight := assumedWeight
 
 	for _, vote := range bitVotes {
@@ -153,6 +153,7 @@ func BranchAndBoundVotes(bitVotes []*AggregatedVote, fees []*AggregatedFee, assu
 		NumAttestations:  len(fees),
 		NumProviders:     len(bitVotes),
 		MaxOperations:    maxOperations,
+		Strategy:         strategy,
 	}
 
 	permResult := BranchVotes(processInfo, currentStatus, 0, bits, totalFee, totalWeight)
@@ -232,8 +233,7 @@ func BranchVotes(processInfo *ProcessInfo, currentStatus *SharedStatus, branch i
 	newWeight := weight - processInfo.BitVotes[branch].Weight
 
 	// decide randomly which branch is first
-	randBit := currentStatus.RandGen.Int63() % 2
-	if randBit == 0 {
+	if processInfo.Strategy() {
 		// check if a branch is possible
 		if newWeight > processInfo.LowerBoundWeight {
 			result0 = BranchVotes(processInfo, currentStatus, branch+1, bits, feeSum, newWeight)
@@ -245,7 +245,7 @@ func BranchVotes(processInfo *ProcessInfo, currentStatus *SharedStatus, branch i
 
 	result1 = BranchVotes(processInfo, currentStatus, branch+1, newBits, newFeeSum, weight)
 
-	if randBit == 1 {
+	if !processInfo.Strategy() {
 		if newWeight > processInfo.LowerBoundWeight {
 			result0 = BranchVotes(processInfo, currentStatus, branch+1, bits, feeSum, newWeight)
 		}
