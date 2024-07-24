@@ -17,25 +17,35 @@ func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint1
 
 	var solution *ConsensusSolution
 
+	method0, method1 := BranchAndBoundBitsDouble, BranchAndBoundVotesDouble
+
 	if len(allBitVotes) < len(fees) {
 
-		solution = BranchAndBoundVotesDouble(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, maxOperations, Value{big.NewInt(0), big.NewInt(0)})
-		if !solution.Optimal {
-			solution2 := BranchAndBoundBitsDouble(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, maxOperations, solution.Value)
-			if solution2 != nil && solution2.Value.Cmp(solution.Value) == 1 {
-				solution = solution2
-			}
-		}
-	} else {
+		method0, method1 = BranchAndBoundVotesDouble, BranchAndBoundVotesDouble
+	}
 
-		solution = BranchAndBoundBitsDouble(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, maxOperations, Value{big.NewInt(0), big.NewInt(0)})
+	solution = method0(
+		aggregatedVotes,
+		aggregatedFees,
+		filterResults.GuaranteedWeight,
+		totalWeight,
+		filterResults.GuaranteedFees,
+		maxOperations,
+		Value{big.NewInt(0), big.NewInt(0)},
+	)
+	if !solution.Optimal {
+		solution2 := method1(
+			aggregatedVotes,
+			aggregatedFees,
+			filterResults.GuaranteedWeight,
+			totalWeight,
+			filterResults.GuaranteedFees,
+			maxOperations,
+			Value{new(big.Int).Set(solution.Value.CappedValue), new(big.Int).Set(solution.Value.UncappedValue)},
+		)
 
-		if !solution.Optimal {
-
-			solution2 := BranchAndBoundVotesDouble(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, maxOperations, solution.Value)
-			if solution2 != nil && solution2.Value.Cmp(solution.Value) == 1 {
-				solution = solution2
-			}
+		if solution2 != nil && solution2.Value.Cmp(solution.Value) == 1 {
+			solution = solution2
 		}
 	}
 
