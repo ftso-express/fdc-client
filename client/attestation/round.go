@@ -8,6 +8,7 @@ import (
 	"fmt"
 	bitvotes "local/fdc/client/attestation/bitVotes"
 	"local/fdc/client/utils"
+	"math/big"
 	"sort"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -112,28 +113,19 @@ func (r *Round) BitVoteHex() (string, error) {
 }
 
 // ComputeConsensusBitVote computes the consensus BitVote according to the collected bitVotes and sets consensus status to the attestations.
-func (r *Round) ComputeConsensusBitVote(protocolId uint64) error {
+func (r *Round) ComputeConsensusBitVote() error {
 
 	r.sortBitVotes()
 
 	r.sortAttestations()
 
-	fees := make([]int, len(r.Attestations))
-	for i, e := range r.Attestations {
-		fees[i] = int(e.Fee.Int64())
+	fees := make([]*big.Int, len(r.Attestations))
+	for i, a := range r.Attestations {
+		fees[i] = a.Fee
 	}
 
-	consensus, err := bitvotes.ConsensusBitVote(&bitvotes.ConsensusBitVoteInput{
-		RoundID:          r.roundId,
-		WeightedBitVotes: r.bitVotes,
-		TotalWeight:      r.voterSet.TotalWeight,
-		Fees:             fees,
-	},
-		protocolId)
-	if err != nil {
-		return err
+	consensus := bitvotes.EnsembleConsensusBitVote(r.bitVotes, fees, r.voterSet.TotalWeight, 20000000)
 
-	}
 	r.ConsensusBitVote = consensus
 
 	return r.setConsensusStatus(consensus)
@@ -147,6 +139,16 @@ func (r *Round) GetConsensusBitVote() (bitvotes.BitVote, error) {
 	}
 
 	return r.ConsensusBitVote, nil
+}
+
+// ConsensusBitVoteHex returns hex string encoded consensus BitVote if it is already computed.
+func (r *Round) ConsensusBitVoteHex() (string, error) {
+
+	if r.ConsensusBitVote.BitVector == nil {
+		return "", errors.New("no consensus bitVote")
+	}
+
+	return r.ConsensusBitVote.EncodeBitVoteHex(r.roundId), nil
 }
 
 // setConsensusStatus sets consensus status of the attestations.

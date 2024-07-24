@@ -49,14 +49,14 @@ func EnsembleFull(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight u
 	return AssembleSolutionFull(filterResults, *filterSolution)
 }
 
-func EnsembleConsensusBitVote(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16, maxOperations int) *big.Int {
+func EnsembleConsensusBitVote(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16, maxOperations int) BitVote {
 
 	filterResults, filterSolution := ensemble(allBitVotes, fees, totalWeight, maxOperations)
 
-	return AssembleSolution(filterResults, *filterSolution)
+	return AssembleSolution(filterResults, *filterSolution, uint16(len(fees)))
 }
 
-func (solution *BranchAndBoundPartialSolution) CalcValueFromFees(allBitVotes []*AggregatedVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) Value {
+func (solution *branchAndBoundPartialSolution) CalcValueFromFees(allBitVotes []*AggregatedVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) Value {
 	feeSum := big.NewInt(0).Set(assumedFees)
 	for i := range solution.Bits {
 		feeSum.Add(feeSum, fees[i].Fee)

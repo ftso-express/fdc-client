@@ -53,7 +53,7 @@ func TestBranchAndBoundProvidersFix(t *testing.T) {
 		filterResults.GuaranteedFees,
 		50000000,
 		initialBound,
-		func(_ ...interface{}) bool { return true },
+		true,
 	)
 
 	fmt.Println("time passed:", time.Since(start).Seconds())
@@ -74,7 +74,7 @@ func TestBranchAndBoundProvidersFix(t *testing.T) {
 		filterResults.GuaranteedFees,
 		50000000,
 		initialBound2,
-		func(_ ...interface{}) bool { return true },
+		true,
 	)
 
 	finalSolution2 := bitvotes.AssembleSolutionFull(filterResults, *solution2)
@@ -84,8 +84,8 @@ func TestBranchAndBoundProvidersFix(t *testing.T) {
 }
 
 func TestBranchAndBoundProvidersRandom(t *testing.T) {
-	numAttestations := 70
-	numVoters := 70
+	numAttestations := 1000
+	numVoters := 100
 	weightedBitVotes := make([]*bitvotes.WeightedBitVote, numVoters)
 	prob := 0.86
 
@@ -103,10 +103,6 @@ func TestBranchAndBoundProvidersRandom(t *testing.T) {
 
 	aggregatedVotes, aggregatedFees, filterResults := bitvotes.FilterAndAggregate(weightedBitVotes, fees, totalWeight)
 
-	fmt.Printf("len(aggregatedFees): %v\n", len(aggregatedFees))
-
-	fmt.Printf("aggregatedVotes: %v\n", len(aggregatedVotes))
-
 	initialBound := bitvotes.Value{big.NewInt(0), big.NewInt(0)}
 
 	start := time.Now()
@@ -116,15 +112,17 @@ func TestBranchAndBoundProvidersRandom(t *testing.T) {
 		filterResults.GuaranteedWeight,
 		totalWeight,
 		filterResults.GuaranteedFees,
-		100000000,
+		200000000,
 		initialBound,
-		func(_ ...interface{}) bool { return true },
+		true,
 	)
 	fmt.Println("time passed:", time.Since(start).Seconds())
 	fmt.Println("solution", solution)
 	fmt.Println(solution.Value)
 
 	initialBound2 := bitvotes.Value{big.NewInt(0), big.NewInt(0)}
+
+	start2 := time.Now()
 
 	solution2 := bitvotes.BranchAndBoundBits(
 		aggregatedVotes,
@@ -134,8 +132,10 @@ func TestBranchAndBoundProvidersRandom(t *testing.T) {
 		filterResults.GuaranteedFees,
 		100000000,
 		initialBound2,
-		func(_ ...interface{}) bool { return true },
+		false,
 	)
+	fmt.Println("time passed:", time.Since(start2).Seconds())
+
 	fmt.Println("solution2", solution2)
 
 	finalSolution := bitvotes.AssembleSolutionFull(filterResults, *solution)

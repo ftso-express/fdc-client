@@ -1,7 +1,6 @@
 package bitvotes
 
 import (
-	"fmt"
 	"math/big"
 	"slices"
 )
@@ -81,7 +80,7 @@ func BranchAndBoundVotesDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee
 			assumedFees,
 			maxOperations,
 			initialBound,
-			func(...interface{}) bool { return true },
+			true,
 		)
 
 		solutions[0] = solution
@@ -97,7 +96,7 @@ func BranchAndBoundVotesDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee
 
 	go func() {
 
-		solution := BranchAndBoundVotes(votesAscVal, fees, assumedWeight, absoluteTotalWeight, assumedFees, maxOperations, initialBound, func(...interface{}) bool { return false })
+		solution := BranchAndBoundVotes(votesAscVal, fees, assumedWeight, absoluteTotalWeight, assumedFees, maxOperations, initialBound, false)
 
 		solutions[1] = solution
 
@@ -127,7 +126,7 @@ func BranchAndBoundVotesDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee
 // BranchAndBoundVotes is similar to BranchAndBound, the difference is that it
 // executes a branch and bound strategy on the space of subsets of bitVotes, hence
 // it is particularly useful when there are not too many distinct bitVotes.
-func BranchAndBoundVotes(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, initialBound Value, strategy func(...interface{}) bool) *ConsensusSolution {
+func BranchAndBoundVotes(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16, assumedFees *big.Int, maxOperations int, initialBound Value, strategy bool) *ConsensusSolution {
 
 	weight := assumedWeight
 
@@ -189,14 +188,13 @@ func BranchAndBoundVotes(bitVotes []*AggregatedVote, fees []*AggregatedFee, assu
 		result.Votes = append(result.Votes, bitVotes[key])
 	}
 	for key := range permResult.Bits {
-		fmt.Printf("key: %v\n", key)
 		result.Bits = append(result.Bits, fees[key])
 	}
 
 	return &result
 }
 
-func BranchVotes(processInfo *ProcessInfo, currentStatus *SharedStatus, branch int, bits map[int]bool, feeSum *big.Int, weight uint16) *BranchAndBoundPartialSolution {
+func BranchVotes(processInfo *ProcessInfo, currentStatus *SharedStatus, branch int, bits map[int]bool, feeSum *big.Int, weight uint16) *branchAndBoundPartialSolution {
 
 	currentStatus.NumOperations++
 
@@ -208,7 +206,7 @@ func BranchVotes(processInfo *ProcessInfo, currentStatus *SharedStatus, branch i
 
 			currentStatus.CurrentBound = value
 
-			return &BranchAndBoundPartialSolution{
+			return &branchAndBoundPartialSolution{
 				Votes: make(map[int]bool),
 				Bits:  bits,
 				Value: value,
@@ -230,13 +228,14 @@ func BranchVotes(processInfo *ProcessInfo, currentStatus *SharedStatus, branch i
 		return nil
 	}
 
-	var result0 *BranchAndBoundPartialSolution
-	var result1 *BranchAndBoundPartialSolution
+	var result0 *branchAndBoundPartialSolution
+	var result1 *branchAndBoundPartialSolution
 
 	newWeight := weight - processInfo.BitVotes[branch].Weight
 
-	// decide randomly which branch is first
-	if processInfo.Strategy() {
+	// decide which branch is first
+	if processInfo.Strategy {
+
 		// check if a branch is possible
 		if newWeight > processInfo.LowerBoundWeight {
 			result0 = BranchVotes(processInfo, currentStatus, branch+1, bits, feeSum, newWeight)
@@ -249,7 +248,7 @@ func BranchVotes(processInfo *ProcessInfo, currentStatus *SharedStatus, branch i
 
 	result1 = BranchVotes(processInfo, currentStatus, branch+1, newBits, newFeeSum, weight)
 
-	if !processInfo.Strategy() {
+	if !processInfo.Strategy {
 		if newWeight > processInfo.LowerBoundWeight {
 			result0 = BranchVotes(processInfo, currentStatus, branch+1, bits, feeSum, newWeight)
 		}
@@ -268,11 +267,14 @@ func prepareDataForBranchWithVote(processInfo *ProcessInfo, currentStatus *Share
 		if processInfo.BitVotes[voteIndex].BitVector.Bit(processInfo.Fees[sol].Indexes[0]) == 0 {
 
 			newFeeSum.Sub(newFeeSum, processInfo.Fees[sol].Fee)
+			currentStatus.NumOperations++
+
 		} else {
 			newBits[sol] = true
 		}
-		currentStatus.NumOperations++
 	}
+
+	currentStatus.NumOperations += len(newBits)
 
 	return newBits, newFeeSum
 
@@ -281,7 +283,7 @@ func prepareDataForBranchWithVote(processInfo *ProcessInfo, currentStatus *Share
 // joinResultsVotes compares two solutions.
 // If result1 (the result in which the vote on place branch is included) is greater, result1 with updated votes is returned.
 // Otherwise, result0 without the vote on branch place is returned.
-func joinResultsVotes(result0, result1 *BranchAndBoundPartialSolution, branch int) *BranchAndBoundPartialSolution {
+func joinResultsVotes(result0, result1 *branchAndBoundPartialSolution, branch int) *branchAndBoundPartialSolution {
 	if result0 == nil && result1 == nil {
 		return nil
 	} else if result0 != nil && result1 == nil {
@@ -298,7 +300,7 @@ func joinResultsVotes(result0, result1 *BranchAndBoundPartialSolution, branch in
 }
 
 // MaximizeVotes adds all votes that confirm all bits in the solution and updates the value.
-func (solution *BranchAndBoundPartialSolution) MaximizeVotes(votes []*AggregatedVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) {
+func (solution *branchAndBoundPartialSolution) MaximizeVotes(votes []*AggregatedVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) {
 	for i := range votes {
 
 		if _, isIncluded := solution.Votes[i]; !isIncluded {

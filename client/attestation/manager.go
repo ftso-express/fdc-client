@@ -129,7 +129,7 @@ func (m *Manager) Run(ctx context.Context) {
 				break
 			}
 
-			err := r.ComputeConsensusBitVote(m.protocolId)
+			err := r.ComputeConsensusBitVote()
 
 			if err != nil {
 				log.Warnf("Failed bitVote in round %d: %s", bitVotesForRound.Id, err)

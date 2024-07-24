@@ -42,7 +42,7 @@ func TestBranchAndBoundRandom(t *testing.T) {
 		big.NewInt(0),
 		100000000,
 		initialBound,
-		func(_ ...interface{}) bool { return true },
+		true,
 	)
 
 	fmt.Println("time passed:", time.Since(start).Seconds())
@@ -126,7 +126,7 @@ func TestBranchAndBoundFix(t *testing.T) {
 	initialBound := bitvotes.Value{big.NewInt(0), big.NewInt(0)}
 
 	start := time.Now()
-	solution := bitvotes.BranchAndBoundBits(weightedBitvotes, fees, 0, totalWeight, big.NewInt(0), 50000000, initialBound, func(_ ...interface{}) bool { return true })
+	solution := bitvotes.BranchAndBoundBits(weightedBitvotes, fees, 0, totalWeight, big.NewInt(0), 50000000, initialBound, true)
 
 	fmt.Println("time passed:", time.Since(start).Seconds())
 

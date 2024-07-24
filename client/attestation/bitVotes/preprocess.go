@@ -334,7 +334,7 @@ func FilterAndAggregate(bitVotes []*WeightedBitVote, fees []*big.Int, totalWeigh
 	return aggregatedVotes, aggregatedFees, filterResults
 }
 
-func AssembleSolution(filterResults *FilterResults, filteredSolution ConsensusSolution) *big.Int {
+func AssembleSolution(filterResults *FilterResults, filteredSolution ConsensusSolution, noOfAttestations uint16) BitVote {
 
 	consensusBitVote := big.NewInt(0)
 
@@ -353,7 +353,7 @@ func AssembleSolution(filterResults *FilterResults, filteredSolution ConsensusSo
 		}
 	}
 
-	return consensusBitVote
+	return BitVote{BitVector: consensusBitVote, Length: noOfAttestations}
 
 }
 
