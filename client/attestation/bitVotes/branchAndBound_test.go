@@ -52,45 +52,44 @@ func TestBranchAndBoundRandom(t *testing.T) {
 	fmt.Println("num attestations", len(solution.Bits))
 }
 
-// func TestBranchAndBound65(t *testing.T) {
-// 	numAttestations := 100
-// 	numVoters := 100
-// 	weightedBitvotes := make([]*bitvotes.WeightedBitVote, numVoters)
-// 	totalWeight := uint16(0)
+func TestBranchAndBound65(t *testing.T) {
+	numAttestations := 100
+	numVoters := 100
+	weightedBitVotes := make([]*bitvotes.WeightedBitVote, numVoters)
+	totalWeight := uint16(0)
 
-// 	for j := 0; j < numVoters; j++ {
-// 		var bitVote *bitvotes.WeightedBitVote
-// 		if 0.65*float64(numVoters) > float64(j) {
-// 			bitVote = setBitVoteFromRules(numAttestations, []int{2, 3})
-// 		} else {
-// 			bitVote = setBitVoteFromRules(numAttestations, []int{3, 7})
-// 		}
-// 		weightedBitvotes[j] = bitVote
+	for j := 0; j < numVoters; j++ {
+		var bitVote *bitvotes.WeightedBitVote
+		if 0.65*float64(numVoters) > float64(j) {
+			bitVote = setBitVoteFromRules(numAttestations, []int{2, 3})
+		} else {
+			bitVote = setBitVoteFromRules(numAttestations, []int{3, 7})
+		}
+		weightedBitVotes[j] = bitVote
 
-// 		totalWeight += bitVote.Weight
-// 	}
+		totalWeight += bitVote.Weight
+	}
 
-// 	fees := make([]*big.Int, numAttestations)
-// 	for j := 0; j < numAttestations; j++ {
-// 		fees[j] = big.NewInt(1)
-// 	}
+	fees := make([]*big.Int, numAttestations)
+	for j := 0; j < numAttestations; j++ {
+		fees[j] = big.NewInt(1)
+	}
 
-// 	start := time.Now()
+	aggregatedVotes, aggregatedFees, filterResults := bitvotes.FilterAndAggregate(weightedBitVotes, fees, totalWeight)
 
-// 	solution := bitvotes.BranchAndBound(weightedBitvotes, fees, 0, totalWeight, 50000000, time.Now().Unix())
+	initialBound := bitvotes.Value{big.NewInt(0), big.NewInt(0)}
 
-// 	fmt.Println("time passed:", time.Since(start).Seconds())
-// 	fmt.Println("solution", solution)
-// 	fmt.Println(solution.Value)
-// 	count := 0
-// 	for _, e := range solution.Solution {
-// 		if e {
-// 			count += 1
-// 		}
-// 	}
+	start := time.Now()
 
-// 	fmt.Println("num attestations", count)
-// }
+	solution := bitvotes.BranchAndBoundBits(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, 20000000, initialBound, true)
+
+	finalSolution := bitvotes.AssembleSolutionFull(filterResults, *solution)
+
+	fmt.Println("time passed:", time.Since(start).Seconds())
+	fmt.Println("solution", finalSolution)
+	fmt.Println(finalSolution.Value)
+
+}
 
 func TestBranchAndBoundFix(t *testing.T) {
 	numAttestations := 5

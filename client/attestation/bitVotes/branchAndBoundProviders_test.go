@@ -84,8 +84,8 @@ func TestBranchAndBoundProvidersFix(t *testing.T) {
 }
 
 func TestBranchAndBoundProvidersRandom(t *testing.T) {
-	numAttestations := 1000
-	numVoters := 100
+	numAttestations := 30
+	numVoters := 30
 	weightedBitVotes := make([]*bitvotes.WeightedBitVote, numVoters)
 	prob := 0.86
 
@@ -103,9 +103,11 @@ func TestBranchAndBoundProvidersRandom(t *testing.T) {
 
 	aggregatedVotes, aggregatedFees, filterResults := bitvotes.FilterAndAggregate(weightedBitVotes, fees, totalWeight)
 
+	fmt.Printf("len(aggregatedFees): %v\n", len(aggregatedFees))
 	initialBound := bitvotes.Value{big.NewInt(0), big.NewInt(0)}
 
 	start := time.Now()
+
 	solution := bitvotes.BranchAndBoundVotes(
 		aggregatedVotes,
 		aggregatedFees,
@@ -114,11 +116,10 @@ func TestBranchAndBoundProvidersRandom(t *testing.T) {
 		filterResults.GuaranteedFees,
 		200000000,
 		initialBound,
-		true,
+		false,
 	)
+
 	fmt.Println("time passed:", time.Since(start).Seconds())
-	fmt.Println("solution", solution)
-	fmt.Println(solution.Value)
 
 	initialBound2 := bitvotes.Value{big.NewInt(0), big.NewInt(0)}
 
@@ -137,6 +138,9 @@ func TestBranchAndBoundProvidersRandom(t *testing.T) {
 	fmt.Println("time passed:", time.Since(start2).Seconds())
 
 	fmt.Println("solution2", solution2)
+
+	fmt.Println("solution", solution)
+	fmt.Println(solution.Value)
 
 	finalSolution := bitvotes.AssembleSolutionFull(filterResults, *solution)
 

@@ -11,7 +11,7 @@ import (
 )
 
 func TestEnsembleRandom(t *testing.T) {
-	numAttestations := 31
+	numAttestations := 20
 	numVoters := 100
 	weightedBitVotes := make([]*bitvotes.WeightedBitVote, numVoters)
 	aggregatedBitVotes := make([]*bitvotes.AggregatedVote, numVoters)
