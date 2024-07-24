@@ -79,7 +79,7 @@ func BranchAndBoundVotesDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee
 			absoluteTotalWeight,
 			assumedFees,
 			maxOperations,
-			initialBound,
+			initialBound.Copy(),
 			true,
 		)
 
@@ -96,7 +96,14 @@ func BranchAndBoundVotesDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee
 
 	go func() {
 
-		solution := BranchAndBoundVotes(votesAscVal, fees, assumedWeight, absoluteTotalWeight, assumedFees, maxOperations, initialBound, false)
+		solution := BranchAndBoundVotes(
+			votesAscVal,
+			fees,
+			assumedWeight,
+			absoluteTotalWeight,
+			assumedFees,
+			maxOperations,
+			initialBound.Copy(), false)
 
 		solutions[1] = solution
 

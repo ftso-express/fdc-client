@@ -41,7 +41,7 @@ func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint1
 			totalWeight,
 			filterResults.GuaranteedFees,
 			maxOperations,
-			Value{new(big.Int).Set(solution.Value.CappedValue), new(big.Int).Set(solution.Value.UncappedValue)},
+			solution.Value.Copy(),
 		)
 
 		if solution2 != nil && solution2.Value.Cmp(solution.Value) == 1 {

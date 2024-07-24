@@ -34,6 +34,11 @@ type Value struct {
 	UncappedValue *big.Int
 }
 
+func (v Value) Copy() Value {
+	return Value{new(big.Int).Set(v.CappedValue), new(big.Int).Set(v.UncappedValue)}
+
+}
+
 // Cmp compares Values lexicographically
 //
 //	-1 if v0 <  v1
