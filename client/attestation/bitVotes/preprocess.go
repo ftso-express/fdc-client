@@ -4,7 +4,6 @@ import (
 	"local/fdc/client/utils"
 	"math/big"
 	"slices"
-	"strconv"
 )
 
 type FilterResults struct {
@@ -20,7 +19,7 @@ type FilterResults struct {
 	RemainingWeight  uint16
 }
 
-// FilterBits identifies the bits that are supported by all or are supported by none
+// FilterBits identifies the bits that are supported by all or by not more than 50% of the totalWeight
 // and moves them from RemainingBits to AlwaysInBits or AlwaysOutBits, respectively.
 // Fees of bits moved to AlwaysInBits are added to guaranteedFees.
 func FilterBits(bitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16, results *FilterResults) *FilterResults {
@@ -80,7 +79,7 @@ bits:
 // FilterVoters moves votes from RemainingVotes that are all zero or all one on RemainingBits to AlwaysOutVotes
 // or AlwaysInVotes, respectively.
 //
-// GuaranteedWight and RemainingWeight are updated accordingly.
+// GuaranteedWeight and RemainingWeight are updated accordingly.
 func FilterVotes(bitVotes []*WeightedBitVote, totalWeight uint16, results *FilterResults) (*FilterResults, bool) {
 
 	somethingChanged := false
@@ -182,11 +181,13 @@ func Filter(bitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16) *F
 
 type AggregatedFee struct {
 	Fee     *big.Int
-	Indexes []int
+	Indexes []int // places of fees that are aggregated
 	Support uint16
-	value   Value
+	value   Value //unsafe to use. It depends on the totalWeight
 }
 
+// Value returns the value of the bit.
+// If cache is true, it gets the stored value (even if it was computed for a different totalWeight) or computes and stores it if it is not already stored.
 func (f *AggregatedFee) Value(totalWeight uint16, cache bool) Value {
 	if cache && f.value.CappedValue != nil {
 		return f.value
@@ -217,7 +218,7 @@ func AggregateBits(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults *
 
 	for _, i := range remainingBitsSorted {
 
-		state := ""
+		identifier := ""
 		support := filterResults.GuaranteedWeight
 
 		for _, j := range remainingVotesSorted {
@@ -226,19 +227,20 @@ func AggregateBits(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults *
 
 			if bit == 1 {
 				support += bitVotes[j].Weight
+				identifier += "1"
+			} else {
+				identifier += "0"
 			}
-
-			state += strconv.FormatUint(uint64(bit), 10)
 
 		}
 
-		aggFee, exists := aggregator[state]
+		aggFee, exists := aggregator[identifier]
 
 		if !exists {
 
-			newIndexedFee := AggregatedFee{Fee: new(big.Int).Set(fees[i]), Indexes: []int{i}, Support: support}
+			newAggFee := AggregatedFee{Fee: new(big.Int).Set(fees[i]), Indexes: []int{i}, Support: support}
 
-			aggregator[state] = &newIndexedFee
+			aggregator[identifier] = &newAggFee
 
 		} else {
 			aggFee.Fee.Add(aggFee.Fee, fees[i])
@@ -258,8 +260,8 @@ func AggregateBits(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults *
 type AggregatedVote struct {
 	BitVector *big.Int
 	Weight    uint16
-	Indexes   []int //places of the voted in initial []*WeightedBitVotes
-	Fees      *big.Int
+	Indexes   []int    //places of the voted in initial []*WeightedBitVotes
+	Fees      *big.Int // for sorting purposes
 }
 
 func AggregateVotes(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults *FilterResults) []*AggregatedVote {
@@ -283,11 +285,13 @@ func AggregateVotes(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults 
 
 			bit := bitVotes[i].BitVote.BitVector.Bit(j)
 
-			identifier += strconv.FormatUint(uint64(bit), 10)
-
 			if bit == 1 {
 
 				feesVote.Add(feesVote, fees[j])
+				identifier += "1"
+
+			} else {
+				identifier += "0"
 
 			}
 
@@ -296,14 +300,14 @@ func AggregateVotes(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults 
 		aggVote, exists := aggregator[identifier]
 
 		if !exists {
-			newAggregatedBitVote := AggregatedVote{
+			newAggVote := AggregatedVote{
 				BitVector: new(big.Int).Set(bitVotes[i].BitVote.BitVector),
 				Weight:    bitVotes[i].Weight,
 				Indexes:   []int{i},
 				Fees:      feesVote,
 			}
 
-			aggregator[identifier] = &newAggregatedBitVote
+			aggregator[identifier] = &newAggVote
 
 		} else {
 
@@ -334,7 +338,7 @@ func FilterAndAggregate(bitVotes []*WeightedBitVote, fees []*big.Int, totalWeigh
 	return aggregatedVotes, aggregatedFees, filterResults
 }
 
-func AssembleSolution(filterResults *FilterResults, filteredSolution ConsensusSolution, noOfAttestations uint16) BitVote {
+func AssembleSolution(filterResults *FilterResults, filteredSolution ConsensusSolution, numberOfAttestations uint16) BitVote {
 
 	consensusBitVote := big.NewInt(0)
 
@@ -353,7 +357,7 @@ func AssembleSolution(filterResults *FilterResults, filteredSolution ConsensusSo
 		}
 	}
 
-	return BitVote{BitVector: consensusBitVote, Length: noOfAttestations}
+	return BitVote{BitVector: consensusBitVote, Length: numberOfAttestations}
 
 }
 

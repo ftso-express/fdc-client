@@ -247,6 +247,11 @@ func (r *Round) ProcessBitVote(message payload.Message) error {
 
 	if roundCheck != uint8(message.VotingRound%256) {
 		return fmt.Errorf("wrong round check from %s", message.From)
+
+	}
+
+	if int(bitVote.Length) != len(r.Attestations) {
+		return fmt.Errorf("wrong number of bits from %s", message.From)
 	}
 
 	voter, exists := r.voterSet.VoterDataMap[message.From]

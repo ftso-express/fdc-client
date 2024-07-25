@@ -11,7 +11,7 @@ import (
 )
 
 func TestEnsembleRandom(t *testing.T) {
-	numAttestations := 20
+	numAttestations := 29
 	numVoters := 100
 	weightedBitVotes := make([]*bitvotes.WeightedBitVote, numVoters)
 	aggregatedBitVotes := make([]*bitvotes.AggregatedVote, numVoters)
@@ -43,7 +43,7 @@ func TestEnsembleRandom(t *testing.T) {
 
 	start := time.Now()
 
-	solution := bitvotes.EnsembleFull(weightedBitVotes, fees, totalWeight, 20000000)
+	solution := bitvotes.EnsembleFull(weightedBitVotes, fees, totalWeight, 30000000)
 	// require.Equal(t, numVoters, len(solution.Participants))
 	// require.Equal(t, numAttestations, len(solution.Solution))
 
@@ -53,7 +53,7 @@ func TestEnsembleRandom(t *testing.T) {
 
 	start = time.Now()
 
-	solutionCheck := bitvotes.BranchAndBoundBits(aggregatedBitVotes, aggFees, 0, totalWeight, big.NewInt(0), 1000000000, bitvotes.Value{big.NewInt(0), big.NewInt(0)}, false)
+	solutionCheck := bitvotes.BranchAndBoundBits(aggregatedBitVotes, aggFees, 0, totalWeight, big.NewInt(0), 100000000, bitvotes.Value{big.NewInt(0), big.NewInt(0)}, false)
 
 	fmt.Println("time passed:", time.Since(start).Seconds())
 

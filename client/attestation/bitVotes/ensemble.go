@@ -21,7 +21,7 @@ func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint1
 
 	if len(allBitVotes) < len(fees) {
 
-		method0, method1 = BranchAndBoundVotesDouble, BranchAndBoundVotesDouble
+		method0, method1 = BranchAndBoundVotesDouble, BranchAndBoundBitsDouble
 	}
 
 	solution = method0(
@@ -44,7 +44,7 @@ func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint1
 			solution.Value.Copy(),
 		)
 
-		if solution2 != nil && solution2.Value.Cmp(solution.Value) == 1 {
+		if solution2.Value.Cmp(solution.Value) == 1 {
 			solution = solution2
 		}
 	}
