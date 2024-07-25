@@ -67,7 +67,7 @@ var bitVoteMessageBadVoter = payload.Message{
 	Payload:          []byte{664082 % 256, 0, 10, 2, 93},
 }
 
-var bitVoteMessage = payload.Message{
+var bitVoteMessageWrongLength = payload.Message{
 	From:             common.HexToAddress("0x8fe15e1048f90bc028a60007c7d5b55d9d20de66"),
 	Selector:         "6c532fae",
 	VotingRound:      664082,
@@ -75,6 +75,15 @@ var bitVoteMessage = payload.Message{
 	BlockNumber:      16542630,
 	TransactionIndex: 10,
 	Payload:          []byte{664082 % 256, 0, 10, 2, 93},
+}
+var bitVoteMessage = payload.Message{
+	From:             common.HexToAddress("0x8fe15e1048f90bc028a60007c7d5b55d9d20de66"),
+	Selector:         "6c532fae",
+	VotingRound:      664082,
+	Timestamp:        1718197405,
+	BlockNumber:      16542630,
+	TransactionIndex: 10,
+	Payload:          []byte{664082 % 256, 0, 0},
 }
 
 func TestManager(t *testing.T) {
@@ -96,6 +105,7 @@ func TestManager(t *testing.T) {
 		bitVoteMessageTooSoon,
 		bitVoteMessageWrongRoundCheck,
 		bitVoteMessageBadVoter,
+		bitVoteMessageWrongLength,
 	} {
 
 		err = mngr.OnBitVote(badBitVote)
