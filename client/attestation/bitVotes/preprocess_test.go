@@ -152,7 +152,7 @@ import (
 // 	require.Equal(t, preProccesInfo.RemovedZerosWeight, uint16(0))
 // }
 
-func TestFilter2(t *testing.T) {
+func TestFilter(t *testing.T) {
 
 	tests := []struct {
 		vectors        []string
@@ -200,6 +200,21 @@ func TestFilter2(t *testing.T) {
 			AlwaysOutVotes:   []int{},
 			RemainingVotes:   map[int]bool{},
 			GuaranteedWeight: 13,
+		},
+		{
+			vectors:       []string{"1111", "1100", "1001", "0010"},
+			weights:       []uint16{4, 4, 1, 1},
+			totalWeight:   10,
+			fees:          []*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1), big.NewInt(1)},
+			AlwaysInBits:  []int{3},
+			AlwaysOutBits: []int{0, 1},
+			RemainingBits: map[int]bool{2: true},
+
+			GuaranteedFees:   big.NewInt(1),
+			AlwaysInVotes:    []int{0, 1},
+			AlwaysOutVotes:   []int{3},
+			RemainingVotes:   map[int]bool{2: true},
+			GuaranteedWeight: 8,
 		},
 	}
 
