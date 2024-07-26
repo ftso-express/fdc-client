@@ -294,8 +294,6 @@ func TestMaximizeBits(t *testing.T) {
 
 			aggVotes[i] = new(bitvotes.AggregatedVote)
 
-			fmt.Println(new(big.Int).SetString(test.vectors[i], 2))
-
 			aggVotes[i].BitVector, _ = new(big.Int).SetString(test.vectors[i], 2)
 
 			aggVotes[i].Weight = test.supports[i]

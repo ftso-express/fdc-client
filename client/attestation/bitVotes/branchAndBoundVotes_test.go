@@ -153,3 +153,86 @@ func TestBranchAndBoundProvidersRandom(t *testing.T) {
 	require.Equal(t, solution.Value, solution2.Value)
 
 }
+
+func TestMaximizeVotes(t *testing.T) {
+
+	tests := []struct {
+		vectors      []string
+		supports     []uint16
+		indexesVotes [][]int
+
+		fees        []*big.Int
+		indexesFees [][]int
+
+		votes         map[int]bool
+		bits          map[int]bool
+		value         bitvotes.Value
+		assumedFees   *big.Int
+		assumedWeight uint16
+		totalWeight   uint16
+
+		endVotes map[int]bool
+		endBits  map[int]bool
+		endValue bitvotes.Value
+	}{
+
+		{
+			vectors:      []string{"1110", "1101", "1011", "1100"},
+			supports:     []uint16{2, 1, 1, 1},
+			indexesVotes: [][]int{{0}, {1}, {2}, {3}},
+
+			fees:        []*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1), big.NewInt(1)},
+			indexesFees: [][]int{{0}, {1}, {2}, {3}},
+
+			votes: map[int]bool{0: true, 1: true},
+			bits:  map[int]bool{2: true, 3: true},
+			value: bitvotes.Value{big.NewInt(6), big.NewInt(6)},
+
+			assumedFees:   big.NewInt(0),
+			assumedWeight: 0,
+			totalWeight:   5,
+
+			endVotes: map[int]bool{0: true, 1: true, 3: true},
+			endBits:  map[int]bool{2: true, 3: true},
+			endValue: bitvotes.Value{big.NewInt(8), big.NewInt(8)},
+		},
+	}
+
+	for _, test := range tests {
+
+		aggVotes := make([]*bitvotes.AggregatedVote, len(test.vectors))
+
+		for i := range test.vectors {
+
+			aggVotes[i] = new(bitvotes.AggregatedVote)
+
+			aggVotes[i].BitVector, _ = new(big.Int).SetString(test.vectors[i], 2)
+
+			aggVotes[i].Weight = test.supports[i]
+
+			aggVotes[i].Indexes = test.indexesVotes[i]
+
+		}
+
+		aggFees := make([]*bitvotes.AggregatedFee, len(test.fees))
+
+		for i := range test.fees {
+
+			aggFees[i] = new(bitvotes.AggregatedFee)
+
+			aggFees[i].Fee = test.fees[i]
+
+			aggFees[i].Indexes = test.indexesFees[i]
+
+		}
+
+		solution := bitvotes.BranchAndBoundPartialSolution{Votes: test.votes, Bits: test.bits, Value: test.value}
+
+		solution.MaximizeVotes(aggVotes, aggFees, test.assumedFees, test.assumedWeight, test.totalWeight)
+
+		endSolution := bitvotes.BranchAndBoundPartialSolution{Votes: test.endVotes, Bits: test.endBits, Value: test.endValue}
+
+		require.Equal(t, endSolution, solution)
+	}
+
+}
