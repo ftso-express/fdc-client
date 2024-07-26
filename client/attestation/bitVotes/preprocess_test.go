@@ -1,10 +1,11 @@
 package bitvotes_test
 
 import (
-	"fmt"
 	bitvotes "local/fdc/client/attestation/bitVotes"
 	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 // func TestAggregateBitvotes(t *testing.T) {
@@ -151,26 +152,54 @@ import (
 // 	require.Equal(t, preProccesInfo.RemovedZerosWeight, uint16(0))
 // }
 
-func TestFilter(t *testing.T) {
+func TestFilter2(t *testing.T) {
 
 	tests := []struct {
-		vectors     []string
-		weights     []uint16
-		totalWeight uint16
-		fees        []*big.Int
+		vectors        []string
+		weights        []uint16
+		fees           []*big.Int
+		totalWeight    uint16
+		AlwaysInBits   []int
+		AlwaysOutBits  []int
+		RemainingBits  map[int]bool
+		GuaranteedFees *big.Int
+
+		AlwaysInVotes    []int
+		AlwaysOutVotes   []int
+		RemainingVotes   map[int]bool
+		GuaranteedWeight uint16
 	}{
+
 		{
-			vectors:     []string{"1111", "1100", "1001"},
-			weights:     []uint16{3, 2, 1},
-			totalWeight: 6,
-			fees:        []*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1), big.NewInt(1)},
+			vectors:        []string{"1111", "1100", "1001"},
+			weights:        []uint16{3, 2, 1},
+			fees:           []*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1), big.NewInt(1)},
+			totalWeight:    6,
+			AlwaysInBits:   []int{3},
+			AlwaysOutBits:  []int{1},
+			RemainingBits:  map[int]bool{0: true, 2: true},
+			GuaranteedFees: big.NewInt(1),
+
+			AlwaysInVotes:    []int{0},
+			AlwaysOutVotes:   []int{},
+			RemainingVotes:   map[int]bool{1: true, 2: true},
+			GuaranteedWeight: 3,
 		},
 
 		{
-			vectors:     []string{"1111", "1100", "1001", "0000"},
-			weights:     []uint16{3, 2, 1, 7},
-			totalWeight: 13,
-			fees:        []*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1), big.NewInt(1)},
+			vectors:       []string{"1111", "1100", "1001", "0000"},
+			weights:       []uint16{3, 2, 1, 7},
+			totalWeight:   13,
+			fees:          []*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1), big.NewInt(1)},
+			AlwaysInBits:  []int{},
+			AlwaysOutBits: []int{0, 1, 2, 3},
+			RemainingBits: map[int]bool{},
+
+			GuaranteedFees:   big.NewInt(0),
+			AlwaysInVotes:    []int{0, 1, 2, 3},
+			AlwaysOutVotes:   []int{},
+			RemainingVotes:   map[int]bool{},
+			GuaranteedWeight: 13,
 		},
 	}
 
@@ -191,7 +220,18 @@ func TestFilter(t *testing.T) {
 
 		results := bitvotes.Filter(weightedBitVotes, test.fees, test.totalWeight)
 
-		fmt.Printf("results: %v\n", results)
+		require.ElementsMatch(t, test.AlwaysInBits, results.AlwaysInBits)
+		require.ElementsMatch(t, test.AlwaysOutBits, results.AlwaysOutBits)
+
+		require.ElementsMatch(t, test.AlwaysInVotes, results.AlwaysInVotes)
+		require.ElementsMatch(t, test.AlwaysOutVotes, results.AlwaysOutVotes)
+
+		require.Equal(t, test.RemainingBits, results.RemainingBits)
+		require.Equal(t, test.RemainingVotes, results.RemainingVotes)
+
+		require.Equal(t, test.GuaranteedFees, results.GuaranteedFees)
+
+		require.Equal(t, test.GuaranteedWeight, results.GuaranteedWeight)
 
 	}
 

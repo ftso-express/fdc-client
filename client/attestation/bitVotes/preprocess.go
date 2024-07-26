@@ -110,21 +110,21 @@ votes:
 
 		}
 
-		if allZeros && len(results.AlwaysInBits) == 0 {
-
-			somethingChanged = true
-
-			results.AlwaysOutVotes = append(results.AlwaysOutVotes, i)
-
-			delete(results.RemainingVotes, i)
-
-		} else if allOnes {
+		if allOnes {
 
 			somethingChanged = true
 
 			results.AlwaysInVotes = append(results.AlwaysInVotes, i)
 
 			results.GuaranteedWeight += bitVotes[i].Weight
+
+			delete(results.RemainingVotes, i)
+
+		} else if allZeros && len(results.AlwaysInBits) == 0 {
+
+			somethingChanged = true
+
+			results.AlwaysOutVotes = append(results.AlwaysOutVotes, i)
 
 			delete(results.RemainingVotes, i)
 
