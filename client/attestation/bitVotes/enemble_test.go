@@ -43,12 +43,9 @@ func TestEnsembleRandom(t *testing.T) {
 
 	start := time.Now()
 
-	solution := bitvotes.EnsembleFull(weightedBitVotes, fees, totalWeight, 30000000)
-	// require.Equal(t, numVoters, len(solution.Participants))
-	// require.Equal(t, numAttestations, len(solution.Solution))
+	solution := EnsembleFull(weightedBitVotes, fees, totalWeight, 30000000)
 
 	fmt.Printf("solution.Bits: %v\n", solution.Bits)
-
 	fmt.Println("time passed:", time.Since(start).Seconds())
 
 	start = time.Now()
@@ -56,15 +53,12 @@ func TestEnsembleRandom(t *testing.T) {
 	solutionCheck := bitvotes.BranchAndBoundBits(aggregatedBitVotes, aggFees, 0, totalWeight, big.NewInt(0), 100000000, bitvotes.Value{big.NewInt(0), big.NewInt(0)}, false)
 
 	fmt.Println("time passed:", time.Since(start).Seconds())
-
 	fmt.Printf("solution: %v\n", solution)
 
 	require.Equal(t, solutionCheck.Value, solution.Value)
 
 	fmt.Printf("solutionCheck.Bits: %v\n", solutionCheck.Bits)
-
 	fmt.Printf("solutionCheck.Optimal: %v\n", solutionCheck.Optimal)
-
 }
 
 func TestEnsembleFixed(t *testing.T) {
@@ -94,10 +88,9 @@ func TestEnsembleFixed(t *testing.T) {
 	}
 
 	start := time.Now()
-	solution := bitvotes.EnsembleFull(weightedBitvotes, fees, totalWeight, 50000000)
+	solution := EnsembleFull(weightedBitvotes, fees, totalWeight, 50000000)
 
 	fmt.Printf("solution: %v\n", solution.Bits)
-
 	fmt.Println("time passed:", time.Since(start).Seconds())
 	fmt.Println("solution", solution)
 
@@ -117,5 +110,10 @@ func TestEnsembleFixed(t *testing.T) {
 	}
 
 	require.ElementsMatch(t, []int{1, 4}, solution.Bits)
+}
 
+func EnsembleFull(allBitVotes []*bitvotes.WeightedBitVote, fees []*big.Int, totalWeight uint16, maxOperations int) Solution {
+	filterResults, filterSolution := bitvotes.Ensemble(allBitVotes, fees, totalWeight, maxOperations)
+
+	return AssembleSolutionFull(filterResults, filterSolution)
 }

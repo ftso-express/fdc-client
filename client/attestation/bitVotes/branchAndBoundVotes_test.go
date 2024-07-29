@@ -56,31 +56,45 @@ func TestBranchAndBoundProvidersFix(t *testing.T) {
 		true,
 	)
 
+	require.Equal(t, true, solution.Optimal)
+
 	fmt.Println("time passed:", time.Since(start).Seconds())
 	fmt.Println("solution", solution)
 	fmt.Println(solution.Value)
 
-	finalSolution := bitvotes.AssembleSolutionFull(filterResults, *solution)
-
+	finalSolution := AssembleSolutionFull(filterResults, solution)
 	fmt.Printf("finalSolution.Bits: %v\n", finalSolution.Bits)
 
-	initialBound2 := bitvotes.Value{big.NewInt(0), big.NewInt(0)}
-
-	solution2 := bitvotes.BranchAndBoundBits(
+	solutionTest := bitvotes.BranchAndBoundBits(
 		aggregatedVotes,
 		aggregatedFees,
 		filterResults.GuaranteedWeight,
 		totalWeight,
 		filterResults.GuaranteedFees,
 		50000000,
-		initialBound2,
+		initialBound,
 		true,
 	)
 
-	finalSolution2 := bitvotes.AssembleSolutionFull(filterResults, *solution2)
+	finalSolutionTest := AssembleSolutionFull(filterResults, solutionTest)
+	fmt.Printf("finalSolutionTest.Bits: %v\n", finalSolutionTest.Bits)
 
-	fmt.Printf("finalSolution2.Bits: %v\n", finalSolution2.Bits)
+	require.Equal(t, finalSolutionTest.Value, finalSolution.Value)
 
+	solution2 := bitvotes.BranchAndBoundVotes(
+		aggregatedVotes,
+		aggregatedFees,
+		filterResults.GuaranteedWeight,
+		totalWeight,
+		filterResults.GuaranteedFees,
+		50000000,
+		initialBound,
+		false,
+	)
+	
+	finalSolution2 := AssembleSolutionFull(filterResults, solution2)
+	require.Equal(t, true, solution2.Optimal)
+	require.Equal(t, finalSolutionTest.Value, finalSolution2.Value)
 }
 
 func TestBranchAndBoundProvidersRandom(t *testing.T) {
@@ -118,44 +132,53 @@ func TestBranchAndBoundProvidersRandom(t *testing.T) {
 		initialBound,
 		false,
 	)
+	require.Equal(t, true, solution.Optimal)
 
 	fmt.Println("time passed:", time.Since(start).Seconds())
 
-	initialBound2 := bitvotes.Value{big.NewInt(0), big.NewInt(0)}
-
 	start2 := time.Now()
 
-	solution2 := bitvotes.BranchAndBoundBits(
+	solutionTest := bitvotes.BranchAndBoundBits(
 		aggregatedVotes,
 		aggregatedFees,
 		filterResults.GuaranteedWeight,
 		totalWeight,
 		filterResults.GuaranteedFees,
 		100000000,
-		initialBound2,
+		initialBound,
 		false,
 	)
 	fmt.Println("time passed:", time.Since(start2).Seconds())
 
-	fmt.Println("solution2", solution2)
+	fmt.Println("solutionTest", solutionTest)
 
 	fmt.Println("solution", solution)
 	fmt.Println(solution.Value)
 
-	finalSolution := bitvotes.AssembleSolutionFull(filterResults, *solution)
-
+	finalSolution := AssembleSolutionFull(filterResults, solution)
 	fmt.Printf("finalSolution.Bits: %v\n", finalSolution.Bits)
 
-	finalSolution2 := bitvotes.AssembleSolutionFull(filterResults, *solution2)
+	finalSolutionTest := AssembleSolutionFull(filterResults, solutionTest)
+	fmt.Printf("finalSolution2.Bits: %v\n", finalSolutionTest.Bits)
 
-	fmt.Printf("finalSolution2.Bits: %v\n", finalSolution2.Bits)
+	require.Equal(t, solution.Value, solutionTest.Value)
 
-	require.Equal(t, solution.Value, solution2.Value)
+	solution2 := bitvotes.BranchAndBoundVotes(
+		aggregatedVotes,
+		aggregatedFees,
+		filterResults.GuaranteedWeight,
+		totalWeight,
+		filterResults.GuaranteedFees,
+		200000000,
+		initialBound,
+		true,
+	)
 
+	require.Equal(t, true, solution2.Optimal)
+	require.Equal(t, solution2.Value, solutionTest.Value)
 }
 
 func TestMaximizeVotes(t *testing.T) {
-
 	tests := []struct {
 		vectors      []string
 		supports     []uint16
@@ -199,40 +222,26 @@ func TestMaximizeVotes(t *testing.T) {
 	}
 
 	for _, test := range tests {
-
 		aggVotes := make([]*bitvotes.AggregatedVote, len(test.vectors))
 
 		for i := range test.vectors {
-
 			aggVotes[i] = new(bitvotes.AggregatedVote)
-
 			aggVotes[i].BitVector, _ = new(big.Int).SetString(test.vectors[i], 2)
-
 			aggVotes[i].Weight = test.supports[i]
-
 			aggVotes[i].Indexes = test.indexesVotes[i]
-
 		}
 
 		aggFees := make([]*bitvotes.AggregatedFee, len(test.fees))
-
 		for i := range test.fees {
-
 			aggFees[i] = new(bitvotes.AggregatedFee)
-
 			aggFees[i].Fee = test.fees[i]
-
 			aggFees[i].Indexes = test.indexesFees[i]
-
 		}
 
 		solution := bitvotes.BranchAndBoundPartialSolution{Votes: test.votes, Bits: test.bits, Value: test.value}
-
 		solution.MaximizeVotes(aggVotes, aggFees, test.assumedFees, test.assumedWeight, test.totalWeight)
 
 		endSolution := bitvotes.BranchAndBoundPartialSolution{Votes: test.endVotes, Bits: test.endBits, Value: test.endValue}
-
 		require.Equal(t, endSolution, solution)
 	}
-
 }

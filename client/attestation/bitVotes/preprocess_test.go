@@ -153,7 +153,6 @@ import (
 // }
 
 func TestFilter(t *testing.T) {
-
 	tests := []struct {
 		vectors        []string
 		weights        []uint16
@@ -219,18 +218,15 @@ func TestFilter(t *testing.T) {
 	}
 
 	for _, test := range tests {
-
 		weightedBitVotes := make([]*bitvotes.WeightedBitVote, len(test.vectors))
 
 		for i := range test.vectors {
-
 			weightedVote := new(bitvotes.WeightedBitVote)
 
 			weightedVote.Weight = test.weights[i]
 			weightedVote.BitVote.BitVector, _ = new(big.Int).SetString(test.vectors[i], 2)
 
 			weightedBitVotes[i] = weightedVote
-
 		}
 
 		results := bitvotes.Filter(weightedBitVotes, test.fees, test.totalWeight)
@@ -253,7 +249,6 @@ func TestFilter(t *testing.T) {
 }
 
 func TestFilterAndAggregate(t *testing.T) {
-
 	tests := []struct {
 		vectors        []string
 		weights        []uint16
@@ -300,18 +295,15 @@ func TestFilterAndAggregate(t *testing.T) {
 	}
 
 	for _, test := range tests {
-
 		weightedBitVotes := make([]*bitvotes.WeightedBitVote, len(test.vectors))
 
 		for i := range test.vectors {
-
 			weightedVote := new(bitvotes.WeightedBitVote)
 
 			weightedVote.Weight = test.weights[i]
 			weightedVote.BitVote.BitVector, _ = new(big.Int).SetString(test.vectors[i], 2)
 
 			weightedBitVotes[i] = weightedVote
-
 		}
 
 		aggVotes, aggFees, results := bitvotes.FilterAndAggregate(weightedBitVotes, test.fees, test.totalWeight)
@@ -326,15 +318,12 @@ func TestFilterAndAggregate(t *testing.T) {
 		require.Equal(t, test.RemainingVotes, results.RemainingVotes)
 
 		require.Equal(t, test.GuaranteedFees, results.GuaranteedFees)
-
 		require.Equal(t, test.GuaranteedWeight, results.GuaranteedWeight)
 
 		require.Len(t, aggVotes, test.NuOfAggVotes)
-
 		require.Len(t, aggFees, test.NuOfAggFees)
 
 		sumWeight := uint16(0)
-
 		for _, vote := range aggVotes {
 			sumWeight += vote.Weight
 		}
@@ -342,13 +331,56 @@ func TestFilterAndAggregate(t *testing.T) {
 		require.Equal(t, test.totalAggWeight, sumWeight)
 
 		sumFees := big.NewInt(0)
-
 		for _, fee := range aggFees {
 			sumFees.Add(sumFees, fee.Fee)
 		}
 
 		require.Equal(t, test.totalAggFees, sumFees)
+	}
+}
 
+type Solution struct {
+	Bits    []int
+	Votes   []int
+	Value   bitvotes.Value
+	Optimal bool
+}
+
+func AssembleSolutionFull(filterResults *bitvotes.FilterResults, filteredSolution *bitvotes.ConsensusSolution) Solution {
+	bits := []int{}
+	bits = append(bits, filterResults.AlwaysInBits...)
+
+	for k := range filteredSolution.Bits {
+		indexes := filteredSolution.Bits[k].Indexes
+		bits = append(bits, indexes...)
 	}
 
+	voters := []int{}
+	voters = append(voters, filterResults.AlwaysInVotes...)
+
+	for k := range filteredSolution.Votes {
+		indexes := filteredSolution.Votes[k].Indexes
+
+		voters = append(voters, indexes...)
+	}
+
+	return Solution{
+		Bits:    bits,
+		Votes:   voters,
+		Value:   filteredSolution.Value,
+		Optimal: filteredSolution.Optimal,
+	}
+}
+
+func TestFilterAssemble(t *testing.T) {
+	filteredResult := &bitvotes.FilterResults{AlwaysInBits: []int{1, 2, 5}}
+	filteredSolution := &bitvotes.ConsensusSolution{Bits: []*bitvotes.AggregatedFee{{Indexes: []int{4, 7}}}}
+
+	fullSolution := AssembleSolutionFull(filteredResult, filteredSolution)
+	bits := bitvotes.AssembleSolution(filteredResult, filteredSolution, 10)
+
+	require.Equal(t, 10, int(bits.Length))
+	for _, e := range fullSolution.Bits {
+		require.Equal(t, uint(1), bits.BitVector.Bit(e))
+	}
 }

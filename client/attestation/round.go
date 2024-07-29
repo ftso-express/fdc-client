@@ -114,9 +114,7 @@ func (r *Round) BitVoteHex() (string, error) {
 
 // ComputeConsensusBitVote computes the consensus BitVote according to the collected bitVotes and sets consensus status to the attestations.
 func (r *Round) ComputeConsensusBitVote() error {
-
 	r.sortBitVotes()
-
 	r.sortAttestations()
 
 	fees := make([]*big.Int, len(r.Attestations))
@@ -125,7 +123,6 @@ func (r *Round) ComputeConsensusBitVote() error {
 	}
 
 	consensus := bitvotes.EnsembleConsensusBitVote(r.bitVotes, fees, r.voterSet.TotalWeight, 20000000)
-
 	r.ConsensusBitVote = consensus
 
 	return r.setConsensusStatus(consensus)

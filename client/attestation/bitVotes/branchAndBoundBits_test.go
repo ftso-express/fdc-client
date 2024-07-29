@@ -50,6 +50,8 @@ func TestBranchAndBoundRandom(t *testing.T) {
 	fmt.Println("value", solution.Value)
 
 	fmt.Println("num attestations", len(solution.Bits))
+	require.GreaterOrEqual(t, len(solution.Votes), numVoters/2)
+	require.GreaterOrEqual(t, len(solution.Votes), 2)
 }
 
 func TestBranchAndBound65(t *testing.T) {
@@ -76,19 +78,21 @@ func TestBranchAndBound65(t *testing.T) {
 	}
 
 	aggregatedVotes, aggregatedFees, filterResults := bitvotes.FilterAndAggregate(weightedBitVotes, fees, totalWeight)
-
 	initialBound := bitvotes.Value{big.NewInt(0), big.NewInt(0)}
 
 	start := time.Now()
 
 	solution := bitvotes.BranchAndBoundBits(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, 20000000, initialBound, true)
 
-	finalSolution := bitvotes.AssembleSolutionFull(filterResults, *solution)
+	finalSolution := AssembleSolutionFull(filterResults, solution)
 
 	fmt.Println("time passed:", time.Since(start).Seconds())
 	fmt.Println("solution", finalSolution)
 	fmt.Println(finalSolution.Value)
 
+	require.True(t, solution.Optimal)
+	require.Equal(t, 65, len(finalSolution.Votes))
+	require.Equal(t, 67, len(finalSolution.Bits))
 }
 
 func TestBranchAndBoundFix(t *testing.T) {
@@ -116,7 +120,6 @@ func TestBranchAndBoundFix(t *testing.T) {
 
 	fees := make([]*bitvotes.AggregatedFee, numAttestations)
 	for j := 0; j < numAttestations; j++ {
-
 		fee := bitvotes.AggregatedFee{Fee: big.NewInt(1), Indexes: []int{j}, Support: 1}
 
 		fees[j] = &fee
@@ -136,7 +139,6 @@ func TestBranchAndBoundFix(t *testing.T) {
 	}
 
 	require.Equal(t, bitvotes.Value{big.NewInt(240), big.NewInt(240)}, solution.Value)
-
 }
 
 func TestCalcValue(t *testing.T) {
@@ -191,7 +193,6 @@ func TestCalcValue(t *testing.T) {
 }
 
 func TestSort(t *testing.T) {
-
 	fee0 := bitvotes.AggregatedFee{
 		Fee:     big.NewInt(1),
 		Indexes: []int{0},
@@ -229,21 +230,15 @@ func TestSort(t *testing.T) {
 	}
 
 	for _, test := range tests {
-
 		asc := bitvotes.SortFees(test.fees, bitvotes.CmpValAsc(test.totalWeight))
-
 		dsc := bitvotes.SortFees(test.fees, bitvotes.CmpValDsc(test.totalWeight))
 
 		require.Equal(t, test.asc, asc)
-
 		require.Equal(t, test.dsc, dsc)
-
 	}
-
 }
 
 func TestMaximizeBits(t *testing.T) {
-
 	tests := []struct {
 		vectors      []string
 		supports     []uint16
@@ -287,40 +282,25 @@ func TestMaximizeBits(t *testing.T) {
 	}
 
 	for _, test := range tests {
-
 		aggVotes := make([]*bitvotes.AggregatedVote, len(test.vectors))
-
 		for i := range test.vectors {
-
 			aggVotes[i] = new(bitvotes.AggregatedVote)
-
 			aggVotes[i].BitVector, _ = new(big.Int).SetString(test.vectors[i], 2)
-
 			aggVotes[i].Weight = test.supports[i]
-
 			aggVotes[i].Indexes = test.indexesVotes[i]
-
 		}
 
 		aggFees := make([]*bitvotes.AggregatedFee, len(test.fees))
-
 		for i := range test.fees {
-
 			aggFees[i] = new(bitvotes.AggregatedFee)
-
 			aggFees[i].Fee = test.fees[i]
-
 			aggFees[i].Indexes = test.indexesFees[i]
-
 		}
 
 		solution := bitvotes.BranchAndBoundPartialSolution{Votes: test.votes, Bits: test.bits, Value: test.value}
-
 		solution.MaximizeBits(aggVotes, aggFees, test.assumedFees, test.assumedWeight, test.totalWeight)
-
 		endSolution := bitvotes.BranchAndBoundPartialSolution{Votes: test.endVotes, Bits: test.endBits, Value: test.endValue}
 
 		require.Equal(t, endSolution, solution)
 	}
-
 }
