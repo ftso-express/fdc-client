@@ -7,8 +7,9 @@ import (
 	"flare-common/contracts/relay"
 	"flare-common/database"
 	"flare-common/logger"
-	"local/fdc/client/attestation"
+	"flare-common/payload"
 	"local/fdc/client/config"
+	"local/fdc/client/shared"
 	hub "local/fdc/contracts/FDC"
 	"time"
 
@@ -17,21 +18,13 @@ import (
 )
 
 const (
-	bitVoteBufferSize       = 2
-	requestsBufferSize      = 10
-	signingPolicyBufferSize = 3
-
 	bitVoteOffChainTriggerSeconds = 15
-
-	outOfSyncTolerance = 60
+	outOfSyncTolerance            = 60
+	requestListenerInterval       = 2 * time.Second
+	databasePollTime              = 2 * time.Second
+	bitVoteHeadStart              = 5 * time.Second
+	submit1FuncSelHex             = "6c532fae"
 )
-const (
-	requestListenerInterval = 2 * time.Second
-	databasePollTime        = 2 * time.Second
-	bitVoteHeadStart        = 5 * time.Second
-)
-
-const submit1FuncSelHex = "6c532fae"
 
 var signingPolicyInitializedEventSel common.Hash
 var attestationRequestEventSel common.Hash
@@ -44,50 +37,41 @@ func init() {
 	}
 
 	signingPolicyEvent, ok := relayAbi.Events["SigningPolicyInitialized"]
-
 	if !ok {
 		log.Panic("cannot get SigningPolicyInitialized event:", err)
 	}
-
 	signingPolicyInitializedEventSel = signingPolicyEvent.ID
 
 	fdcAbi, err := hub.HubMetaData.GetAbi()
-
 	if err != nil {
 		log.Panic("cannot get fdcAbi:", err)
 	}
 
 	requestEvent, ok := fdcAbi.Events["AttestationRequest"]
-
 	if !ok {
 		log.Panic("cannot get AttestationRequest event:", err)
 	}
 
 	attestationRequestEventSel = requestEvent.ID
-
 }
 
 type Collector struct {
-	Protocol              uint8
+	ProtocolId            uint8
 	SubmitContractAddress common.Address
 	FdcContractAddress    common.Address
 	RelayContractAddress  common.Address
 	DB                    *gorm.DB
 	submit1Sel            [4]byte
-	RoundManager          *attestation.Manager
+	Requests              chan []database.Log
+	BitVotes              chan payload.Round
+	SigningPolicies       chan []database.Log
 }
 
-// New creates new Collector from user and system configs.
-func New(user config.UserRaw, system config.System) *Collector {
+// NewCollector creates new Collector from user and system configs.
+func NewCollector(user *config.UserRaw, system *config.System, sharedDataPipes *shared.SharedDataPipes) *Collector {
 	// CONSTANTS
 	// requestEventSignature := "251377668af6553101c9bb094ba89c0c536783e005e203625e6cd57345918cc9"
 	// signingPolicySignature := "91d0280e969157fc6c5b8f952f237b03d934b18534dafcac839075bbc33522f8"
-
-	roundManager, err := attestation.NewManager(user)
-
-	if err != nil {
-		log.Panic("Cannot create manager:", err)
-	}
 
 	db, err := database.Connect(&user.DB)
 	if err != nil {
@@ -100,13 +84,15 @@ func New(user config.UserRaw, system config.System) *Collector {
 	}
 
 	runner := Collector{
-		Protocol:              user.ProtocolId,
+		ProtocolId:            user.ProtocolId,
 		SubmitContractAddress: system.Addresses.SubmitContract,
 		FdcContractAddress:    system.Addresses.FdcContract,
 		RelayContractAddress:  system.Addresses.RelayContract,
 		DB:                    db,
 		submit1Sel:            submit1FuncSel,
-		RoundManager:          roundManager,
+		SigningPolicies:       sharedDataPipes.SigningPolicies,
+		BitVotes:              sharedDataPipes.BitVotes,
+		Requests:              sharedDataPipes.Requests,
 	}
 
 	return &runner
@@ -215,16 +201,11 @@ func (r *Collector) Run(ctx context.Context) {
 	}
 
 	chooseTrigger := make(chan uint64)
-
 	db := collectorDBGorm{db: r.DB}
 
-	r.RoundManager.SigningPolicies = SigningPolicyInitializedListener(ctx, db, r.RelayContractAddress, 3)
-
-	r.RoundManager.BitVotes = BitVoteListener(ctx, db, r.FdcContractAddress, r.submit1Sel, r.Protocol, bitVoteBufferSize, chooseTrigger)
-
-	r.RoundManager.Requests = AttestationRequestListener(ctx, db, r.FdcContractAddress, requestsBufferSize, requestListenerInterval)
-
-	go r.RoundManager.Run(ctx)
+	go SigningPolicyInitializedListener(ctx, db, r.RelayContractAddress, r.SigningPolicies)
+	go BitVoteListener(ctx, db, r.FdcContractAddress, r.submit1Sel, r.ProtocolId, chooseTrigger, r.BitVotes)
+	go AttestationRequestListener(ctx, db, r.FdcContractAddress, requestListenerInterval, r.Requests)
 
 	PrepareChooseTriggers(ctx, chooseTrigger, db)
 }

@@ -1,4 +1,4 @@
-package attestation
+package manager
 
 import (
 	"context"
@@ -8,53 +8,32 @@ import (
 	"flare-common/policy"
 	"flare-common/storage"
 	"fmt"
+	"local/fdc/client/attestation"
 	"local/fdc/client/config"
+	"local/fdc/client/round"
+	"local/fdc/client/shared"
 	"local/fdc/client/timing"
-	hub "local/fdc/contracts/FDC"
-
-	"github.com/ethereum/go-ethereum/common"
 )
-
-// capacity of rounds cache
-const roundBuffer uint64 = 256
 
 var log = logger.GetLogger()
 
-// hubFilterer is only used for Attestation Requests logs parsing. Set in init().
-var hubFilterer *hub.HubFilterer
-
-// init sets the hubFilterer
-func init() {
-
-	var err error
-
-	hubFilterer, err = hub.NewHubFilterer(common.Address{}, nil)
-
-	if err != nil {
-		log.Panic("cannot get fdc contract:", err)
-	}
-
-}
-
 type Manager struct {
 	protocolId            uint64
-	Rounds                storage.Cyclic[*Round] // cyclically cached rounds with buffer roundBuffer.
+	Rounds                storage.Cyclic[*round.Round] // cyclically cached rounds with buffer roundBuffer.
 	lastRoundCreated      uint64
-	Requests              <-chan []database.Log
-	BitVotes              <-chan payload.Round
-	SigningPolicies       <-chan []database.Log
+	Requests              chan []database.Log
+	BitVotes              chan payload.Round
+	SigningPolicies       chan []database.Log
 	signingPolicyStorage  *policy.SigningPolicyStorage
 	attestationTypeConfig config.AttestationTypes
 	queues                priorityQueues
 }
 
 // NewManager initializes attestation round manager from raw user configurations.
-func NewManager(configs config.UserRaw) (*Manager, error) {
-	rounds := storage.NewCyclic[*Round](roundBuffer)
+func NewManager(configs *config.UserRaw, sharedDataPipes *shared.SharedDataPipes) (*Manager, error) {
 	signingPolicyStorage := policy.NewSigningPolicyStorage()
 
 	attestationTypeConfig, err := config.ParseAttestationTypes(configs.AttestationTypeConfig)
-
 	if err != nil {
 		return nil, fmt.Errorf("error new manger, att types: %w", err)
 	}
@@ -63,10 +42,13 @@ func NewManager(configs config.UserRaw) (*Manager, error) {
 
 	return &Manager{
 			protocolId:            uint64(configs.ProtocolId),
-			Rounds:                rounds,
+			Rounds:                sharedDataPipes.Rounds,
 			signingPolicyStorage:  signingPolicyStorage,
 			attestationTypeConfig: attestationTypeConfig,
 			queues:                queues,
+			SigningPolicies:       sharedDataPipes.SigningPolicies,
+			BitVotes:              sharedDataPipes.BitVotes,
+			Requests:              sharedDataPipes.Requests,
 		},
 		nil
 }
@@ -97,15 +79,13 @@ func (m *Manager) Run(ctx context.Context) {
 	for {
 		select {
 		case signingPolicies := <-m.SigningPolicies:
-
 			log.Debug("New signing policy received")
 
 			for i := range signingPolicies {
-
-				if err := m.OnSigningPolicy(signingPolicies[i]); err != nil {
+				err := m.OnSigningPolicy(signingPolicies[i])
+				if err != nil {
 					log.Error("signing policy error:", err)
 				}
-
 			}
 			deleted := m.signingPolicyStorage.RemoveBeforeVotingRound(uint32(m.lastRoundCreated)) // delete all signing policies that have already ended
 
@@ -114,48 +94,42 @@ func (m *Manager) Run(ctx context.Context) {
 			}
 
 		case bitVotesForRound := <-m.BitVotes:
-
 			log.Debugf("Received %d bitVotes for round %d", len(bitVotesForRound.Messages), bitVotesForRound.Id)
 
 			for i := range bitVotesForRound.Messages {
-
-				if err := m.OnBitVote(bitVotesForRound.Messages[i]); err != nil {
+				err := m.OnBitVote(bitVotesForRound.Messages[i])
+				if err != nil {
 					log.Errorf("bit vote error: %w", err)
 				}
 			}
-
 			r, ok := m.Rounds.Get(bitVotesForRound.Id)
 			if !ok {
 				break
 			}
 
 			err := r.ComputeConsensusBitVote()
-
 			if err != nil {
 				log.Warnf("Failed bitVote in round %d: %s", bitVotesForRound.Id, err)
 			} else {
 				log.Debugf("Consensus bitVote %s for round %d computed.", r.ConsensusBitVote.EncodeBitVoteHex(bitVotesForRound.Id), bitVotesForRound.Id)
 
 				noOfRetried, err := m.retryUnsuccessfulChosen(ctx, r)
-
 				if err != nil {
-					log.Warnf("error retrying round %d: %w", r.roundId, err)
+					log.Warnf("error retrying round %d: %w", r.RoundId, err)
 				} else if noOfRetried > 0 {
-					log.Debugf("retrying %d attestations in round %d", noOfRetried, r.roundId)
+					log.Debugf("retrying %d attestations in round %d", noOfRetried, r.RoundId)
 				}
 
 			}
 
 		case requests := <-m.Requests:
-
 			log.Debugf("Received %d requests.", len(requests))
 
 			for i := range requests {
-
-				if err := m.OnRequest(ctx, requests[i]); err != nil {
+				err := m.OnRequest(ctx, requests[i])
+				if err != nil {
 					log.Error("OnRequest:", err)
 				}
-
 			}
 
 		case <-ctx.Done():
@@ -166,31 +140,27 @@ func (m *Manager) Run(ctx context.Context) {
 }
 
 // GetOrCreateRound returns a round for roundId either from manager if a round is already stored or creates a new one and stores it.
-func (m *Manager) GetOrCreateRound(roundId uint64) (*Round, error) {
-
-	round, ok := m.Rounds.Get(roundId)
-
+func (m *Manager) GetOrCreateRound(roundId uint64) (*round.Round, error) {
+	roundFromId, ok := m.Rounds.Get(roundId)
 	if ok {
-		return round, nil
+		return roundFromId, nil
 	}
 
 	policy, _ := m.signingPolicyStorage.GetForVotingRound(uint32(roundId))
-
 	if policy == nil {
 		return nil, fmt.Errorf("creating round: no signing policy for round %d", roundId)
 	}
 
-	round = CreateRound(uint64(roundId), policy.Voters)
+	roundFromId = round.CreateRound(uint64(roundId), policy.Voters)
 	m.lastRoundCreated = roundId
 	log.Debugf("Round %d created", roundId)
 
-	m.Rounds.Store(uint64(roundId), round)
-	return round, nil
+	m.Rounds.Store(uint64(roundId), roundFromId)
+	return roundFromId, nil
 }
 
 // OnBitVote process payload message that is assumed to be a bitVote and adds it to the correct round.
 func (m *Manager) OnBitVote(message payload.Message) error {
-
 	if message.Timestamp < timing.ChooseStartTimestamp(uint64(message.VotingRound)) {
 		return fmt.Errorf("bitVote from %s for voting round %d too soon", message.From, message.VotingRound)
 	}
@@ -200,13 +170,11 @@ func (m *Manager) OnBitVote(message payload.Message) error {
 	}
 
 	round, err := m.GetOrCreateRound(message.VotingRound)
-
 	if err != nil {
 		return err
 	}
 
 	err = round.ProcessBitVote(message)
-
 	if err != nil {
 		return err
 	}
@@ -218,43 +186,34 @@ func (m *Manager) OnBitVote(message payload.Message) error {
 // The request parsed into an Attestation that is assigned to an attestation round according to the timestamp.
 // The request is added to verifier queue.
 func (m *Manager) OnRequest(ctx context.Context, request database.Log) error {
-
-	attestation, err := attestationFromDatabaseLog(request)
-
+	attestation, err := attestation.AttestationFromDatabaseLog(request)
 	if err != nil {
 		return fmt.Errorf("OnRequest: %w", err)
 	}
 
 	round, err := m.GetOrCreateRound(attestation.RoundId)
-
 	if err != nil {
 		return fmt.Errorf("OnRequest: %w", err)
 	}
 
-	added := round.addAttestation(&attestation)
-
+	added := round.AddAttestation(&attestation)
 	if added {
 		if err := m.AddToQueue(ctx, &attestation); err != nil {
 			return err
 		}
-
 	}
 
 	return nil
-
 }
 
 // OnSigningPolicy parses SigningPolicyInitialized log and stores it into the signingPolicyStorage.
 func (m *Manager) OnSigningPolicy(initializedPolicy database.Log) error {
-
 	data, err := policy.ParseSigningPolicyInitializedEvent(initializedPolicy)
-
 	if err != nil {
 		return err
 	}
 
 	parsedPolicy := policy.NewSigningPolicy(data)
-
 	log.Infof("Processing signing policy for rewardEpoch %s", data.RewardEpochId.String())
 
 	err = m.signingPolicyStorage.Add(parsedPolicy)
@@ -264,32 +223,43 @@ func (m *Manager) OnSigningPolicy(initializedPolicy database.Log) error {
 }
 
 // retryUnsuccessfulChosen adds the request that were chosen by the consensus bitVote but were not confirmed to the priority verifier queues.
-func (m *Manager) retryUnsuccessfulChosen(ctx context.Context, round *Round) (int, error) {
-
+func (m *Manager) retryUnsuccessfulChosen(ctx context.Context, round *round.Round) (int, error) {
 	count := 0 //only for logging
 
 	for i := range round.Attestations {
-
-		if round.Attestations[i].Consensus && round.Attestations[i].Status != Success {
-			queueName := round.Attestations[i].queueName
+		if round.Attestations[i].Consensus && round.Attestations[i].Status != attestation.Success {
+			queueName := round.Attestations[i].QueueName
 
 			queue, ok := m.queues[queueName]
-
 			if !ok {
 				return 0, fmt.Errorf("retry: no queue: %s", queueName)
 			}
 
 			err := queue.EnqueuePriority(ctx, round.Attestations[i])
-
 			if err != nil {
 				return 0, err
 			}
 
 			count++
-
 		}
 	}
 
 	return count, nil
+}
 
+// AddToQueue adds the attestation to the correct verifier queue.
+func (m *Manager) AddToQueue(ctx context.Context, attestation *attestation.Attestation) error {
+	err := attestation.PrepareRequest(m.attestationTypeConfig)
+	if err != nil {
+		return fmt.Errorf("preparing request: %w", err)
+	}
+
+	queue, ok := m.queues[attestation.QueueName]
+	if !ok {
+		return fmt.Errorf("queue %s does not exist", attestation.QueueName)
+	}
+
+	err = queue.Enqueue(ctx, attestation)
+
+	return err
 }

@@ -11,11 +11,6 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-type addData struct {
-	data       string
-	additional string
-}
-
 // TODO: Luka - Get this from config
 const PROVIDER_RANDOM_SEED = 42
 
@@ -90,12 +85,11 @@ func (controller *FDCProtocolProviderController) submit2Service(roundId uint64, 
 	return masked, true, nil
 }
 
-func (controller *FDCProtocolProviderController) submitSignaturesService(roundId uint64, address string) (addData, bool) {
-
+func (controller *FDCProtocolProviderController) submitSignaturesService(roundId uint64, address string) (string, string, bool) {
 	savedRoots, exists := controller.storage.Get(roundId)
 	if !exists {
 		log.Infof("submitSigantures: data for round %d not stored", roundId)
-		return addData{}, false
+		return "", "", false
 	}
 
 	rootData, exists := savedRoots[address]
@@ -103,7 +97,7 @@ func (controller *FDCProtocolProviderController) submitSignaturesService(roundId
 	if !exists {
 		log.Infof("submitSigantures: root for address %s not stored for round %d", address, roundId)
 
-		return addData{}, false
+		return "", "", false
 	}
 
 	log.Info("SubmitSignaturesHandler")
@@ -112,5 +106,5 @@ func (controller *FDCProtocolProviderController) submitSignaturesService(roundId
 	log.Logf(zapcore.DebugLevel, "root: %s\n", rootData.merkleRoot)
 	log.Logf(zapcore.DebugLevel, "random: %s\n", rootData.randomNum)
 
-	return addData{data: rootData.merkleRoot, additional: rootData.randomNum}, true
+	return rootData.merkleRoot, rootData.randomNum, true
 }

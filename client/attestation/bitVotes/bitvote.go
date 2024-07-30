@@ -44,7 +44,6 @@ type WeightedBitVote struct {
 
 // EncodeBitVoteHex encodes BitVote with roundCheck to be published on chain
 func (b BitVote) EncodeBitVoteHex(roundId uint64) string {
-
 	var encoding []byte
 	roundCheck := byte(roundId % 256)
 
@@ -63,7 +62,6 @@ func (b BitVote) EncodeBitVoteHex(roundId uint64) string {
 
 // DecodeBitVoteBytes decodes bytes encoded BitVote and returns roundCheck
 func DecodeBitVoteBytes(bitVoteByte []byte) (BitVote, uint8, error) {
-
 	if len(bitVoteByte) < 3 {
 		return BitVote{}, 0, errors.New("bitVote too short")
 	}

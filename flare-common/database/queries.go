@@ -232,7 +232,8 @@ func fetchTransactionsByAddressAndSelectorTimestamp(
 		"to_address = ? AND function_sig = ? AND timestamp > ? AND timestamp <= ?",
 		hex.EncodeToString(toAddress[:]), // encodes without 0x prefix and without checksum
 		hex.EncodeToString(functionSel[:]),
-		from, to,
+		from,
+		to,
 	).Order("timestamp").Find(&transactions).Error
 	if err != nil {
 		return nil, err

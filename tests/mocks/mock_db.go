@@ -1,4 +1,4 @@
-package collector_test
+package mocks
 
 import (
 	"bytes"
@@ -14,55 +14,86 @@ import (
 	"github.com/pkg/errors"
 )
 
-type mockCollectorDB struct {
-	logs  []database.Log
-	txs   []database.Transaction
-	state database.State
+const (
+	relayContractAddrHex = "0x26A90DA287264E2E20a45d8c2c79Ca98439c5aa8"
+
+	// used by mock collector DB
+	spiLogName         = "SigningPolicyInitialized"
+	rewardEpochID      = 1
+	startVotingRoundID = 1
+	threshold          = 0
+	seed               = 0
+	voterAddrHex       = "0xac872479e5EFc21989A4183Dc580C8264C9e54f5"
+	timestamp          = 0
+)
+
+const (
+	submitContractAddrHex = "0x90C6423ec3Ea40591bAdb177171B64c7e6556028"
+	protocol              = 0xff
+	roundID               = 1
+	t0                    = 1658429955
+	roundLengthSeconds    = 90
+)
+
+var (
+	submitContractAddr = common.HexToAddress(submitContractAddrHex)
+	funcSel            = [4]byte{1, 2, 3, 4}
+	payload            = []byte{1, 2, 3, 4, 5, 6, 7, 8}
+)
+
+var relayContractAddr = common.HexToAddress(relayContractAddrHex)
+
+const lastQueriedBlock = 123
+
+type MockCollectorDB struct {
+	Logs  []database.Log
+	Txs   []database.Transaction
+	State database.State
 }
 
-func (c mockCollectorDB) FetchState(ctx context.Context) (database.State, error) {
-	return c.state, nil
+func (c MockCollectorDB) FetchState(ctx context.Context) (database.State, error) {
+	return c.State, nil
 }
 
-func (c mockCollectorDB) FetchLatestLogsByAddressAndTopic0(
+func (c MockCollectorDB) FetchLatestLogsByAddressAndTopic0(
 	ctx context.Context, addr common.Address, topic0 common.Hash, num int,
 ) ([]database.Log, error) {
 	if addr != relayContractAddr {
 		return nil, errors.New("unknown address")
 	}
 
-	return c.logs, nil
+	return c.Logs, nil
 }
 
-func (c mockCollectorDB) FetchLogsByAddressAndTopic0Timestamp(
+func (c MockCollectorDB) FetchLogsByAddressAndTopic0Timestamp(
 	ctx context.Context, addr common.Address, topic0 common.Hash, from, to int64,
 ) ([]database.Log, error) {
 	if addr != relayContractAddr {
 		return nil, errors.New("unknown address")
 	}
 
-	return c.logs, nil
+	return c.Logs, nil
 }
 
-func (c mockCollectorDB) FetchLogsByAddressAndTopic0BlockNumber(
+func (c MockCollectorDB) FetchLogsByAddressAndTopic0BlockNumber(
 	ctx context.Context,
 	address common.Address,
 	topic0 common.Hash,
 	from, to int64,
 ) ([]database.Log, error) {
-	return c.logs, nil
+	return c.Logs, nil
 }
 
-func (c mockCollectorDB) FetchLogsByAddressAndTopic0TimestampToBlockNumber(
+func (c MockCollectorDB) FetchLogsByAddressAndTopic0TimestampToBlockNumber(
 	ctx context.Context,
 	address common.Address,
 	topic0 common.Hash,
 	from, to int64,
 ) ([]database.Log, error) {
-	return c.logs, nil
+	return c.Logs, nil
 }
 
-func (c mockCollectorDB) FetchTransactionsByAddressAndSelectorTimestamp(
+func (c MockCollectorDB) FetchTransactionsByAddressAndSelectorTimestamp(
 	ctx context.Context,
 	toAddress common.Address,
 	functionSel [4]byte,
@@ -76,10 +107,10 @@ func (c mockCollectorDB) FetchTransactionsByAddressAndSelectorTimestamp(
 		return nil, errors.New("unknown function selector")
 	}
 
-	return c.txs, nil
+	return c.Txs, nil
 }
 
-func newMockCollectorDB() (*mockCollectorDB, error) {
+func NewMockCollectorDB() (*MockCollectorDB, error) {
 	log, err := newTestLog()
 	if err != nil {
 		return nil, err
@@ -92,8 +123,8 @@ func newMockCollectorDB() (*mockCollectorDB, error) {
 
 	state := database.State{Index: lastQueriedBlock}
 
-	return &mockCollectorDB{
-		logs: []database.Log{*log}, txs: []database.Transaction{*tx}, state: state,
+	return &MockCollectorDB{
+		Logs: []database.Log{*log}, Txs: []database.Transaction{*tx}, State: state,
 	}, nil
 }
 

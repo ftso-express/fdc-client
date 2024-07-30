@@ -5,6 +5,8 @@ import (
 	"flare-common/logger"
 	"local/fdc/client/collector"
 	"local/fdc/client/config"
+	"local/fdc/client/manager"
+	"local/fdc/client/shared"
 	"local/fdc/client/timing"
 	"local/fdc/server"
 	"os"
@@ -13,46 +15,46 @@ import (
 )
 
 const (
-	USER_FILE        string = "configs/userConfig.toml" //relative to project root
-	SYSTEM_DIRECTORY string = "configs/systemConfigs"   //relative to project root
+	USER_FILE        string = "configs/userConfig.toml" // relative to project root
+	SYSTEM_DIRECTORY string = "configs/systemConfigs"   // relative to project root
 )
 
 var log = logger.GetLogger()
 
 func main() {
-	// Start attestation client collector\
-
-	userConfigRaw, err := config.ReadUserRaw(USER_FILE)
+	userConfigRaw, systemConfig, err := config.GetConfigs(USER_FILE, SYSTEM_DIRECTORY)
 	if err != nil {
-		log.Panicf("cannot read user config: %s", err)
+		log.Panicf("cannot read configs: %s", err)
 	}
-
-	systemConfig, err := config.ReadSystem(SYSTEM_DIRECTORY, userConfigRaw.Chain, userConfigRaw.ProtocolId)
-
-	if err != nil {
-		log.Panicf("cannot read system config: %s", err)
-	}
-
 	err = timing.Set(systemConfig.Timing)
-
 	if err != nil {
-		log.Panicf("illegal timing configs: %s", err)
+		log.Panicf("cannot set timing: %s", err)
 	}
 
-	// Prepare context
+	// Prepare context, that can cancel all goroutines
 	ctx, cancel := context.WithCancel(context.Background())
 
-	collector := collector.New(userConfigRaw, systemConfig)
+	// Prepare shared data connections that collector, manager and server will use
+	sharedDataPipes := shared.NewSharedDataPipes()
+
+	// Start attestation client collector
+	collector := collector.NewCollector(userConfigRaw, systemConfig, sharedDataPipes)
 	go collector.Run(ctx)
+
+	// Start attestation client manager
+	manager, err := manager.NewManager(userConfigRaw, sharedDataPipes)
+	if err != nil {
+		log.Panicf("failed to create the manager: %s", err)
+	}
+	go manager.Run(ctx)
+
+	// Run attestation clientserver
+	srv := server.New(&sharedDataPipes.Rounds, userConfigRaw.RestServer)
+	go srv.Run(ctx)
+	log.Info("Running server")
 
 	cancelChan := make(chan os.Signal, 1)
 	signal.Notify(cancelChan, os.Interrupt, syscall.SIGTERM)
-
-	// run server
-	log.Info("Running server")
-	srv := server.New(&collector.RoundManager.Rounds, userConfigRaw.RestServer)
-	go srv.Run(ctx)
-
 	// Block until a termination signal is received.
 	select {
 	case <-cancelChan:

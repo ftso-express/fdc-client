@@ -1,18 +1,23 @@
-package attestation_test
+package manager
 
 import (
+	"context"
 	"flare-common/database"
 	"flare-common/payload"
 	"fmt"
 	"local/fdc/client/attestation"
 	"local/fdc/client/config"
+	"local/fdc/client/shared"
+	"local/fdc/tests/mocks"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
 
-const USER_FILE = "../../testFiles/configs/userConfig.toml" //relative to test
+const USER_FILE = "../../tests/configs/userConfig.toml" //relative to test
 
 var policyLog = database.Log{
 	Address:         "32D46A1260BB2D8C9d5Ab1C9bBd7FF7D7CfaabCC",
@@ -26,6 +31,21 @@ var policyLog = database.Log{
 	Timestamp:       1718191903,
 	BlockNumber:     16542520,
 }
+
+var requestLog = database.Log{
+	Address:         "Cf6798810Bc8C0B803121405Fee2A5a9cc0CA5E5",
+	Data:            "0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000014045564d5472616e73616374696f6e00000000000000000000000000000000000045544800000000000000000000000000000000000000000000000000000000005453e040c1d33d8852f82714b28959380834b66988fa0348efe38625b3320b4500000000000000000000000000000000000000000000000000000000000000204ff8da95da542ca5e013daf405d08871fdb4375ee6dec77f001e918c8cd8d1b800000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000000",
+	Topic0:          "251377668af6553101c9bb094ba89c0c536783e005e203625e6cd57345918cc9",
+	Topic1:          "NULL",
+	Topic2:          "NULL",
+	Topic3:          "NULL",
+	TransactionHash: "e995790cdbb02e851cd767ee4f36bdf4d172b6fc210a497a505ec9c73330f5d1",
+	LogIndex:        0,
+	Timestamp:       1718199999,
+	BlockNumber:     16497501,
+}
+
+var testResponse = "000000000000000000000000000000000000000000000000000000000000002045564d5472616e73616374696f6e0000000000000000000000000000000000004554480000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000666853c800000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000001804ff8da95da542ca5e013daf405d08871fdb4375ee6dec77f001e918c8cd8d1b800000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000fbbb5500000000000000000000000000000000000000000000000000000000666853c8000000000000000000000000b8b1bca1f986c471ed3ce9586a18ca63db53080a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000002ca6571daa15ce734bbd0bf27d5c9d16787fc33f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001200000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000034000000000000000000000000000000000000000000000000000000000000001e4833bf6c0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000001a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000fbbb5400000000000000000000000000000000000000000000000000000000000000a80000dae57b41b2c6153ba5398c6e89ca4977c39e11961f17eb32fb8fb642d00c1e677006353f97c936c96e46145cb65369736d83fe759392835e955f53694056023661bf961aada3e0a6722caa365ca49c0cb8fe5ae829686b4f60b3a0f00219090053635e5e8399627ea08de9c326729a9a3517aecb99e45e3d6afb25fd40b30000000000000000000000000000000000000000000000000000000000000140000000000000000000000000000000000000000000000000000000000000001c5dc7876a724e68cb21aa323b56a897c2f976d74eebecd96f6a1e324fc97d20956e62ac1d63acb20522793f1e75f761164603970641655dcbfb733a3386d7624f000000000000000000000000000000000000000000000000000000000000000ddffffffffffc0000f003c000c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
 
 var bitVoteMessageTooSoon = payload.Message{
 	From:             common.HexToAddress("0x8fe15e1048f90bc028a60007c7d5b55d9d20de66"),
@@ -70,34 +90,31 @@ var bitVoteMessageBadVoter = payload.Message{
 var bitVoteMessageWrongLength = payload.Message{
 	From:             common.HexToAddress("0x8fe15e1048f90bc028a60007c7d5b55d9d20de66"),
 	Selector:         "6c532fae",
-	VotingRound:      664082,
-	Timestamp:        1718197405,
+	VotingRound:      664111,
+	Timestamp:        1718200006,
 	BlockNumber:      16542630,
 	TransactionIndex: 10,
-	Payload:          []byte{664082 % 256, 0, 10, 2, 93},
+	Payload:          []byte{664111 % 256, 0, 10, 2, 93},
 }
 var bitVoteMessage = payload.Message{
 	From:             common.HexToAddress("0x8fe15e1048f90bc028a60007c7d5b55d9d20de66"),
 	Selector:         "6c532fae",
-	VotingRound:      664082,
-	Timestamp:        1718197405,
+	VotingRound:      664111,
+	Timestamp:        1718200006,
 	BlockNumber:      16542630,
 	TransactionIndex: 10,
-	Payload:          []byte{664082 % 256, 0, 0},
+	Payload:          []byte{664111 % 256, 0, 3, 5},
 }
 
-func TestManager(t *testing.T) {
-
+func TestManagerMethods(t *testing.T) {
 	cfg, err := config.ReadUserRaw(USER_FILE)
-
 	require.NoError(t, err)
 
-	mngr, err := attestation.NewManager(cfg)
-
+	sharedDataPipes := shared.NewSharedDataPipes()
+	mngr, err := NewManager(&cfg, sharedDataPipes)
 	require.NoError(t, err)
 
 	err = mngr.OnSigningPolicy(policyLog)
-
 	require.NoError(t, err)
 
 	for i, badBitVote := range []payload.Message{
@@ -107,19 +124,76 @@ func TestManager(t *testing.T) {
 		bitVoteMessageBadVoter,
 		bitVoteMessageWrongLength,
 	} {
-
 		err = mngr.OnBitVote(badBitVote)
-
 		require.Error(t, err, fmt.Sprintf("error in bad bitVote %d", i))
-
 	}
-
-	err = mngr.OnBitVote(bitVoteMessage)
-
+	bitVoteMessageCorrect := bitVoteMessage
+	bitVoteMessageCorrect.Payload = []byte{664111 % 256, 0, 0}
+	err = mngr.OnBitVote(bitVoteMessageCorrect)
 	require.NoError(t, err)
 
 	_, ok := mngr.Rounds.Get(664082)
+	require.True(t, ok)
+}
+
+func TestManager(t *testing.T) {
+	cfg, err := config.ReadUserRaw(USER_FILE)
+	require.NoError(t, err)
+
+	// initialize
+	sharedDataPipes := shared.NewSharedDataPipes()
+	mngr, err := NewManager(&cfg, sharedDataPipes)
+	require.NoError(t, err)
+
+	// run mocked verifier for test
+	go mocks.MockVerifier(t, 5556, testResponse, requestLog)
+
+	// run manager
+	ctx, cancel := context.WithCancel(context.Background())
+	go mngr.Run(ctx)
+
+	time.Sleep(1 * time.Second)
+
+	// get signing policy
+	sharedDataPipes.SigningPolicies <- []database.Log{policyLog}
+	time.Sleep(1 * time.Second)
+	policy, _ := mngr.signingPolicyStorage.GetForVotingRound(664111)
+
+	time.Sleep(1 * time.Second)
+
+	// send attestation request
+	for i := 0; i < 3; i++ {
+		currentReqestLog := requestLog
+		currentReqestLog.BlockNumber += uint64(i)
+		currentReqestLog.Data = currentReqestLog.Data[:len(currentReqestLog.Data)-1] + strconv.Itoa(i)
+		sharedDataPipes.Requests <- []database.Log{currentReqestLog}
+	}
+
+	time.Sleep(1 * time.Second)
+
+	r, ok := mngr.Rounds.Get(664111)
+	require.Equal(t, 3, len(r.Attestations))
+	// send attestation request
+	for i := 0; i < 3; i++ {
+		require.Equal(t, attestation.Success, r.Attestations[i].Status)
+	}
+
+	messages := []payload.Message{}
+	for address := range policy.Voters.VoterDataMap {
+		currentLog := bitVoteMessage
+		currentLog.From = address
+		messages = append(messages, currentLog)
+	}
+	round := payload.Round{Id: 664111, Messages: messages}
+	sharedDataPipes.BitVotes <- round
+
+	time.Sleep(1 * time.Second)
 
 	require.True(t, ok)
+	require.Equal(t, 5, int(r.ConsensusBitVote.BitVector.Int64()))
 
+	cancel()
+	<-ctx.Done()
+
+	time.Sleep(1 * time.Second)
 }

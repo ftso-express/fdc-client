@@ -28,11 +28,11 @@ swagger_path = "/api-doc"
 
 # EVMTransaction
 [types.EVMTransaction]
-abi_path = "../../testFiles/configs/abis/EVMTransaction.json"
+abi_path = "../../tests/configs/abis/EVMTransaction.json"
 
 # ETH 
 [types.EVMTransaction.Sources.ETH]
-url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
+url = "http://localhost:5556"
 api_key = "12345"
 lut_limit = "18446744073709551615"
 queue = "evmETH"

@@ -107,7 +107,7 @@ queue = "queue2"
 
 A queue ensures that the calls to the verifier server do not exceed server's limitations.
 
-Each queue is has the following configs:
+Each queue has the following configs:
 
 ```toml
 [queue.<queueName>]

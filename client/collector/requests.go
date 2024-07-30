@@ -9,90 +9,77 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// AttestationRequestListener returns a channel that serves attestation requests events emitted by fdcContractAddress.
+// AttestationRequestListener initiates a channel that serves attestation requests events emitted by fdcContractAddress.
 func AttestationRequestListener(
 	ctx context.Context,
 	db collectorDB,
 	fdcContractAddress common.Address,
-	bufferSize int,
 	ListenerInterval time.Duration,
-) <-chan []database.Log {
+	logChan chan<- []database.Log,
+) {
+	trigger := time.NewTicker(ListenerInterval)
 
-	out := make(chan []database.Log, bufferSize)
+	_, startTimestamp, err := timing.LastCollectPhaseStart(uint64(time.Now().Unix()))
+	if err != nil {
+		log.Panic("time:", err)
+	}
 
-	go func() {
+	state, err := db.FetchState(ctx)
+	if err != nil {
+		log.Panic("fetch initial state error:", err)
+	}
 
-		trigger := time.NewTicker(ListenerInterval)
+	lastQueriedBlock := state.Index
 
-		_, startTimestamp, err := timing.LastCollectPhaseStart(uint64(time.Now().Unix()))
+	logs, err := db.FetchLogsByAddressAndTopic0TimestampToBlockNumber(
+		ctx, fdcContractAddress, attestationRequestEventSel, int64(startTimestamp), int64(state.Index),
+	)
+	if err != nil {
+		log.Panic("fetch initial logs error")
+	}
 
-		if err != nil {
-			log.Panic("time:", err)
+	if len(logs) > 0 {
+		select {
+		case logChan <- logs:
+		case <-ctx.Done():
+			log.Info("AttestationRequestListener exiting:", ctx.Err())
+			return
+		}
+	}
+
+	for {
+		select {
+		case <-trigger.C:
+		case <-ctx.Done():
+			log.Info("AttestationRequestListener exiting:", ctx.Err())
+			return
 		}
 
-		state, err := db.FetchState(ctx)
+		state, err = db.FetchState(ctx)
 		if err != nil {
-			log.Panic("fetch initial state error:", err)
+			log.Error("fetch state error:", err)
+			continue
 		}
 
-		lastQueriedBlock := state.Index
-
-		logs, err := db.FetchLogsByAddressAndTopic0TimestampToBlockNumber(
-			ctx, fdcContractAddress, attestationRequestEventSel, int64(startTimestamp), int64(state.Index),
+		logs, err := db.FetchLogsByAddressAndTopic0BlockNumber(
+			ctx, fdcContractAddress, attestationRequestEventSel, int64(lastQueriedBlock), int64(state.Index),
 		)
 		if err != nil {
-			log.Panic("fetch initial logs error")
+			log.Error("fetch logs error:", err)
+			continue
 		}
+
+		lastQueriedBlock = state.Index
 
 		if len(logs) > 0 {
 			select {
-			case out <- logs:
-
+			case logChan <- logs:
+				log.Debugf("Added %d request logs to channel", len(logs))
 			case <-ctx.Done():
 				log.Info("AttestationRequestListener exiting:", ctx.Err())
 				return
 			}
 		}
 
-		for {
-			select {
-			case <-trigger.C:
-
-			case <-ctx.Done():
-				log.Info("AttestationRequestListener exiting:", ctx.Err())
-				return
-			}
-
-			state, err = db.FetchState(ctx)
-			if err != nil {
-				log.Error("fetch state error:", err)
-				continue
-			}
-
-			logs, err := db.FetchLogsByAddressAndTopic0BlockNumber(
-				ctx, fdcContractAddress, attestationRequestEventSel, int64(lastQueriedBlock), int64(state.Index),
-			)
-			if err != nil {
-				log.Error("fetch logs error:", err)
-				continue
-			}
-
-			lastQueriedBlock = state.Index
-
-			if len(logs) > 0 {
-				select {
-				case out <- logs:
-					log.Debugf("Added %d request logs to channel", len(logs))
-
-				case <-ctx.Done():
-					log.Info("AttestationRequestListener exiting:", ctx.Err())
-					return
-				}
-			}
-
-		}
-
-	}()
-
-	return out
+	}
 }

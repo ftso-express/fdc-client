@@ -2,13 +2,28 @@ package server
 
 import (
 	"flare-common/restServer"
+	"flare-common/storage"
 	"fmt"
+	"local/fdc/client/round"
 	"strconv"
 )
+
+type FDCProtocolProviderController struct {
+	rounds  *storage.Cyclic[*round.Round]
+	storage storage.Cyclic[RootsByAddress]
+}
 
 type submitXParams struct {
 	votingRoundId uint64
 	submitAddress string
+}
+
+const storageSize = 10
+
+func newFDCProtocolProviderController(rounds *storage.Cyclic[*round.Round]) *FDCProtocolProviderController {
+	storage := storage.NewCyclic[RootsByAddress](storageSize)
+
+	return &FDCProtocolProviderController{rounds: rounds, storage: storage}
 }
 
 func validateSubmitXParams(params map[string]string) (submitXParams, error) {
@@ -85,11 +100,11 @@ func (controller *FDCProtocolProviderController) submitSignaturesController(
 		log.Error(err)
 		return PDPResponse{}, restServer.BadParamsErrorHandler(err)
 	}
-	rsp, exists := controller.submitSignaturesService(pathParams.votingRoundId, pathParams.submitAddress)
+	merkleRoot, randVal, exists := controller.submitSignaturesService(pathParams.votingRoundId, pathParams.submitAddress)
 	if !exists {
 		return PDPResponse{Status: NOT_AVAILABLE}, nil
 	}
-	response := PDPResponse{Data: rsp.data, AdditionalData: rsp.additional, Status: OK}
+	response := PDPResponse{Data: merkleRoot, AdditionalData: randVal, Status: OK}
 
 	return response, nil
 }

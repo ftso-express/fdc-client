@@ -1,5 +1,4 @@
 package attestation
 
-var AttestationFromDatabaseLog = attestationFromDatabaseLog
-
-var AddAttestation = (*Round).addAttestation
+// exports of private functions for tests
+var ValidateResponse = (*Attestation).validateResponse

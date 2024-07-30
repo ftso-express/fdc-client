@@ -8,6 +8,7 @@ import (
 	"io"
 	"local/fdc/client/attestation"
 	"local/fdc/client/config"
+	"local/fdc/client/round"
 	"local/fdc/server"
 	"net/http"
 	"net/url"
@@ -26,7 +27,7 @@ const (
 )
 
 func TestServer(t *testing.T) {
-	rounds := storage.NewCyclic[*attestation.Round](10)
+	rounds := storage.NewCyclic[*round.Round](10)
 	serverConfig := config.RestServer{
 		Title:       "FDC protocol data provider API",
 		FSPTitle:    "FDC protocol data provider for FSP client",
@@ -46,7 +47,7 @@ func TestServer(t *testing.T) {
 	go s.Run(ctx)
 	defer s.Shutdown()
 
-	round := attestation.CreateRound(votingRoundID, policy.NewVoterSet(nil, nil))
+	round := round.CreateRound(votingRoundID, policy.NewVoterSet(nil, nil))
 	round.Attestations = append(round.Attestations, &attestation.Attestation{
 		RoundId:   votingRoundID,
 		Consensus: true,

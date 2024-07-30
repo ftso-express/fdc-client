@@ -25,7 +25,6 @@ const (
 )
 
 func TestResponse(t *testing.T) {
-
 	tests := []struct {
 		response     string
 		isStaticType bool
@@ -38,7 +37,7 @@ func TestResponse(t *testing.T) {
 		{
 			response:     responseEVM,
 			isStaticType: false,
-			abi:          "../../testFiles/configs/abis/EVMTransaction.json",
+			abi:          "../../tests/configs/abis/EVMTransaction.json",
 			mic:          "5453e040c1d33d8852f82714b28959380834b66988fa0348efe38625b3320b45",
 			lut:          1718113224,
 			round:        10,
@@ -57,54 +56,36 @@ func TestResponse(t *testing.T) {
 
 	for i, test := range tests {
 		var resp attestation.Response
-
-		resp, err := hex.DecodeString(test.response)
-
+		respBytes, err := hex.DecodeString(test.response)
 		require.NoError(t, err)
+		resp = respBytes
 
 		abiFile, err := os.ReadFile(test.abi)
-
 		require.NoError(t, err)
-
 		abi, err := config.ArgumentsFromAbi(abiFile)
-
 		require.NoError(t, err)
 
 		//isStaticType
 		isStaticType, err := attestation.IsStaticType(resp)
-
 		require.NoError(t, err)
-
 		require.Equal(t, test.isStaticType, isStaticType, fmt.Sprintf("error isStaticError in test %d", i))
 
 		//MIC
-
 		mic, err := resp.ComputeMic(&abi)
-
 		require.NoError(t, err)
-
 		expectedMic, err := hex.DecodeString(test.mic)
-
 		require.NoError(t, err)
-
 		require.Equal(t, expectedMic, mic[:], fmt.Sprintf("error mic in test %d", i))
 
 		// LUT
-
 		lut, err := resp.LUT()
-
 		require.NoError(t, err)
-
 		require.Equal(t, test.lut, lut, fmt.Sprintf("error lut in test %d", i))
 
 		// add round
-
 		_, err = resp.AddRound(1)
-
 		require.NoError(t, err)
-
 		_, err = resp.AddRound(test.round)
-
 		require.NoError(t, err)
 
 		roundStart := 2 * 32
@@ -114,23 +95,17 @@ func TestResponse(t *testing.T) {
 			roundStart += 32
 			roundEnd += 32
 		}
-
-		require.Equal(t, big.NewInt(int64(test.round)), new(big.Int).SetBytes(resp[roundStart:roundEnd]), fmt.Sprintf("error add round in test %d", i))
+		require.Equal(t, big.NewInt(int64(test.round)), new(big.Int).SetBytes(respBytes[roundStart:roundEnd]), fmt.Sprintf("error add round in test %d", i))
 
 		// hash
-
 		hash, err := resp.Hash(test.round)
-
 		require.NoError(t, err)
-
 		require.Equal(t, common.HexToHash(test.hash), hash, fmt.Sprintf("error hash in test %d", i))
-
 	}
 
 }
 
 func TestRequest(t *testing.T) {
-
 	tests := []struct {
 		request string
 		attType string
@@ -150,59 +125,37 @@ func TestRequest(t *testing.T) {
 	}
 
 	for i, test := range tests {
-
 		var req attestation.Request
-		req, err := hex.DecodeString(test.request)
-
+		reqBytes, err := hex.DecodeString(test.request)
 		require.NoError(t, err)
+		req = reqBytes
 
 		// att type
-
 		expectedAttType := [32]byte{}
-
 		copy(expectedAttType[:], []byte(test.attType))
-
 		attType, err := req.AttestationType()
-
 		require.NoError(t, err)
-
 		require.Equal(t, expectedAttType, attType, fmt.Sprintf("error attType in test %d", i))
 
 		// source
-
 		expectedSource := [32]byte{}
-
 		copy(expectedSource[:], []byte(test.source))
-
 		source, err := req.Source()
-
 		require.NoError(t, err)
-
 		require.Equal(t, expectedSource, source, fmt.Sprintf("error source in test %d", i))
 
 		// att type and source
-
 		expectedAttTypeAndSource := [64]byte{}
-
 		copy(expectedAttTypeAndSource[:], []byte(test.attType))
-
 		copy(expectedAttTypeAndSource[32:], []byte(test.source))
-
 		attTypeAndSource, err := req.AttestationTypeAndSource()
-
 		require.NoError(t, err)
-
 		require.Equal(t, expectedAttTypeAndSource, attTypeAndSource, fmt.Sprintf("error attTypeAndSource in test %d", i))
 
 		// mic
-
 		expectedMic := common.HexToHash(test.mic)
-
 		mic, err := req.Mic()
-
 		require.NoError(t, err)
-
 		require.Equal(t, expectedMic, mic, fmt.Sprintf("error mic in test %d", i))
-
 	}
 }

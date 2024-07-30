@@ -37,13 +37,11 @@ func ExtractPayloads(tx *database.Transaction) (map[uint8]Message, error) {
 	dataStr := strings.TrimPrefix(tx.Input, "0x") //trim 0x if needed
 
 	data, err := hex.DecodeString(dataStr)
-
 	if err != nil {
 		return nil, fmt.Errorf("error decoding input of tx: %s", tx.Hash)
 	}
 
 	data = data[4:] // trim function selector
-
 	for len(data) > 0 {
 
 		if len(data) < 7 { // 7 = 1 + 4 + 2

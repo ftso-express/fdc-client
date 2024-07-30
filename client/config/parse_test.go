@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	USER_FILE        = "../../testFiles/configs/userConfig.toml" //relative to test
-	SYSTEM_DIRECTORY = "../../testFiles/configs/systemConfigs"   //relative to test
+	USER_FILE        = "../../tests/configs/userConfig.toml" //relative to test
+	SYSTEM_DIRECTORY = "../../tests/configs/systemConfigs"   //relative to test
 )
 
 func TestReadUserRaw(t *testing.T) {

@@ -12,3 +12,10 @@ type PDPResponse struct {
 	Data           string            `json:"data"`
 	AdditionalData string            `json:"additionalData"`
 }
+
+type merkleRootStorageObject struct {
+	merkleRoot string
+	randomNum  string
+}
+
+type RootsByAddress map[string]merkleRootStorageObject

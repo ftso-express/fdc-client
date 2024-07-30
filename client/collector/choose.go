@@ -9,7 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// BitVoteListener returns a channel that servers payloads data submitted do submitContractAddress to method with funcSig for protocol.
+// BitVoteListener initiates a channel that servers payloads data submitted do submitContractAddress to method with funcSig for protocol.
 // Payloads for roundId are served whenever a trigger provides a roundId.
 func BitVoteListener(
 	ctx context.Context,
@@ -17,74 +17,65 @@ func BitVoteListener(
 	submitContractAddress common.Address,
 	funcSel [4]byte,
 	protocol uint8,
-	bufferSize int,
 	trigger <-chan uint64,
-) <-chan payload.Round {
+	roundChan chan<- payload.Round,
+) {
+	for {
+		var roundId uint64
 
-	out := make(chan payload.Round, bufferSize)
+		select {
+		case roundId = <-trigger:
+			log.Debug("starting next BitVoteListener iteration")
 
-	go func() {
+		case <-ctx.Done():
+			log.Info("BitVoteListener exiting:", ctx.Err())
+			return
+		}
 
-		for {
-			var roundId uint64
+		txs, err := db.FetchTransactionsByAddressAndSelectorTimestamp(
+			ctx,
+			submitContractAddress,
+			funcSel,
+			int64(timing.ChooseStartTimestamp(roundId)),
+			int64(timing.ChooseEndTimestamp(roundId)),
+		)
+		if err != nil {
+			log.Error("fetch txs error:", err)
+			continue
+		}
 
-			select {
-			case roundId = <-trigger:
-				log.Debug("starting next BitVoteListener iteration")
-
-			case <-ctx.Done():
-				log.Info("BitVoteListener exiting:", ctx.Err())
-				return
-			}
-
-			txs, err := db.FetchTransactionsByAddressAndSelectorTimestamp(
-				ctx,
-				submitContractAddress,
-				funcSel,
-				int64(timing.ChooseStartTimestamp(roundId)),
-				int64(timing.ChooseEndTimestamp(roundId)),
-			)
+		bitVotes := []payload.Message{}
+		for i := range txs {
+			tx := &txs[i]
+			payloads, err := payload.ExtractPayloads(tx)
 			if err != nil {
-				log.Error("fetch txs error:", err)
+				log.Error("extract payload error:", err)
 				continue
 			}
 
-			bitVotes := []payload.Message{}
-			for i := range txs {
-				tx := &txs[i]
-				payloads, err := payload.ExtractPayloads(tx)
-				if err != nil {
-					log.Error("extract payload error:", err)
-					continue
-				}
-
-				bitVote, ok := payloads[protocol]
-				if ok {
-					bitVotes = append(bitVotes, bitVote)
-				}
-
-			}
-
-			if len(bitVotes) > 0 {
-				log.Infof("Received %d bitVotes for round %d", len(bitVotes), roundId)
-
-				select {
-				case out <- payload.Round{Messages: bitVotes, Id: roundId}:
-					log.Debugf("sent bitVotes for round %d", roundId)
-
-				case <-ctx.Done():
-					log.Info("BitVoteListener exiting")
-					return
-				}
-			} else {
-				log.Infof("No bitVotes for round %d", roundId)
+			bitVote, ok := payloads[protocol]
+			if ok {
+				bitVotes = append(bitVotes, bitVote)
 			}
 
 		}
 
-	}()
+		if len(bitVotes) > 0 {
+			log.Infof("Received %d bitVotes for round %d", len(bitVotes), roundId)
 
-	return out
+			select {
+			case roundChan <- payload.Round{Messages: bitVotes, Id: roundId}:
+				log.Debugf("sent bitVotes for round %d", roundId)
+
+			case <-ctx.Done():
+				log.Info("BitVoteListener exiting")
+				return
+			}
+		} else {
+			log.Infof("No bitVotes for round %d", roundId)
+		}
+
+	}
 
 }
 

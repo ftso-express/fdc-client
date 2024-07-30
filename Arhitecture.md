@@ -40,3 +40,33 @@ The attestations are sorted by the order of the emissions of their underlying re
 The bitVote for the round is build when queried.
 
 The Merkle Tree can only be build after the consensus bitVote is computed and all the chosen requests are confirmed.
+
+# Logic
+
+FTSO protocol works cyclically in epochs. Logic of the FDC client is aligned with these epochs and works in the folowing way:
+
+-   Before the start of each epoch, the Signing Policy containing information about
+    all the data providers is updated on chain. FDC client obtains the signing policy
+    through the _collector_ fetching info from the C-chain indexer's database. The
+    _manager_ saves the policy for future use.
+-   During the epoch, users submit attestation requests on chain, which are then
+    obtained by the _collector_ fetching info from the C-chain indexer's database. The
+    _manager_ creates a struct _round_ and saves the attestation requests in it. It puts
+    the attestations in queues and tries to confirm the attestation requests for which
+    it has a verifier.
+-   After the attestation collection period, the FDC client gets a request on the _server_
+    from the Flare System Client to provide confirmations of the attestation requests.
+    The FDC client provides a bit vector indicating which attestations can be confirmed.
+    It returns the bit vector to the Flare System Client which puts it on chain.
+-   The FDC client obtains all the bit votes submitted by data providers by the
+    _collector_ fetching info from the C-chain indexer's database. The
+    _manager_ saves the bit vectors in a _round_. Furthermore, it calculate the consensus
+    bit vote, i.e. the indicator which attestations can be confirmed by the majority of
+    data providers. If there are some attestations in the consensus that a provider
+    did not confirm, it tries to do it again.
+-   The FDC client gets a request on the _server_ from the Flare System Client to provide
+    a commit of the confirmed attestations. The Flare System Client publishes the commit
+    on chain.
+-   The FDC client gets a request on the _server_ from the Flare System Client to provide
+    a reveal of the confirmed attestations. The Flare System Client signs and publishes
+    the reveal on chain.

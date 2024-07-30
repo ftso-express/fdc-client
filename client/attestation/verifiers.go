@@ -28,60 +28,48 @@ type VerifierCredentials struct {
 
 // ResolveAttestationRequest sends the attestation request to the verifier server with verifierCred and stores the response.
 // Returns true if the response is "VALID" and false otherwise.
-func ResolveAttestationRequest(ctx context.Context, att *Attestation) (bool, error) {
+func ResolveAttestationRequest(ctx context.Context, att *Attestation) ([]byte, bool, error) {
 	client := &http.Client{}
 	requestBytes := att.Request
-
 	encoded := hex.EncodeToString(requestBytes)
 	payload := AbiEncodedRequestBody{AbiEncodedRequest: "0x" + encoded}
-
 	encodedBody, err := json.Marshal(payload)
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
 
 	request, err := http.NewRequestWithContext(ctx, "POST", att.Credentials.Url, bytes.NewBuffer(encodedBody))
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
-
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("X-API-KEY", att.Credentials.apiKey)
-	resp, err := client.Do(request)
 
+	resp, err := client.Do(request) // todo: add timeout to the request?
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
-
 	if resp.StatusCode != 200 {
-		return false, fmt.Errorf("request responded with code %d", resp.StatusCode)
+		return nil, false, fmt.Errorf("request responded with code %d", resp.StatusCode)
 	}
-
 	// close response body after function ends
 	defer resp.Body.Close()
 
 	responseBody := AbiEncodedResponseBody{}
-
 	decoder := json.NewDecoder(resp.Body)
-
 	decoder.DisallowUnknownFields()
 
 	err = decoder.Decode(&responseBody)
-
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
-
 	if responseBody.Status != "VALID" {
-		return false, nil
+		return nil, false, nil
 	}
-
 	responseBytes, err := hex.DecodeString(strings.TrimPrefix(responseBody.AbiEncodedResponse, "0x"))
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
 
-	att.Response = responseBytes
-
-	return true, nil
+	return responseBytes, true, nil
 }

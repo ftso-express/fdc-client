@@ -11,52 +11,38 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// SigningPolicyInitializedListener returns a channel that serves signingPolicyInitialized events emitted by relayContractAddress.
+// SigningPolicyInitializedListener initiates a channel that serves signingPolicyInitialized events emitted by relayContractAddress.
 func SigningPolicyInitializedListener(
 	ctx context.Context,
 	db collectorDB,
 	relayContractAddress common.Address,
-	bufferSize int,
-) <-chan []database.Log {
-	out := make(chan []database.Log, bufferSize)
+	logChan chan<- []database.Log,
+) {
+	logs, err := db.FetchLatestLogsByAddressAndTopic0(
+		ctx, relayContractAddress, signingPolicyInitializedEventSel, 3,
+	)
+	if err != nil {
+		log.Panic("error fetching initial logs:", err)
+	}
+	latestQuery := time.Now()
+	log.Debug("Logs length:", len(logs))
+	if len(logs) == 0 {
+		log.Panic("No initial signing policies found:", err)
+	}
 
-	go func() {
-		logs, err := db.FetchLatestLogsByAddressAndTopic0(
-			ctx, relayContractAddress, signingPolicyInitializedEventSel, 3,
-		)
+	// signingPolicyStorage expects policies in increasing order
+	var sorted []database.Log
+	for i := range logs {
+		sorted = append(sorted, logs[len(logs)-i-1])
+	}
 
-		latestQuery := time.Now()
+	select {
+	case logChan <- sorted:
+	case <-ctx.Done():
+		log.Info("SigningPolicyInitializedListener exiting:", ctx.Err())
+	}
 
-		if err != nil {
-			log.Panic("error fetching initial logs:", err)
-		}
-
-		log.Debug("Logs length:", len(logs))
-
-		if len(logs) == 0 {
-			log.Panic("No initial signing policies found:", err)
-		}
-
-		var sorted []database.Log
-
-		// signingPolicyStorage expects policies in increasing order
-		for i := range logs {
-			sorted = append(sorted, logs[len(logs)-i-1])
-		}
-
-		select {
-		case out <- sorted:
-
-		case <-ctx.Done():
-			log.Info("SigningPolicyInitializedListener exiting:", ctx.Err())
-		}
-
-		spiTargetedListener(ctx, db, relayContractAddress, logs[0], latestQuery, out)
-
-	}()
-
-	return out
-
+	spiTargetedListener(ctx, db, relayContractAddress, logs[0], latestQuery, logChan)
 }
 
 // spiTargetedListener that only starts aggressive queries for new signingPolicyInitialized events a bit before the expected emission and stops once it gets one and waits until the next window.

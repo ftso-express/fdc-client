@@ -1,10 +1,11 @@
-package attestation_test
+package round_test
 
 import (
 	"flare-common/database"
 	"flare-common/policy"
 	"fmt"
 	"local/fdc/client/attestation"
+	"local/fdc/client/round"
 	"local/fdc/client/utils"
 	"math/big"
 
@@ -14,7 +15,6 @@ import (
 )
 
 func TestAddAttestation(t *testing.T) {
-
 	tests := []struct {
 		requests         []database.Log
 		fees             []*big.Int
@@ -129,24 +129,18 @@ func TestAddAttestation(t *testing.T) {
 	}
 
 	for i, test := range tests {
-
-		round := attestation.CreateRound(1, policy.NewVoterSet(nil, nil))
+		round := round.CreateRound(1, policy.NewVoterSet(nil, nil))
 
 		for j, request := range test.requests {
 			att, err := attestation.AttestationFromDatabaseLog(request)
-
 			require.NoError(t, err, fmt.Sprintf("error parsing request %d in test %d ", j, i))
 
-			added := attestation.AddAttestation(round, &att)
-
+			added := round.AddAttestation(&att)
 			require.Equal(t, test.added[j], added, fmt.Sprintf("wrongly added request %d in test %d ", j, i))
-
 		}
-
 		require.Equal(t, test.nuOfAttestations, len(round.Attestations), fmt.Sprintf("wrong number of attestations in test %d", i))
 
 		for j, att := range round.Attestations {
-
 			require.Equal(t, test.fees[j], att.Fee, fmt.Sprintf("wrong fee for attestation %d in test %d", j, i))
 		}
 	}
@@ -154,7 +148,6 @@ func TestAddAttestation(t *testing.T) {
 }
 
 func TestPrepend(t *testing.T) {
-
 	tests := []struct {
 		added    []int
 		expected []int
@@ -173,12 +166,8 @@ func TestPrepend(t *testing.T) {
 	for i, test := range tests {
 		array := make([]int, 0)
 		for _, j := range test.added {
-
 			array = utils.Prepend(array, j)
-
 		}
-
 		require.Equal(t, test.expected, array, fmt.Sprintf("error in test %d", i))
 	}
-
 }

@@ -4,8 +4,8 @@ import (
 	"context"
 	"flare-common/restServer"
 	"flare-common/storage"
-	"local/fdc/client/attestation"
 	"local/fdc/client/config"
+	"local/fdc/client/round"
 	"net/http"
 	"time"
 
@@ -18,7 +18,7 @@ type Server struct {
 }
 
 func New(
-	rounds *storage.Cyclic[*attestation.Round],
+	rounds *storage.Cyclic[*round.Round],
 	serverConfig config.RestServer,
 ) Server {
 	// Create Mux router
@@ -46,7 +46,7 @@ func New(
 	// create fsp sub router
 	fspSubRouter := router.WithPrefix(serverConfig.FSPSubpath, serverConfig.FSPTitle)
 	// Register routes for FSP
-	RegisterFDCProviderRoutes(rounds, fspSubRouter, []string{serverConfig.ApiKeyName})
+	RegisterFDCProviderRoutes(fspSubRouter, rounds, []string{serverConfig.ApiKeyName})
 	fspSubRouter.AddMiddleware(keyMiddleware.Middleware)
 
 	// Register routes
@@ -66,6 +66,22 @@ func New(
 	}
 
 	return Server{srv: srv}
+}
+
+// Registration of routes for the FDC protocol provider
+func RegisterFDCProviderRoutes(router restServer.Router, rounds *storage.Cyclic[*round.Round], securities []string) {
+	// Prepare service controller
+	controller := newFDCProtocolProviderController(rounds)
+	paramMap := map[string]string{"votingRoundId": "Voting round ID", "submitAddress": "Submit address"}
+
+	submit1Handler := restServer.GeneralRouteHandler(controller.submit1Controller, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{}, securities)
+	router.AddRoute("/submit1/{votingRoundId}/{submitAddress}", submit1Handler, "Submit1")
+
+	submit2Handler := restServer.GeneralRouteHandler(controller.submit2Controller, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{}, securities)
+	router.AddRoute("/submit2/{votingRoundId}/{submitAddress}", submit2Handler, "Submit2")
+
+	submitSignaturesHandler := restServer.GeneralRouteHandler(controller.submitSignaturesController, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{}, securities)
+	router.AddRoute("/submitSignatures/{votingRoundId}/{submitAddress}", submitSignaturesHandler, "SubmitSignatures")
 }
 
 func (s *Server) Run(ctx context.Context) {

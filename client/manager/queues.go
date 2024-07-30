@@ -1,13 +1,14 @@
-package attestation
+package manager
 
 import (
 	"context"
 	"flare-common/queue"
+	"local/fdc/client/attestation"
 	"local/fdc/client/config"
 	"sync"
 )
 
-type attestationQueue = queue.PriorityQueue[*Attestation]
+type attestationQueue = queue.PriorityQueue[*attestation.Attestation]
 
 type priorityQueues map[string]*attestationQueue
 
@@ -19,7 +20,7 @@ func buildQueues(queuesConfigs config.Queues) priorityQueues {
 	for k := range queuesConfigs {
 
 		params := queuesConfigs[k]
-		queue := queue.NewPriority[*Attestation](&params)
+		queue := queue.NewPriority[*attestation.Attestation](&params)
 
 		queues[k] = &queue
 	}
@@ -29,9 +30,8 @@ func buildQueues(queuesConfigs config.Queues) priorityQueues {
 }
 
 // handler handles dequeued attestation.
-func handler(ctx context.Context, at *Attestation) error {
-	return at.handle(ctx)
-
+func handler(ctx context.Context, at *attestation.Attestation) error {
+	return at.Handle(ctx)
 }
 
 // runQueues runs all queues at once.

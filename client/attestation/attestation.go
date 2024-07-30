@@ -7,11 +7,13 @@ import (
 	"errors"
 	"flare-common/database"
 	"flare-common/events"
+	"flare-common/logger"
 	"fmt"
 	bitvotes "local/fdc/client/attestation/bitVotes"
 	"local/fdc/client/config"
 	"local/fdc/client/timing"
 	hub "local/fdc/contracts/FDC"
+	"math"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -33,22 +35,23 @@ const (
 	Unconfirmed
 )
 
+var log = logger.GetLogger()
+
+// hubFilterer is only used for Attestation Requests logs parsing. Set in init().
+var hubFilterer *hub.HubFilterer
+
+// init sets the hubFilterer
+func init() {
+	var err error
+	hubFilterer, err = hub.NewHubFilterer(common.Address{}, nil)
+	if err != nil {
+		log.Panic("cannot get fdc contract:", err)
+	}
+}
+
 type IndexLog struct {
 	BlockNumber uint64
 	LogIndex    uint64 // consecutive number of log in block
-}
-
-// earlierLog returns true if a has lower blockNumber then b or has the same blockNumber and lower LogIndex. Otherwise, it returns false.
-func earlierLog(a, b IndexLog) bool {
-	if a.BlockNumber < b.BlockNumber {
-		return true
-	}
-	if a.BlockNumber == b.BlockNumber && a.LogIndex < b.LogIndex {
-		return true
-	}
-
-	return false
-
 }
 
 type Attestation struct {
@@ -62,25 +65,32 @@ type Attestation struct {
 	Hash        common.Hash
 	Abi         *abi.Arguments
 	LutLimit    uint64
-	queueName   string
+	QueueName   string
 	Credentials *VerifierCredentials
 }
 
+// earlierLog returns true if a has lower blockNumber then b or has the same blockNumber and lower LogIndex. Otherwise, it returns false.
+func EarlierLog(a, b IndexLog) bool {
+	if a.BlockNumber < b.BlockNumber {
+		return true
+	}
+	if a.BlockNumber == b.BlockNumber && a.LogIndex < b.LogIndex {
+		return true
+	}
+
+	return false
+}
+
 // attestationFromDatabaseLog creates an Attestation from a request event log.
-func attestationFromDatabaseLog(request database.Log) (Attestation, error) {
-
+func AttestationFromDatabaseLog(request database.Log) (Attestation, error) {
 	requestLog, err := ParseAttestationRequestLog(request)
-
 	if err != nil {
 		return Attestation{}, fmt.Errorf("parsing log: %w", err)
 	}
-
 	roundId, err := timing.RoundIdForTimestamp(request.Timestamp)
-
 	if err != nil {
 		return Attestation{}, fmt.Errorf("parsing log, roundId: %w", err)
 	}
-
 	indexes := []IndexLog{{request.BlockNumber, request.LogIndex}}
 
 	attestation := Attestation{
@@ -94,61 +104,31 @@ func attestationFromDatabaseLog(request database.Log) (Attestation, error) {
 	return attestation, nil
 }
 
-// AddToQueue adds the attestation to the correct verifier queue.
-func (m *Manager) AddToQueue(ctx context.Context, attestation *Attestation) error {
-
-	err := attestation.prepareRequest(m.attestationTypeConfig)
-
-	if err != nil {
-		return fmt.Errorf("preparing request: %w", err)
-	}
-
-	queue, ok := m.queues[attestation.queueName]
-
-	if !ok {
-		return fmt.Errorf("queue %s does not exist", attestation.queueName)
-	}
-
-	err = queue.Enqueue(ctx, attestation)
-
-	return err
-}
-
-// handle sends the attestation request to the correct verifier server and validates the response.
-func (a *Attestation) handle(ctx context.Context) error {
-
-	confirmed, err := ResolveAttestationRequest(ctx, a)
-
+// Handle sends the attestation request to the correct verifier server and validates the response.
+// The response is saved in the struct.
+func (a *Attestation) Handle(ctx context.Context) error {
+	responseBytes, confirmed, err := ResolveAttestationRequest(ctx, a)
 	if err != nil {
 		a.Status = ProcessError
-
 		return fmt.Errorf("handle, resolve request: %w", err)
 	}
-
 	if !confirmed {
-
 		a.Status = Unconfirmed
-
 		log.Debugf("unconfirmed request: ")
-
 		return nil
 	}
 
+	a.Response = responseBytes
 	err = a.validateResponse()
-
 	if err != nil {
-
 		return fmt.Errorf("handle, validate response: %w", err)
-
 	}
 
 	return nil
-
 }
 
-// prepareRequest adds response ABI, LUT limit and verifierCredentials to the Attestation and returns the verifier credentials.
-func (a *Attestation) prepareRequest(attestationTypesConfigs config.AttestationTypes) error {
-
+// prepareRequest adds response ABI, LUT limit and verifierCredentials to the Attestation.
+func (a *Attestation) PrepareRequest(attestationTypesConfigs config.AttestationTypes) error {
 	attType, err := a.Request.AttestationType()
 	if err != nil {
 		a.Status = ProcessError
@@ -156,39 +136,30 @@ func (a *Attestation) prepareRequest(attestationTypesConfigs config.AttestationT
 	}
 
 	source, err := a.Request.Source()
-
 	if err != nil {
 		a.Status = ProcessError
 		return err
 	}
 
 	attestationTypeConfig, ok := attestationTypesConfigs[attType]
-
 	if !ok {
 		a.Status = UnsupportedPair
 		return fmt.Errorf("prepare request: no configs for: %s", string(bytes.Trim(attType[:], "\x00")))
-
 	}
-
 	a.Abi = &attestationTypeConfig.ResponseArguments
 
 	sourceConfig, ok := attestationTypeConfig.SourcesConfig[source]
-
 	if !ok {
 		a.Status = UnsupportedPair
 		return fmt.Errorf("prepare request: no configs for: %s, %s", string(bytes.Trim(attType[:], "\x00")), string(bytes.Trim(source[:], "\x00")))
-
 	}
 
 	a.LutLimit = sourceConfig.LutLimit
 	a.Status = Processing
-
 	a.Credentials = new(VerifierCredentials)
-
 	a.Credentials.Url = sourceConfig.Url
 	a.Credentials.apiKey = sourceConfig.ApiKey
-
-	a.queueName = sourceConfig.QueueName
+	a.QueueName = sourceConfig.QueueName
 
 	return nil
 
@@ -196,51 +167,42 @@ func (a *Attestation) prepareRequest(attestationTypesConfigs config.AttestationT
 
 // validateResponse checks the MIC and LUT of the attestation. If both conditions pass, hash is computed and added to the attestation.
 func (a *Attestation) validateResponse() error {
-
 	// MIC
 	micReq, err := a.Request.Mic()
-
 	if err != nil {
 		a.Status = ProcessError
-
-		return errors.New("no mic in request")
+		return fmt.Errorf("reading mic in request: %s, %w ", hex.EncodeToString(a.Request), err)
 	}
 
 	micRes, err := a.Response.ComputeMic(a.Abi)
-
 	if err != nil {
 		a.Status = ProcessError
-
-		return fmt.Errorf("cannot compute mic %w", err)
+		return fmt.Errorf("cannot compute mic for request: %s, %w", hex.EncodeToString(a.Request), err)
 	}
 
 	if micReq != micRes {
 		a.Status = WrongMIC
-		return errors.New("wrong mic")
+		return fmt.Errorf("wrong mic in request: %s", hex.EncodeToString(a.Request))
 	}
 
 	// LUT
 	lut, err := a.Response.LUT()
-
 	if err != nil {
 		a.Status = ProcessError
-
-		return errors.New("cannot read lut")
+		return fmt.Errorf("cannot read lut from request: %s, %w", hex.EncodeToString(a.Request), err)
 	}
 
 	roundStart := timing.ChooseStartTimestamp(a.RoundId)
-
 	if !validLUT(lut, a.LutLimit, roundStart) {
 		a.Status = InvalidLUT
-		return errors.New("lut too old")
+		return fmt.Errorf("lot too old in request: %s", hex.EncodeToString(a.Request))
 	}
 
 	// HASH
 	a.Hash, err = a.Response.Hash(a.RoundId)
-
 	if err != nil {
 		a.Status = ProcessError
-		return errors.New("cannot compute hash")
+		return fmt.Errorf("cannot compute hash for request: %s", hex.EncodeToString(a.Request))
 	}
 
 	a.Status = Success
@@ -254,16 +216,18 @@ func ParseAttestationRequestLog(dbLog database.Log) (*hub.HubAttestationRequest,
 	if err != nil {
 		return nil, err
 	}
+
 	return hubFilterer.ParseAttestationRequest(*contractLog)
 }
 
 // index is used to safely retrieve Index for sorting purposes.
-func (a *Attestation) index() IndexLog {
+func (a *Attestation) Index() IndexLog {
 	if len(a.Indexes) > 0 {
 		return a.Indexes[0]
 	}
 	log.Panicf("attestation without index in round %d with request %s", a.RoundId, hex.EncodeToString(a.Request)) // this should never happen
-	return IndexLog{18446744073709551615, 18446744073709551615}
+
+	return IndexLog{math.MaxUint64, math.MaxUint64}
 }
 
 // BitVoteFromAttestations calculates BitVote for an array of attestations.
