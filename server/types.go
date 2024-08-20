@@ -1,18 +1,30 @@
 package server
 
-import "github.com/ethereum/go-ethereum/common"
+import (
+	"local/fdc/client/attestation"
 
-type PDPResponseStatus string
+	"github.com/ethereum/go-ethereum/common"
+)
+
+type ResponseStatus string
 
 const (
-	OK            PDPResponseStatus = "OK"
-	NOT_AVAILABLE PDPResponseStatus = "NOT_AVAILABLE"
+	OK            ResponseStatus = "OK"
+	NOT_AVAILABLE ResponseStatus = "NOT_AVAILABLE"
+)
+
+type AttestationStatus string
+
+const (
+	VALID  AttestationStatus = "OK"
+	FAILED AttestationStatus = "FAILED"
+	ERROR  AttestationStatus = "ERROR"
 )
 
 type PDPResponse struct {
-	Status         PDPResponseStatus `json:"status"`
-	Data           string            `json:"data"`
-	AdditionalData string            `json:"additionalData"`
+	Status         ResponseStatus `json:"status"`
+	Data           string         `json:"data"`
+	AdditionalData string         `json:"additionalData"`
 }
 
 type merkleRootStorageObject struct {
@@ -23,3 +35,19 @@ type merkleRootStorageObject struct {
 }
 
 type RootsByAddress map[string]merkleRootStorageObject
+
+type DARequest struct {
+	Request   string                 `json:"request"`
+	Response  string                 `json:"response"`
+	Status    AttestationStatus      `json:"status"`
+	Consensus bool                   `json:"consensus"`
+	Indexes   []attestation.IndexLog `json:"indexes"`
+}
+
+type DAAttestation struct {
+	RoundId  uint64   `json:"roundId"`
+	Request  string   `json:"request"`
+	Response string   `json:"response"`
+	Proof    []string `json:"proof"`
+	hash     common.Hash
+}

@@ -85,6 +85,19 @@ func RegisterFDCProviderRoutes(router restServer.Router, protocolId uint64, roun
 	router.AddRoute("/submitSignatures/{votingRoundId}/{submitAddress}", submitSignaturesHandler, "SubmitSignatures")
 }
 
+// Registration of routes for the DA layer
+func RegisterDARoutes(router restServer.Router, rounds *storage.Cyclic[*round.Round], securities []string) {
+	// Prepare service controller
+	controller := FDCDAController{rounds: rounds}
+	paramMap := map[string]string{"votingRoundId": "Voting round ID"}
+
+	getRequests := restServer.GeneralRouteHandler(controller.getRequestController, http.MethodGet, http.StatusOK, paramMap, nil, nil, RequestsResponse{}, securities)
+	router.AddRoute("/getRequests/{votingRoundId}", getRequests, "GetRequests")
+
+	getAttestations := restServer.GeneralRouteHandler(controller.getAttestationController, http.MethodGet, http.StatusOK, paramMap, nil, nil, AttestationResponse{}, securities)
+	router.AddRoute("/getAttestations/{votingRoundId}", getAttestations, "GetAttestations")
+}
+
 func (s *Server) Run(ctx context.Context) {
 	log.Infof("Starting server on %s", s.srv.Addr)
 
