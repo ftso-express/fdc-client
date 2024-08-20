@@ -7,12 +7,13 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"gorm.io/gorm"
 )
 
 // AttestationRequestListener initiates a channel that serves attestation requests events emitted by fdcContractAddress.
 func AttestationRequestListener(
 	ctx context.Context,
-	db collectorDB,
+	db *gorm.DB,
 	fdcContractAddress common.Address,
 	ListenerInterval time.Duration,
 	logChan chan<- []database.Log,
@@ -24,15 +25,15 @@ func AttestationRequestListener(
 		log.Panic("time:", err)
 	}
 
-	state, err := db.FetchState(ctx)
+	state, err := database.FetchState(ctx, db)
 	if err != nil {
 		log.Panic("fetch initial state error:", err)
 	}
 
 	lastQueriedBlock := state.Index
 
-	logs, err := db.FetchLogsByAddressAndTopic0TimestampToBlockNumber(
-		ctx, fdcContractAddress, attestationRequestEventSel, int64(startTimestamp), int64(state.Index),
+	logs, err := database.FetchLogsByAddressAndTopic0TimestampToBlockNumber(
+		ctx, db, fdcContractAddress, AttestationRequestEventSel, int64(startTimestamp), int64(state.Index),
 	)
 	if err != nil {
 		log.Panic("fetch initial logs error")
@@ -55,14 +56,14 @@ func AttestationRequestListener(
 			return
 		}
 
-		state, err = db.FetchState(ctx)
+		state, err = database.FetchState(ctx, db)
 		if err != nil {
 			log.Error("fetch state error:", err)
 			continue
 		}
 
-		logs, err := db.FetchLogsByAddressAndTopic0BlockNumber(
-			ctx, fdcContractAddress, attestationRequestEventSel, int64(lastQueriedBlock), int64(state.Index),
+		logs, err := database.FetchLogsByAddressAndTopic0BlockNumber(
+			ctx, db, fdcContractAddress, AttestationRequestEventSel, int64(lastQueriedBlock), int64(state.Index),
 		)
 		if err != nil {
 			log.Error("fetch logs error:", err)
@@ -74,7 +75,6 @@ func AttestationRequestListener(
 		if len(logs) > 0 {
 			select {
 			case logChan <- logs:
-				log.Debugf("Added %d request logs to channel", len(logs))
 			case <-ctx.Done():
 				log.Info("AttestationRequestListener exiting:", ctx.Err())
 				return

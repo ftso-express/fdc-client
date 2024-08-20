@@ -14,15 +14,16 @@ type VoterData struct {
 }
 
 type VoterSet struct {
-	voters      []common.Address
+	voters      []common.Address //signingPolicyAddress
 	weights     []uint16
 	TotalWeight uint16
 	thresholds  []uint16
 
-	VoterDataMap map[common.Address]VoterData
+	VoterDataMap           map[common.Address]VoterData //signingPolicyAddressToWeight
+	SubmitToSigningAddress map[common.Address]common.Address
 }
 
-func NewVoterSet(voters []common.Address, weights []uint16) *VoterSet {
+func NewVoterSet(voters []common.Address, weights []uint16, SubmitToSigningAddress map[common.Address]common.Address) *VoterSet {
 	vs := VoterSet{
 		voters:     voters,
 		weights:    weights,
@@ -36,6 +37,8 @@ func NewVoterSet(voters []common.Address, weights []uint16) *VoterSet {
 
 	vMap := make(map[common.Address]VoterData)
 	for i, voter := range vs.voters {
+		log.Debugf("New voter: %v", voter)
+
 		if _, ok := vMap[voter]; !ok {
 			vMap[voter] = VoterData{
 				Index:  i,
@@ -44,6 +47,8 @@ func NewVoterSet(voters []common.Address, weights []uint16) *VoterSet {
 		}
 	}
 	vs.VoterDataMap = vMap
+
+	vs.SubmitToSigningAddress = SubmitToSigningAddress
 	return &vs
 }
 
@@ -59,7 +64,7 @@ type SigningPolicy struct {
 	Voters *VoterSet
 }
 
-func NewSigningPolicy(r *relayContract.RelaySigningPolicyInitialized) *SigningPolicy {
+func NewSigningPolicy(r *relayContract.RelaySigningPolicyInitialized, submitToSigning map[common.Address]common.Address) *SigningPolicy {
 	return &SigningPolicy{
 		rewardEpochId:      r.RewardEpochId.Int64(),
 		startVotingRoundId: r.StartVotingRoundId,
@@ -67,8 +72,7 @@ func NewSigningPolicy(r *relayContract.RelaySigningPolicyInitialized) *SigningPo
 		seed:               r.Seed,
 		rawBytes:           r.SigningPolicyBytes,
 		blockTimestamp:     r.Timestamp,
-
-		Voters: NewVoterSet(r.Voters, r.Weights),
+		Voters:             NewVoterSet(r.Voters, r.Weights, submitToSigning),
 	}
 }
 

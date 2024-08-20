@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"flare-common/logger"
 	"local/fdc/client/collector"
 	"local/fdc/client/config"
@@ -15,17 +16,20 @@ import (
 )
 
 const (
-	USER_FILE        string = "configs/userConfig.toml" // relative to project root
-	SYSTEM_DIRECTORY string = "configs/systemConfigs"   // relative to project root
+	SYSTEM_DIRECTORY string = "configs/systemConfigs" // relative to project root
 )
 
-var log = logger.GetLogger()
+var CfgFlag = flag.String("config", "configs/userConfig.toml", "Configuration file (toml format)")
 
 func main() {
-	userConfigRaw, systemConfig, err := config.GetConfigs(USER_FILE, SYSTEM_DIRECTORY)
+	var log = logger.GetLogger()
+
+	flag.Parse()
+	userConfigRaw, systemConfig, err := config.GetConfigs(*CfgFlag, SYSTEM_DIRECTORY)
 	if err != nil {
 		log.Panicf("cannot read configs: %s", err)
 	}
+
 	err = timing.Set(systemConfig.Timing)
 	if err != nil {
 		log.Panicf("cannot set timing: %s", err)
@@ -48,8 +52,8 @@ func main() {
 	}
 	go manager.Run(ctx)
 
-	// Run attestation clientserver
-	srv := server.New(&sharedDataPipes.Rounds, userConfigRaw.RestServer)
+	// Run attestation client server
+	srv := server.New(&sharedDataPipes.Rounds, uint64(userConfigRaw.ProtocolId), userConfigRaw.RestServer)
 	go srv.Run(ctx)
 	log.Info("Running server")
 
@@ -66,14 +70,3 @@ func main() {
 	cancel()
 	srv.Shutdown()
 }
-
-// func printStructFields(s interface{}) {
-// 	// Get the type of the struct
-// 	t := reflect.TypeOf(s)
-
-// 	// Iterate over the fields of the struct
-// 	for i := 0; i < t.NumField(); i++ {
-// 		field := t.Field(i)
-// 		fmt.Printf("%s: %v\n", field.Name, reflect.ValueOf(s).Field(i))
-// 	}
-// }

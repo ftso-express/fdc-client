@@ -2,18 +2,21 @@ package collector
 
 import (
 	"context"
+	"flare-common/database"
 	"flare-common/payload"
+
 	"local/fdc/client/timing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"gorm.io/gorm"
 )
 
 // BitVoteListener initiates a channel that servers payloads data submitted do submitContractAddress to method with funcSig for protocol.
 // Payloads for roundId are served whenever a trigger provides a roundId.
 func BitVoteListener(
 	ctx context.Context,
-	db collectorDB,
+	db *gorm.DB,
 	submitContractAddress common.Address,
 	funcSel [4]byte,
 	protocol uint8,
@@ -31,9 +34,9 @@ func BitVoteListener(
 			log.Info("BitVoteListener exiting:", ctx.Err())
 			return
 		}
-
-		txs, err := db.FetchTransactionsByAddressAndSelectorTimestamp(
+		txs, err := database.FetchTransactionsByAddressAndSelectorTimestamp(
 			ctx,
+			db,
 			submitContractAddress,
 			funcSel,
 			int64(timing.ChooseStartTimestamp(roundId)),
@@ -80,23 +83,22 @@ func BitVoteListener(
 }
 
 // PrepareChooseTriggers tracks chain timestamps and passes roundId of the round whose choose phase has just ended to the trigger channel.
-func PrepareChooseTriggers(ctx context.Context, trigger chan uint64, db collectorDB) {
-	state, err := db.FetchState(ctx)
+func PrepareChooseTriggers(ctx context.Context, trigger chan uint64, db *gorm.DB) {
+	state, err := database.FetchState(ctx, db)
 	if err != nil {
 		log.Panic("database error:", err)
 	}
 
 	nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp := timing.NextChoosePhasePtr(state.BlockTimestamp)
 
-	bitVoteTicker := time.NewTicker(time.Hour) // timer will be reset to 90 seconds
-
+	bitVoteTicker := time.NewTicker(time.Hour) // timer will be reset to collect duration
 	go configureTicker(ctx, bitVoteTicker, time.Unix(int64(*nextChoosePhaseEndTimestamp), 0), bitVoteHeadStart)
 
 	for {
 		ticker := time.NewTicker(databasePollTime)
 
 		for {
-			state, err := db.FetchState(ctx)
+			state, err := database.FetchState(ctx, db)
 			if err != nil {
 				log.Error("database error:", err)
 			} else {
@@ -135,7 +137,7 @@ func PrepareChooseTriggers(ctx context.Context, trigger chan uint64, db collecto
 func configureTicker(ctx context.Context, ticker *time.Ticker, start time.Time, headStart time.Duration) {
 	select {
 	case <-time.After(time.Until(start) - headStart):
-		ticker.Reset(timing.CollectDurationSec * time.Second)
+		ticker.Reset(time.Duration(timing.Chain.CollectDurationSec) * time.Second)
 
 	case <-ctx.Done():
 		return
@@ -179,7 +181,7 @@ func tryTriggerBitVote(
 		}
 
 		*nextChoosePhaseRoundIDEnd++
-		*nextChoosePhaseEndTimestamp = *nextChoosePhaseEndTimestamp + 90
+		*nextChoosePhaseEndTimestamp = *nextChoosePhaseEndTimestamp + timing.Chain.CollectDurationSec
 
 		return true
 

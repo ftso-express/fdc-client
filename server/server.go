@@ -19,12 +19,13 @@ type Server struct {
 
 func New(
 	rounds *storage.Cyclic[*round.Round],
+	protocolId uint64,
 	serverConfig config.RestServer,
 ) Server {
 	// Create Mux router
 	muxRouter := mux.NewRouter()
 
-	// Register a healthcheck endpoint at the top level.
+	// Register a health check endpoint at the top level.
 	muxRouter.HandleFunc("/health", func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -46,7 +47,7 @@ func New(
 	// create fsp sub router
 	fspSubRouter := router.WithPrefix(serverConfig.FSPSubpath, serverConfig.FSPTitle)
 	// Register routes for FSP
-	RegisterFDCProviderRoutes(fspSubRouter, rounds, []string{serverConfig.ApiKeyName})
+	RegisterFDCProviderRoutes(fspSubRouter, protocolId, rounds, []string{serverConfig.ApiKeyName})
 	fspSubRouter.AddMiddleware(keyMiddleware.Middleware)
 
 	// Register routes
@@ -69,9 +70,9 @@ func New(
 }
 
 // Registration of routes for the FDC protocol provider
-func RegisterFDCProviderRoutes(router restServer.Router, rounds *storage.Cyclic[*round.Round], securities []string) {
+func RegisterFDCProviderRoutes(router restServer.Router, protocolId uint64, rounds *storage.Cyclic[*round.Round], securities []string) {
 	// Prepare service controller
-	controller := newFDCProtocolProviderController(rounds)
+	controller := newFDCProtocolProviderController(rounds, protocolId)
 	paramMap := map[string]string{"votingRoundId": "Voting round ID", "submitAddress": "Submit address"}
 
 	submit1Handler := restServer.GeneralRouteHandler(controller.submit1Controller, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{}, securities)

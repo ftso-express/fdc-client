@@ -23,7 +23,7 @@ type Manager struct {
 	lastRoundCreated      uint64
 	Requests              chan []database.Log
 	BitVotes              chan payload.Round
-	SigningPolicies       chan []database.Log
+	SigningPolicies       chan []shared.VotersData
 	signingPolicyStorage  *policy.SigningPolicyStorage
 	attestationTypeConfig config.AttestationTypes
 	queues                priorityQueues
@@ -35,7 +35,7 @@ func NewManager(configs *config.UserRaw, sharedDataPipes *shared.SharedDataPipes
 
 	attestationTypeConfig, err := config.ParseAttestationTypes(configs.AttestationTypeConfig)
 	if err != nil {
-		return nil, fmt.Errorf("error new manger, att types: %w", err)
+		return nil, fmt.Errorf("error new manger, att types: %s", err)
 	}
 
 	queues := buildQueues(configs.Queues)
@@ -46,7 +46,7 @@ func NewManager(configs *config.UserRaw, sharedDataPipes *shared.SharedDataPipes
 			signingPolicyStorage:  signingPolicyStorage,
 			attestationTypeConfig: attestationTypeConfig,
 			queues:                queues,
-			SigningPolicies:       sharedDataPipes.SigningPolicies,
+			SigningPolicies:       sharedDataPipes.Voters,
 			BitVotes:              sharedDataPipes.BitVotes,
 			Requests:              sharedDataPipes.Requests,
 		},
@@ -57,7 +57,7 @@ func NewManager(configs *config.UserRaw, sharedDataPipes *shared.SharedDataPipes
 func (m *Manager) Run(ctx context.Context) {
 	// Get signing policy first as we cannot process any other message types
 	// without a signing policy.
-	var signingPolicies []database.Log
+	var signingPolicies []shared.VotersData
 
 	go runQueues(ctx, m.queues)
 
@@ -99,7 +99,7 @@ func (m *Manager) Run(ctx context.Context) {
 			for i := range bitVotesForRound.Messages {
 				err := m.OnBitVote(bitVotesForRound.Messages[i])
 				if err != nil {
-					log.Errorf("bit vote error: %w", err)
+					log.Errorf("bit vote error: %s", err)
 				}
 			}
 			r, ok := m.Rounds.Get(bitVotesForRound.Id)
@@ -115,7 +115,7 @@ func (m *Manager) Run(ctx context.Context) {
 
 				noOfRetried, err := m.retryUnsuccessfulChosen(ctx, r)
 				if err != nil {
-					log.Warnf("error retrying round %d: %w", r.RoundId, err)
+					log.Warnf("error retrying round %d: s", r.RoundId, err)
 				} else if noOfRetried > 0 {
 					log.Debugf("retrying %d attestations in round %d", noOfRetried, r.RoundId)
 				}
@@ -128,7 +128,7 @@ func (m *Manager) Run(ctx context.Context) {
 			for i := range requests {
 				err := m.OnRequest(ctx, requests[i])
 				if err != nil {
-					log.Error("OnRequest:", err)
+					log.Error(err)
 				}
 			}
 
@@ -176,7 +176,7 @@ func (m *Manager) OnBitVote(message payload.Message) error {
 
 	err = round.ProcessBitVote(message)
 	if err != nil {
-		return err
+		return fmt.Errorf("error processing bitVote from %s for voting round %d: %s", message.From, message.VotingRound, err)
 	}
 
 	return nil
@@ -188,12 +188,12 @@ func (m *Manager) OnBitVote(message payload.Message) error {
 func (m *Manager) OnRequest(ctx context.Context, request database.Log) error {
 	attestation, err := attestation.AttestationFromDatabaseLog(request)
 	if err != nil {
-		return fmt.Errorf("OnRequest: %w", err)
+		return fmt.Errorf("OnRequest: %s", err)
 	}
 
 	round, err := m.GetOrCreateRound(attestation.RoundId)
 	if err != nil {
-		return fmt.Errorf("OnRequest: %w", err)
+		return fmt.Errorf("OnRequest: %s", err)
 	}
 
 	added := round.AddAttestation(&attestation)
@@ -207,19 +207,14 @@ func (m *Manager) OnRequest(ctx context.Context, request database.Log) error {
 }
 
 // OnSigningPolicy parses SigningPolicyInitialized log and stores it into the signingPolicyStorage.
-func (m *Manager) OnSigningPolicy(initializedPolicy database.Log) error {
-	data, err := policy.ParseSigningPolicyInitializedEvent(initializedPolicy)
-	if err != nil {
-		return err
-	}
+func (m *Manager) OnSigningPolicy(data shared.VotersData) error {
 
-	parsedPolicy := policy.NewSigningPolicy(data)
-	log.Infof("Processing signing policy for rewardEpoch %s", data.RewardEpochId.String())
+	parsedPolicy := policy.NewSigningPolicy(data.Policy, data.SubmitToSigningAddress)
+	log.Infof("Processing signing policy for rewardEpoch %s", data.Policy.RewardEpochId.String())
 
-	err = m.signingPolicyStorage.Add(parsedPolicy)
+	err := m.signingPolicyStorage.Add(parsedPolicy)
 
 	return err
-
 }
 
 // retryUnsuccessfulChosen adds the request that were chosen by the consensus bitVote but were not confirmed to the priority verifier queues.
@@ -251,7 +246,7 @@ func (m *Manager) retryUnsuccessfulChosen(ctx context.Context, round *round.Roun
 func (m *Manager) AddToQueue(ctx context.Context, attestation *attestation.Attestation) error {
 	err := attestation.PrepareRequest(m.attestationTypeConfig)
 	if err != nil {
-		return fmt.Errorf("preparing request: %w", err)
+		return fmt.Errorf("preparing request: %s", err)
 	}
 
 	queue, ok := m.queues[attestation.QueueName]

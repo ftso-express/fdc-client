@@ -19,11 +19,11 @@ func TestRoundIdForTimestamp(t *testing.T) {
 		roundId   uint64
 	}{
 		{
-			timestamp: timing.Chain.T0 - timing.OffsetSec,
+			timestamp: timing.Chain.T0 - timing.Chain.OffsetSec,
 			roundId:   0,
 		},
 		{
-			timestamp: timing.Chain.T0 + 10000*timing.CollectDurationSec - timing.OffsetSec/2,
+			timestamp: timing.Chain.T0 + 10000*timing.Chain.CollectDurationSec - timing.Chain.OffsetSec/2,
 			roundId:   10000,
 		},
 	}
@@ -46,15 +46,15 @@ func TestTimesForRounds(t *testing.T) {
 	}{
 		{
 			roundId:            0,
-			timestampStart:     timing.Chain.T0 - timing.OffsetSec,
-			timestampChoose:    timing.Chain.T0 - timing.OffsetSec + timing.CollectDurationSec,
-			timestampChooseEnd: timing.Chain.T0 - timing.OffsetSec + timing.CollectDurationSec + timing.ChooseDurationSec,
+			timestampStart:     timing.Chain.T0 - timing.Chain.OffsetSec,
+			timestampChoose:    timing.Chain.T0 - timing.Chain.OffsetSec + timing.Chain.CollectDurationSec,
+			timestampChooseEnd: timing.Chain.T0 - timing.Chain.OffsetSec + timing.Chain.CollectDurationSec + timing.Chain.ChooseDurationSec,
 		},
 		{
 			roundId:            10000,
-			timestampStart:     timing.Chain.T0 + 10000*timing.CollectDurationSec - timing.OffsetSec,
-			timestampChoose:    timing.Chain.T0 + 10000*timing.CollectDurationSec - timing.OffsetSec + timing.CollectDurationSec,
-			timestampChooseEnd: timing.Chain.T0 + 10000*timing.CollectDurationSec - timing.OffsetSec + timing.CollectDurationSec + timing.ChooseDurationSec,
+			timestampStart:     timing.Chain.T0 + 10000*timing.Chain.CollectDurationSec - timing.Chain.OffsetSec,
+			timestampChoose:    timing.Chain.T0 + 10000*timing.Chain.CollectDurationSec - timing.Chain.OffsetSec + timing.Chain.CollectDurationSec,
+			timestampChooseEnd: timing.Chain.T0 + 10000*timing.Chain.CollectDurationSec - timing.Chain.OffsetSec + timing.Chain.CollectDurationSec + timing.Chain.ChooseDurationSec,
 		},
 	}
 
@@ -80,7 +80,7 @@ func TestTimesForTimestamps(t *testing.T) {
 	roundIdChoose, chooseEnd := timing.NextChooseEnd(0)
 
 	require.Equal(t, uint64(0), roundIdChoose)
-	require.Equal(t, timing.Chain.T0+timing.ChooseDurationSec+timing.CollectDurationSec-timing.OffsetSec, chooseEnd)
+	require.Equal(t, timing.Chain.T0+timing.Chain.ChooseDurationSec+timing.Chain.CollectDurationSec-timing.Chain.OffsetSec, chooseEnd)
 
 	require.Error(t, err)
 
@@ -94,16 +94,16 @@ func TestTimesForTimestamps(t *testing.T) {
 		{
 			timestamp:      timing.Chain.T0,
 			roundIdChoose:  0,
-			chooseEnd:      timing.Chain.T0 - timing.OffsetSec + timing.CollectDurationSec + timing.ChooseDurationSec,
+			chooseEnd:      timing.Chain.T0 - timing.Chain.OffsetSec + timing.Chain.CollectDurationSec + timing.Chain.ChooseDurationSec,
 			roundIdCollect: 0,
-			collectStart:   timing.Chain.T0 - timing.OffsetSec,
+			collectStart:   timing.Chain.T0 - timing.Chain.OffsetSec,
 		},
 		{
-			timestamp:      timing.Chain.T0 - timing.OffsetSec + timing.CollectDurationSec + timing.ChooseDurationSec/2,
+			timestamp:      timing.Chain.T0 - timing.Chain.OffsetSec + timing.Chain.CollectDurationSec + timing.Chain.ChooseDurationSec/2,
 			roundIdChoose:  0,
-			chooseEnd:      timing.Chain.T0 - timing.OffsetSec + timing.CollectDurationSec + timing.ChooseDurationSec,
+			chooseEnd:      timing.Chain.T0 - timing.Chain.OffsetSec + timing.Chain.CollectDurationSec + timing.Chain.ChooseDurationSec,
 			roundIdCollect: 1,
-			collectStart:   timing.Chain.T0 - timing.OffsetSec + timing.CollectDurationSec,
+			collectStart:   timing.Chain.T0 - timing.Chain.OffsetSec + timing.Chain.CollectDurationSec,
 		},
 	}
 

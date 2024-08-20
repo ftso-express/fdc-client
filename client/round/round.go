@@ -87,16 +87,24 @@ func (r *Round) BitVote() (bitvotes.BitVote, error) {
 	return attestation.BitVoteFromAttestations(r.Attestations)
 }
 
-// BitVoteHex returns the hex string encoded BitVote for the round according to the current status of Attestations.
-func (r *Round) BitVoteHex() (string, error) {
+// BitVoteHex returns the 0x prefixed hex string encoded BitVote for the round according to the current status of Attestations.
+func (r *Round) BitVoteHex(prefixed bool) (string, error) {
 	r.sortAttestations()
 
 	bitVote, err := attestation.BitVoteFromAttestations(r.Attestations)
 	if err != nil {
-		return "", fmt.Errorf("cannot get bitVote for round %d: %w", r.RoundId, err)
+		return "", fmt.Errorf("cannot get bitVote for round %d: %s", r.RoundId, err)
 	}
 
-	return bitVote.EncodeBitVoteHex(r.RoundId), nil
+	bvString := ""
+
+	if prefixed {
+		bvString = "0x"
+	}
+
+	bvString += bitVote.EncodeBitVoteHex(r.RoundId)
+
+	return bvString, nil
 }
 
 // ComputeConsensusBitVote computes the consensus BitVote according to the collected bitVotes and sets consensus status to the attestations.
@@ -109,7 +117,11 @@ func (r *Round) ComputeConsensusBitVote() error {
 		fees[i] = a.Fee
 	}
 
-	consensus := bitvotes.EnsembleConsensusBitVote(r.bitVotes, fees, r.voterSet.TotalWeight, 20000000)
+	consensus, err := bitvotes.EnsembleConsensusBitVote(r.bitVotes, fees, r.voterSet.TotalWeight, 20000000)
+
+	if err != nil {
+		return err
+	}
 	r.ConsensusBitVote = consensus
 
 	return r.setConsensusStatus(consensus)
@@ -178,6 +190,7 @@ func (r *Round) MerkleTree() (merkle.Tree, error) {
 // MerkleTreeCached gets Merkle tree from cache if it is already computed or computes it.
 func (r *Round) MerkleTreeCached() (merkle.Tree, error) {
 	if len(r.merkleTree) != 0 {
+
 		return r.merkleTree, nil
 	}
 
@@ -214,22 +227,31 @@ func (r *Round) ProcessBitVote(message payload.Message) error {
 	}
 
 	if roundCheck != uint8(message.VotingRound%256) {
-		return fmt.Errorf("wrong round check from %s", message.From)
+		return fmt.Errorf("wrong round check from: expected %d, got %d", message.VotingRound%256, roundCheck)
 
 	}
 
 	if int(bitVote.Length) != len(r.Attestations) {
-		return fmt.Errorf("wrong number of bits from %s, got %d, have %d attestations", message.From, int(bitVote.Length), len(r.Attestations))
+		return fmt.Errorf("got bits %d, have %d attestations", int(bitVote.Length), len(r.Attestations))
 	}
 
-	voter, exists := r.voterSet.VoterDataMap[message.From]
+	signingAddress, exists := r.voterSet.SubmitToSigningAddress[message.From]
+
 	if !exists {
-		return fmt.Errorf("invalid voter %s", message.From)
+		return fmt.Errorf("no signing address")
+
+	}
+
+	voter, exists := r.voterSet.VoterDataMap[signingAddress]
+
+	if !exists {
+		return fmt.Errorf("invalid voter")
+
 	}
 
 	weight := voter.Weight
 	if weight <= 0 {
-		return fmt.Errorf("zero weight voter %s ", message.From)
+		return fmt.Errorf("zero weight voter")
 	}
 
 	// check if a bitVote was already submitted by the sender

@@ -12,7 +12,7 @@ import (
 	bitvotes "local/fdc/client/attestation/bitVotes"
 	"local/fdc/client/config"
 	"local/fdc/client/timing"
-	hub "local/fdc/contracts/FDC"
+	"local/fdc/contracts/fdc"
 	"math"
 	"math/big"
 
@@ -37,16 +37,20 @@ const (
 
 var log = logger.GetLogger()
 
-// hubFilterer is only used for Attestation Requests logs parsing. Set in init().
-var hubFilterer *hub.HubFilterer
+// fdcFilterer is only used for Attestation Requests logs parsing. Set in init().
+var fdcFilterer *fdc.FdcFilterer
 
-// init sets the hubFilterer
+// init sets the fdcFilterer
 func init() {
+
 	var err error
-	hubFilterer, err = hub.NewHubFilterer(common.Address{}, nil)
+
+	fdcFilterer, err = fdc.NewFdcFilterer(common.Address{}, nil)
+
 	if err != nil {
 		log.Panic("cannot get fdc contract:", err)
 	}
+
 }
 
 type IndexLog struct {
@@ -85,12 +89,20 @@ func EarlierLog(a, b IndexLog) bool {
 func AttestationFromDatabaseLog(request database.Log) (Attestation, error) {
 	requestLog, err := ParseAttestationRequestLog(request)
 	if err != nil {
-		return Attestation{}, fmt.Errorf("parsing log: %w", err)
+		return Attestation{}, fmt.Errorf("parsing log: %s", err)
 	}
+
 	roundId, err := timing.RoundIdForTimestamp(request.Timestamp)
 	if err != nil {
-		return Attestation{}, fmt.Errorf("parsing log, roundId: %w", err)
+		return Attestation{}, fmt.Errorf("parsing log, roundId: %s", err)
 	}
+
+	// TODO: on the contract 30s offset is not accounted for. FIX THE CONTRACT
+	// if requestLog.VotingRoundId != uint32(roundId) {
+	// 	return Attestation{}, fmt.Errorf("parsing log, roundId on chains: %d vs off chain: %d", requestLog.VotingRoundId, roundId)
+
+	// }
+
 	indexes := []IndexLog{{request.BlockNumber, request.LogIndex}}
 
 	attestation := Attestation{
@@ -110,7 +122,7 @@ func (a *Attestation) Handle(ctx context.Context) error {
 	responseBytes, confirmed, err := ResolveAttestationRequest(ctx, a)
 	if err != nil {
 		a.Status = ProcessError
-		return fmt.Errorf("handle, resolve request: %w", err)
+		return fmt.Errorf("handle, resolve request: %s", err)
 	}
 	if !confirmed {
 		a.Status = Unconfirmed
@@ -121,7 +133,7 @@ func (a *Attestation) Handle(ctx context.Context) error {
 	a.Response = responseBytes
 	err = a.validateResponse()
 	if err != nil {
-		return fmt.Errorf("handle, validate response: %w", err)
+		return fmt.Errorf("handle, validate response: %s", err)
 	}
 
 	return nil
@@ -171,13 +183,13 @@ func (a *Attestation) validateResponse() error {
 	micReq, err := a.Request.Mic()
 	if err != nil {
 		a.Status = ProcessError
-		return fmt.Errorf("reading mic in request: %s, %w ", hex.EncodeToString(a.Request), err)
+		return fmt.Errorf("reading mic in request: %s, %s ", hex.EncodeToString(a.Request), err)
 	}
 
 	micRes, err := a.Response.ComputeMic(a.Abi)
 	if err != nil {
 		a.Status = ProcessError
-		return fmt.Errorf("cannot compute mic for request: %s, %w", hex.EncodeToString(a.Request), err)
+		return fmt.Errorf("cannot compute mic for request: %s, %s", hex.EncodeToString(a.Request), err)
 	}
 
 	if micReq != micRes {
@@ -189,7 +201,7 @@ func (a *Attestation) validateResponse() error {
 	lut, err := a.Response.LUT()
 	if err != nil {
 		a.Status = ProcessError
-		return fmt.Errorf("cannot read lut from request: %s, %w", hex.EncodeToString(a.Request), err)
+		return fmt.Errorf("cannot read lut from request: %s, %s", hex.EncodeToString(a.Request), err)
 	}
 
 	roundStart := timing.ChooseStartTimestamp(a.RoundId)
@@ -211,13 +223,12 @@ func (a *Attestation) validateResponse() error {
 }
 
 // ParseAttestationRequestLog tries to parse AttestationRequest log as stored in the database.
-func ParseAttestationRequestLog(dbLog database.Log) (*hub.HubAttestationRequest, error) {
+func ParseAttestationRequestLog(dbLog database.Log) (*fdc.FdcAttestationRequest, error) {
 	contractLog, err := events.ConvertDatabaseLogToChainLog(dbLog)
 	if err != nil {
 		return nil, err
 	}
-
-	return hubFilterer.ParseAttestationRequest(*contractLog)
+	return fdcFilterer.ParseAttestationRequest(*contractLog)
 }
 
 // index is used to safely retrieve Index for sorting purposes.

@@ -39,6 +39,7 @@ func TestBranchAndBoundRandom(t *testing.T) {
 		fees,
 		0,
 		totalWeight,
+		totalWeight,
 		big.NewInt(0),
 		100000000,
 		initialBound,
@@ -82,7 +83,7 @@ func TestBranchAndBound65(t *testing.T) {
 
 	start := time.Now()
 
-	solution := bitvotes.BranchAndBoundBits(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, filterResults.GuaranteedFees, 20000000, initialBound, true)
+	solution := bitvotes.BranchAndBoundBits(aggregatedVotes, aggregatedFees, filterResults.GuaranteedWeight, totalWeight, totalWeight, filterResults.GuaranteedFees, 20000000, initialBound, true)
 
 	finalSolution := AssembleSolutionFull(filterResults, solution)
 
@@ -128,7 +129,7 @@ func TestBranchAndBoundFix(t *testing.T) {
 	initialBound := bitvotes.Value{big.NewInt(0), big.NewInt(0)}
 
 	start := time.Now()
-	solution := bitvotes.BranchAndBoundBits(weightedBitvotes, fees, 0, totalWeight, big.NewInt(0), 50000000, initialBound, true)
+	solution := bitvotes.BranchAndBoundBits(weightedBitvotes, fees, 0, totalWeight, totalWeight, big.NewInt(0), 50000000, initialBound, true)
 
 	fmt.Println("time passed:", time.Since(start).Seconds())
 

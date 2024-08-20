@@ -129,7 +129,7 @@ func TestAddAttestation(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		round := round.CreateRound(1, policy.NewVoterSet(nil, nil))
+		round := round.CreateRound(1, policy.NewVoterSet(nil, nil, nil))
 
 		for j, request := range test.requests {
 			att, err := attestation.AttestationFromDatabaseLog(request)

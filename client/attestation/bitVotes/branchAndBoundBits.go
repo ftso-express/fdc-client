@@ -105,7 +105,7 @@ func sortFees(fees []*AggregatedFee, sortFunc func(*AggregatedFee, *AggregatedFe
 // The second strategy sorts the aggregated fees by the ascending value (cappedSupport * fee) and at depth k the branch in which does not include k-th bit is explored first.
 //
 // If both strategies find an optimal but different solutions, the solution of the first strategy is returned.
-func BranchAndBoundBitsDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16,
+func BranchAndBoundBitsDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, weightVoted, absoluteTotalWeight uint16,
 	assumedFees *big.Int, maxOperations int, initialBound Value) *ConsensusSolution {
 	solutions := make([]*ConsensusSolution, 2)
 
@@ -116,7 +116,7 @@ func BranchAndBoundBitsDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee,
 	feesDscVal := sortFees(fees, cmpValDsc(absoluteTotalWeight))
 
 	go func() {
-		solution := BranchAndBoundBits(bitVotes, feesDscVal, assumedWeight, absoluteTotalWeight, assumedFees, maxOperations, initialBound, false)
+		solution := BranchAndBoundBits(bitVotes, feesDscVal, assumedWeight, weightVoted, absoluteTotalWeight, assumedFees, maxOperations, initialBound, false)
 		solutions[0] = solution
 
 		firstDone <- true
@@ -128,7 +128,7 @@ func BranchAndBoundBitsDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee,
 	}()
 
 	go func() {
-		solution := BranchAndBoundBits(bitVotes, feesAscVal, assumedWeight, absoluteTotalWeight, assumedFees, maxOperations, initialBound, true)
+		solution := BranchAndBoundBits(bitVotes, feesAscVal, assumedWeight, weightVoted, absoluteTotalWeight, assumedFees, maxOperations, initialBound, true)
 
 		solutions[1] = solution // no problem in two processes writing to the same place, since in that case the solution not used
 		secondDone <- true
@@ -158,13 +158,11 @@ func BranchAndBoundBitsDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee,
 // through the entire solution space before reaching the given max operations counter, the algorithm
 // gives an optimal solution. If solution space is too big, the algorithm gives a
 // the best solution it finds. If not solution exceeding initialBound is found, no solution (nil) is returned.
-func BranchAndBoundBits(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16,
+func BranchAndBoundBits(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, weightVoted, absoluteTotalWeight uint16,
 	assumedFees *big.Int, maxOperations int, initialBound Value, strategy bool) *ConsensusSolution {
-	weight := assumedWeight
 
 	votes := make(map[int]bool)
-	for i, vote := range bitVotes {
-		weight += vote.Weight
+	for i := range bitVotes {
 		votes[i] = true
 	}
 
@@ -189,7 +187,7 @@ func BranchAndBoundBits(bitVotes []*AggregatedVote, fees []*AggregatedFee, assum
 		Strategy:         strategy,
 	}
 
-	permResult := BranchBits(processInfo, currentStatus, 0, votes, weight, totalFee)
+	permResult := BranchBits(processInfo, currentStatus, 0, votes, weightVoted, totalFee)
 	isOptimal := currentStatus.NumOperations < maxOperations
 
 	// empty solution

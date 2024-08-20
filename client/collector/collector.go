@@ -4,13 +4,16 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"flare-common/contracts/registry"
 	"flare-common/contracts/relay"
+
 	"flare-common/database"
 	"flare-common/logger"
 	"flare-common/payload"
 	"local/fdc/client/config"
 	"local/fdc/client/shared"
-	hub "local/fdc/contracts/FDC"
+	"local/fdc/contracts/fdc"
+
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -23,11 +26,13 @@ const (
 	requestListenerInterval       = 2 * time.Second
 	databasePollTime              = 2 * time.Second
 	bitVoteHeadStart              = 5 * time.Second
-	submit1FuncSelHex             = "6c532fae"
+	Submit1FuncSelHex             = "6c532fae"
 )
 
 var signingPolicyInitializedEventSel common.Hash
-var attestationRequestEventSel common.Hash
+var AttestationRequestEventSel common.Hash
+var voterRegisteredEventSel common.Hash
+
 var log = logger.GetLogger()
 
 func init() {
@@ -42,7 +47,8 @@ func init() {
 	}
 	signingPolicyInitializedEventSel = signingPolicyEvent.ID
 
-	fdcAbi, err := hub.HubMetaData.GetAbi()
+	fdcAbi, err := fdc.FdcMetaData.GetAbi()
+
 	if err != nil {
 		log.Panic("cannot get fdcAbi:", err)
 	}
@@ -52,19 +58,35 @@ func init() {
 		log.Panic("cannot get AttestationRequest event:", err)
 	}
 
-	attestationRequestEventSel = requestEvent.ID
+	AttestationRequestEventSel = requestEvent.ID
+
+	registryAbi, err := registry.RegistryMetaData.GetAbi()
+	if err != nil {
+		log.Panic("cannot get registryAbi:", err)
+	}
+
+	voterRegisteredEvent, ok := registryAbi.Events["VoterRegistered"]
+
+	if !ok {
+		log.Panic("cannot get VoterRegistered event:", err)
+	}
+
+	voterRegisteredEventSel = voterRegisteredEvent.ID
+
 }
 
 type Collector struct {
-	ProtocolId            uint8
-	SubmitContractAddress common.Address
-	FdcContractAddress    common.Address
-	RelayContractAddress  common.Address
-	DB                    *gorm.DB
-	submit1Sel            [4]byte
-	Requests              chan []database.Log
-	BitVotes              chan payload.Round
-	SigningPolicies       chan []database.Log
+	ProtocolId                   uint8
+	SubmitContractAddress        common.Address
+	FdcContractAddress           common.Address
+	RelayContractAddress         common.Address
+	VoterRegistryContractAddress common.Address
+
+	DB              *gorm.DB
+	submit1Sel      [4]byte
+	Requests        chan []database.Log
+	BitVotes        chan payload.Round
+	SigningPolicies chan []shared.VotersData
 }
 
 // NewCollector creates new Collector from user and system configs.
@@ -78,27 +100,29 @@ func NewCollector(user *config.UserRaw, system *config.System, sharedDataPipes *
 		log.Panic("Could not connect to database:", err)
 	}
 
-	submit1FuncSel, err := parseFuncSel(submit1FuncSelHex)
+	submit1FuncSel, err := ParseFuncSel(Submit1FuncSelHex)
 	if err != nil {
 		log.Panic("Could not parse submit1FuncSel:", err)
 	}
 
 	runner := Collector{
-		ProtocolId:            user.ProtocolId,
-		SubmitContractAddress: system.Addresses.SubmitContract,
-		FdcContractAddress:    system.Addresses.FdcContract,
-		RelayContractAddress:  system.Addresses.RelayContract,
-		DB:                    db,
-		submit1Sel:            submit1FuncSel,
-		SigningPolicies:       sharedDataPipes.SigningPolicies,
-		BitVotes:              sharedDataPipes.BitVotes,
-		Requests:              sharedDataPipes.Requests,
+		ProtocolId:                   user.ProtocolId,
+		SubmitContractAddress:        system.Addresses.SubmitContract,
+		FdcContractAddress:           system.Addresses.FdcContract,
+		RelayContractAddress:         system.Addresses.RelayContract,
+		VoterRegistryContractAddress: system.Addresses.VoterRegistryContract,
+
+		DB:              db,
+		submit1Sel:      submit1FuncSel,
+		SigningPolicies: sharedDataPipes.Voters,
+		BitVotes:        sharedDataPipes.BitVotes,
+		Requests:        sharedDataPipes.Requests,
 	}
 
 	return &runner
 }
 
-func parseFuncSel(sigInput string) ([4]byte, error) {
+func ParseFuncSel(sigInput string) ([4]byte, error) {
 	var ret [4]byte
 	inputBytes := []byte(sigInput)
 
@@ -108,84 +132,6 @@ func parseFuncSel(sigInput string) ([4]byte, error) {
 
 	_, err := hex.Decode(ret[:], inputBytes)
 	return ret, err
-}
-
-type collectorDB interface {
-	FetchState(context.Context) (database.State, error)
-
-	FetchLatestLogsByAddressAndTopic0(
-		context.Context, common.Address, common.Hash, int,
-	) ([]database.Log, error)
-
-	FetchLogsByAddressAndTopic0Timestamp(
-		context.Context, common.Address, common.Hash, int64, int64,
-	) ([]database.Log, error)
-
-	FetchLogsByAddressAndTopic0BlockNumber(
-		context.Context, common.Address, common.Hash, int64, int64,
-	) ([]database.Log, error)
-
-	FetchLogsByAddressAndTopic0TimestampToBlockNumber(
-		context.Context,
-		common.Address,
-		common.Hash,
-		int64,
-		int64,
-	) ([]database.Log, error)
-
-	FetchTransactionsByAddressAndSelectorTimestamp(
-		context.Context, common.Address, [4]byte, int64, int64,
-	) ([]database.Transaction, error)
-}
-
-type collectorDBGorm struct {
-	db *gorm.DB
-}
-
-func (c collectorDBGorm) FetchState(ctx context.Context) (database.State, error) {
-	return database.FetchState(ctx, c.db)
-}
-func (c collectorDBGorm) FetchLatestLogsByAddressAndTopic0(
-	ctx context.Context, addr common.Address, topic0 common.Hash, num int,
-) ([]database.Log, error) {
-	return database.FetchLatestLogsByAddressAndTopic0(ctx, c.db, addr, topic0, num)
-}
-
-func (c collectorDBGorm) FetchLogsByAddressAndTopic0Timestamp(
-	ctx context.Context, addr common.Address, topic0 common.Hash, from, to int64,
-) ([]database.Log, error) {
-	return database.FetchLogsByAddressAndTopic0Timestamp(ctx, c.db, addr, topic0, from, to)
-}
-
-func (c collectorDBGorm) FetchLogsByAddressAndTopic0BlockNumber(
-	ctx context.Context,
-	address common.Address,
-	topic0 common.Hash,
-	from, to int64,
-) ([]database.Log, error) {
-	return database.FetchLogsByAddressAndTopic0BlockNumber(ctx, c.db, address, topic0, from, to)
-}
-
-func (c collectorDBGorm) FetchLogsByAddressAndTopic0TimestampToBlockNumber(
-	ctx context.Context,
-	address common.Address,
-	topic0 common.Hash,
-	from, to int64,
-) ([]database.Log, error) {
-	return database.FetchLogsByAddressAndTopic0TimestampToBlockNumber(
-		ctx, c.db, address, topic0, from, to,
-	)
-}
-
-func (c collectorDBGorm) FetchTransactionsByAddressAndSelectorTimestamp(
-	ctx context.Context,
-	toAddress common.Address,
-	functionSel [4]byte,
-	from, to int64,
-) ([]database.Transaction, error) {
-	return database.FetchTransactionsByAddressAndSelectorTimestamp(
-		ctx, c.db, toAddress, functionSel, from, to,
-	)
 }
 
 // Run starts SigningPolicyInitializedListener, BitVoteListener, and AttestationRequestListener,
@@ -201,11 +147,10 @@ func (r *Collector) Run(ctx context.Context) {
 	}
 
 	chooseTrigger := make(chan uint64)
-	db := collectorDBGorm{db: r.DB}
 
-	go SigningPolicyInitializedListener(ctx, db, r.RelayContractAddress, r.SigningPolicies)
-	go BitVoteListener(ctx, db, r.FdcContractAddress, r.submit1Sel, r.ProtocolId, chooseTrigger, r.BitVotes)
-	go AttestationRequestListener(ctx, db, r.FdcContractAddress, requestListenerInterval, r.Requests)
+	go SigningPolicyInitializedListener(ctx, r.DB, r.RelayContractAddress, r.VoterRegistryContractAddress, r.SigningPolicies)
+	go BitVoteListener(ctx, r.DB, r.SubmitContractAddress, r.submit1Sel, r.ProtocolId, chooseTrigger, r.BitVotes)
+	go AttestationRequestListener(ctx, r.DB, r.FdcContractAddress, requestListenerInterval, r.Requests)
 
-	PrepareChooseTriggers(ctx, chooseTrigger, db)
+	PrepareChooseTriggers(ctx, chooseTrigger, r.DB)
 }

@@ -1,7 +1,7 @@
 package config
 
 import (
-	"flare-common/errorf"
+	"fmt"
 	"os"
 	"path"
 	"strconv"
@@ -40,12 +40,12 @@ func readToml[C any](filePath string) (C, error) {
 
 	file, err := os.ReadFile(filePath)
 	if err != nil {
-		return config, errorf.ReadingFile(filePath, err)
+		return config, fmt.Errorf("failed reading file %s with: %s", filePath, err)
 	}
 
 	err = toml.Unmarshal(file, &config)
 	if err != nil {
-		return config, errorf.Unmarshal(filePath, err)
+		return config, fmt.Errorf("failed marshaling file %s with: %s", filePath, err)
 	}
 
 	return config, nil

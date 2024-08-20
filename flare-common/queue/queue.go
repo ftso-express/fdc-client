@@ -176,7 +176,6 @@ func (q *PriorityQueue[T]) handleError(ctx context.Context, item priorityQueueIt
 			log.Errorf("max retry attempts reached, sent item to dead letter queue: %v", item.value)
 
 		default:
-			log.Errorf("max retry attempts reached, discarding as dead letter queue is full: %v", item.value)
 		}
 	}
 

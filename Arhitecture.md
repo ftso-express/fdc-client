@@ -43,7 +43,7 @@ The Merkle Tree can only be build after the consensus bitVote is computed and al
 
 # Logic
 
-FTSO protocol works cyclically in epochs. Logic of the FDC client is aligned with these epochs and works in the folowing way:
+FDC protocol works cyclically in epochs. Logic of the FDC client is aligned with these epochs and works in the following way:
 
 -   Before the start of each epoch, the Signing Policy containing information about
     all the data providers is updated on chain. FDC client obtains the signing policy

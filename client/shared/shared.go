@@ -1,10 +1,13 @@
 package shared
 
 import (
+	"flare-common/contracts/relay"
 	"flare-common/database"
 	"flare-common/payload"
 	"flare-common/storage"
 	"local/fdc/client/round"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -14,18 +17,23 @@ const (
 	roundBuffer             uint64 = 256
 )
 
+type VotersData struct {
+	Policy                 *relay.RelaySigningPolicyInitialized
+	SubmitToSigningAddress map[common.Address]common.Address
+}
+
 type SharedDataPipes struct {
-	Rounds          storage.Cyclic[*round.Round] // cyclically cached rounds with buffer roundBuffer.
-	Requests        chan []database.Log
-	BitVotes        chan payload.Round
-	SigningPolicies chan []database.Log
+	Rounds   storage.Cyclic[*round.Round] // cyclically cached rounds with buffer roundBuffer.
+	Requests chan []database.Log
+	BitVotes chan payload.Round
+	Voters   chan []VotersData
 }
 
 func NewSharedDataPipes() *SharedDataPipes {
 	return &SharedDataPipes{
-		Rounds:          storage.NewCyclic[*round.Round](roundBuffer),
-		SigningPolicies: make(chan []database.Log, signingPolicyBufferSize),
-		BitVotes:        make(chan payload.Round, bitVoteBufferSize),
-		Requests:        make(chan []database.Log, requestsBufferSize),
+		Rounds:   storage.NewCyclic[*round.Round](roundBuffer),
+		Voters:   make(chan []VotersData, signingPolicyBufferSize),
+		BitVotes: make(chan payload.Round, bitVoteBufferSize),
+		Requests: make(chan []database.Log, requestsBufferSize),
 	}
 }

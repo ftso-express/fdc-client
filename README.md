@@ -140,3 +140,8 @@ The timestamp of the start of the first reward epoch (T0) and length of reward e
 t0 = 1658429955 # in seconds
 reward_epoch_length = 240 # in voting rounds
 ```
+
+
+### ABIGEN
+
+For more info follow this [tutorial](https://geth.ethereum.org/docs/tools/abigen)

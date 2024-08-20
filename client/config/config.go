@@ -16,6 +16,7 @@ type userCommon struct {
 	DB         database.DBConfig `toml:"db"`
 	RestServer RestServer        `toml:"rest_server"`
 	Queues     Queues            `toml:"queues"`
+	Logging    Logger            `toml:"logger"`
 }
 
 type UserRaw struct {
@@ -48,13 +49,14 @@ type RestServer struct {
 type Logger struct {
 	File   string `toml:"file"`
 	Prefix string `toml:"prefix"`
-	Flag   int    `toml:"flag"`
+	Level  string `toml:"level"`
 }
 
 type Addresses struct {
-	SubmitContract common.Address `toml:"submit_contract"`
-	RelayContract  common.Address `toml:"relay_contract"`
-	FdcContract    common.Address `toml:"fdc_contract"`
+	SubmitContract        common.Address `toml:"submit_contract"`
+	RelayContract         common.Address `toml:"relay_contract"`
+	FdcContract           common.Address `toml:"fdc_contract"`
+	VoterRegistryContract common.Address `toml:"voter_registry_contract"`
 }
 
 type Source struct {
@@ -89,8 +91,13 @@ type AttestationTypes map[[32]byte]AttestationType
 type AttestationTypesUnparsed map[string]AttestationTypeUnparsed
 
 type Timing struct {
-	T0                uint64 `toml:"t0"`
-	RewardEpochLength uint64 `toml:"reward_epoch_length"`
+	T0                 uint64 `toml:"t0"`
+	T0RewardDelay      uint64 `toml:"t0_reward_delay"`
+	RewardEpochLength  uint64 `toml:"reward_epoch_length"`
+	CollectDurationSec uint64 `toml:"collect_duration_sec"`
+	ChooseDurationSec  uint64 `toml:"choose_duration_sec"`
+	CommitDurationSec  uint64 `toml:"commit_duration_sec"`
+	OffsetSec          uint64 `toml:"offset_sec"`
 }
 
 type Queues map[string]queue.PriorityQueueParams

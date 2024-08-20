@@ -50,8 +50,14 @@ func sortVotes(votes []*AggregatedVote, sortFunc func(*AggregatedVote, *Aggregat
 // The second strategy sorts the aggregated votes by the ascending value (weight * fee) and at depth k the branch in which does not include k-th vote is explored first.
 //
 // If both strategies find an optimal but different solutions, the solution of the first strategy is returned.
-func BranchAndBoundVotesDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16,
-	assumedFees *big.Int, maxOperations int, initialBound Value) *ConsensusSolution {
+func BranchAndBoundVotesDouble(
+	bitVotes []*AggregatedVote,
+	fees []*AggregatedFee,
+	assumedWeight, weightVoted, absoluteTotalWeight uint16,
+	assumedFees *big.Int,
+	maxOperations int,
+	initialBound Value,
+) *ConsensusSolution {
 	solutions := make([]*ConsensusSolution, 2)
 
 	firstDone := make(chan bool, 1)
@@ -65,6 +71,7 @@ func BranchAndBoundVotesDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee
 			votesDscVal,
 			fees,
 			assumedWeight,
+			weightVoted,
 			absoluteTotalWeight,
 			assumedFees,
 			maxOperations,
@@ -88,6 +95,7 @@ func BranchAndBoundVotesDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee
 			votesAscVal,
 			fees,
 			assumedWeight,
+			weightVoted,
 			absoluteTotalWeight,
 			assumedFees,
 			maxOperations,
@@ -118,14 +126,15 @@ func BranchAndBoundVotesDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee
 // BranchAndBoundVotes is similar to BranchAndBound, the difference is that it
 // executes a branch and bound strategy on the space of subsets of bitVotes, hence
 // it is particularly useful when there are not too many distinct bitVotes.
-func BranchAndBoundVotes(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, absoluteTotalWeight uint16,
-	assumedFees *big.Int, maxOperations int, initialBound Value, strategy bool) *ConsensusSolution {
-	weight := assumedWeight
-
-	for _, vote := range bitVotes {
-		weight += vote.Weight
-	}
-
+func BranchAndBoundVotes(
+	bitVotes []*AggregatedVote,
+	fees []*AggregatedFee,
+	assumedWeight, weightVoted, absoluteTotalWeight uint16,
+	assumedFees *big.Int,
+	maxOperations int,
+	initialBound Value,
+	strategy bool,
+) *ConsensusSolution {
 	totalFee := big.NewInt(0).Set(assumedFees)
 	bits := make(map[int]bool)
 	for i, fee := range fees {
@@ -149,7 +158,7 @@ func BranchAndBoundVotes(bitVotes []*AggregatedVote, fees []*AggregatedFee, assu
 		Strategy:         strategy,
 	}
 
-	permResult := BranchVotes(processInfo, currentStatus, 0, bits, totalFee, weight)
+	permResult := BranchVotes(processInfo, currentStatus, 0, bits, totalFee, weightVoted)
 
 	isOptimal := currentStatus.NumOperations < maxOperations
 
@@ -185,8 +194,14 @@ func BranchAndBoundVotes(bitVotes []*AggregatedVote, fees []*AggregatedFee, assu
 	return &result
 }
 
-func BranchVotes(processInfo *ProcessInfo, currentStatus *SharedStatus, branch int, bits map[int]bool,
-	feeSum *big.Int, weight uint16) *branchAndBoundPartialSolution {
+func BranchVotes(
+	processInfo *ProcessInfo,
+	currentStatus *SharedStatus,
+	branch int,
+	bits map[int]bool,
+	feeSum *big.Int,
+	weight uint16,
+) *branchAndBoundPartialSolution {
 	currentStatus.NumOperations++
 
 	// end of recursion

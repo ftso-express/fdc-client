@@ -1,6 +1,6 @@
 
 # options are: "coston", "songbird", "coston2", "flare"
-chain = "coston"
+chain = "hardhat_test"
 
 protocolId = 200
 
@@ -27,54 +27,15 @@ swagger_path = "/api-doc"
 [logger]
 file = ""
 prefix = ""
-level = "INFO"
-
-
-# # Payment
-# [types.Payment]
-# abi_path = ""
-
-# ## BTC
-# [types.Payment.Sources.BTC]
-# url = ""
-# api_key = "12345"
-# lut_limit = "18446744073709551615"
-
-# ## DOGE
-# [types.Payment.Sources.DOGE]
-# url = ""
-# api_key = ""
-# lut_limit = "18446744073709551615"
-
-# ## XRP
-# [types.Payment.Sources.XRP]
-# url = ""
-# api_key = ""
-# lut_limit = "18446744073709551615"
-
+level = "DEBUG"
 
 # EVMTransaction
 [types.EVMTransaction]
 abi_path = "configs/abis/EVMTransaction.json"
 
 ## ETH
-[types.EVMTransaction.Sources.ETH]
-url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
-api_key = "12345"
-lut_limit = "18446744073709551615"
-queue = "evmETH"
-
-##SGB
 [types.EVMTransaction.Sources.testSGB]
-url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
-api_key = "12345"
-lut_limit = "18446744073709551615"
-queue = "evmETH"
-
-
-##FLR
-[types.EVMTransaction.Sources.testFLR]
-url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
+url = "http://localhost:5557"
 api_key = "12345"
 lut_limit = "18446744073709551615"
 queue = "evmETH"

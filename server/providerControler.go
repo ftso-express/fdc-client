@@ -9,8 +9,9 @@ import (
 )
 
 type FDCProtocolProviderController struct {
-	rounds  *storage.Cyclic[*round.Round]
-	storage storage.Cyclic[RootsByAddress]
+	rounds     *storage.Cyclic[*round.Round]
+	storage    storage.Cyclic[merkleRootStorageObject]
+	protocolId uint64
 }
 
 type submitXParams struct {
@@ -20,10 +21,10 @@ type submitXParams struct {
 
 const storageSize = 10
 
-func newFDCProtocolProviderController(rounds *storage.Cyclic[*round.Round]) *FDCProtocolProviderController {
-	storage := storage.NewCyclic[RootsByAddress](storageSize)
+func newFDCProtocolProviderController(rounds *storage.Cyclic[*round.Round], protocolId uint64) *FDCProtocolProviderController {
+	storage := storage.NewCyclic[merkleRootStorageObject](storageSize)
 
-	return &FDCProtocolProviderController{rounds: rounds, storage: storage}
+	return &FDCProtocolProviderController{rounds: rounds, storage: storage, protocolId: protocolId}
 }
 
 func validateSubmitXParams(params map[string]string) (submitXParams, error) {
@@ -49,6 +50,7 @@ func (controller *FDCProtocolProviderController) submit1Controller(
 	queryParams interface{},
 	body interface{}) (PDPResponse, *restServer.ErrorHandler) {
 	pathParams, err := validateSubmitXParams(params)
+
 	if err != nil {
 		log.Error(err)
 		return PDPResponse{}, restServer.BadParamsErrorHandler(err)
@@ -100,11 +102,11 @@ func (controller *FDCProtocolProviderController) submitSignaturesController(
 		log.Error(err)
 		return PDPResponse{}, restServer.BadParamsErrorHandler(err)
 	}
-	merkleRoot, randVal, exists := controller.submitSignaturesService(pathParams.votingRoundId, pathParams.submitAddress)
+	message, addData, exists := controller.submitSignaturesService(pathParams.votingRoundId, pathParams.submitAddress)
 	if !exists {
 		return PDPResponse{Status: NOT_AVAILABLE}, nil
 	}
-	response := PDPResponse{Data: merkleRoot, AdditionalData: randVal, Status: OK}
+	response := PDPResponse{Data: message, AdditionalData: addData, Status: OK}
 
 	return response, nil
 }

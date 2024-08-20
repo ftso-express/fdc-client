@@ -1,60 +1,94 @@
 package server
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"encoding/hex"
 	"flare-common/logger"
+	"flare-common/payload"
 	"flare-common/storage"
 	"fmt"
-	"math/rand"
+	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"go.uber.org/zap/zapcore"
 )
 
-// TODO: Luka - Get this from config
-const PROVIDER_RANDOM_SEED = 42
+var maxRandom *big.Int // max uint256
 
 var log = logger.GetLogger()
 
-// calculateMaskedRoot masks the root with random number and address.
-func calculateMaskedRoot(root string, random string, address string) string {
-	return hex.EncodeToString(crypto.Keccak256([]byte(root), []byte(random), []byte(address)))
+func init() {
+	// set maxRandom to max uint256
+	maxUint256Plus1 := new(big.Int).Exp(big.NewInt(2), big.NewInt(256), nil)
+	maxRandom = new(big.Int).Sub(maxUint256Plus1, big.NewInt(1))
 }
 
-// storeRoot stores root and random for roundId and address for use in submitSignatures.
-func storeRoot(storage storage.Cyclic[RootsByAddress], roundId uint64, address string, root string, random string) {
+// calculateMaskedRoot masks the root with random number and address.
+func calculateMaskedRoot(root common.Hash, random common.Hash, address common.Address, bitVote []byte) string {
+	return hex.EncodeToString(crypto.Keccak256(root.Bytes(), random.Bytes(), address.Bytes(), bitVote))
+}
 
-	forRound, exists := storage.Get(roundId)
+// storeRoot stores root, random, and consensusBitVote for roundId to be used in submitSignatures.
+//
+// It only stores the merkleRootStorageObject the first time it is called.
+func storeRoot(storage storage.Cyclic[merkleRootStorageObject], roundId uint64, message string, root, random common.Hash, consensusBitVote []byte) {
+	_, exists := storage.Get(roundId)
 
 	if exists {
-		forRound[address] = merkleRootStorageObject{root, random} //store root for another address
-	} else { // store for a new round
-		forRound = make(RootsByAddress)
-		forRound[address] = merkleRootStorageObject{root, random}
-		storage.Store(roundId, forRound)
+		log.Debugf("root for round %d already stored", roundId)
+	}
+	if !exists {
+
+		object := merkleRootStorageObject{
+			message:          message,
+			merkleRoot:       root,
+			randomNum:        random,
+			consensusBitVote: consensusBitVote,
+		}
+		storage.Store(roundId, object)
 	}
 
 }
 
+// submit1Service returns 0x prefixed hex encoded bitVote for roundId and a boolean indicating its existence.
 func (controller *FDCProtocolProviderController) submit1Service(roundId uint64, _ string) (string, bool, error) {
 	votingRound, exists := controller.rounds.Get(roundId)
 	if !exists {
 		log.Infof("submit1 round %d not stored", roundId)
 		return "", false, nil
 	}
-	bitVoteString, err := votingRound.BitVoteHex()
+	bitVoteString, err := votingRound.BitVoteHex(false)
 	if err != nil {
 		log.Errorf("submit1: error for bitVote %s", err)
 
 		return "", false, err
 	}
 
-	log.Debugf("submit1: for round %d: %s", roundId, bitVoteString)
-	return bitVoteString, true, nil
+	payloadMsg, err := payload.BuildMessage(controller.protocolId, roundId, bitVoteString)
+
+	if err != nil {
+		log.Errorf("submit1: error building payload %s", err)
+
+		return "", false, err
+	}
+
+	log.Debugf("submit1: for round %d: %s", roundId, payloadMsg)
+
+	return payloadMsg, true, nil
 }
 
+// submit2Service returns 0x prefixed commit data for roundId and address and an indicator of success.
+// commit data is a hash of merkleRoot, roundId, address, and encodedBitVote.
+// The data is stored to be used in the reveal.
 func (controller *FDCProtocolProviderController) submit2Service(roundId uint64, address string) (string, bool, error) {
-	// Get merkle tree root from attestation client from controller
+
+	commit, exists := controller.storage.Get(roundId)
+
+	if exists {
+		return commit.message, true, nil
+	}
 
 	votingRound, exists := controller.rounds.Get(roundId)
 
@@ -64,47 +98,88 @@ func (controller *FDCProtocolProviderController) submit2Service(roundId uint64, 
 		return "", false, nil
 	}
 
-	root, err := votingRound.MerkleRootHex()
+	consensusBitVote, err := votingRound.GetConsensusBitVote()
+
+	if err != nil {
+		log.Infof("submit2: consensus bitVote for round %d not available: %s", roundId, err)
+
+		return "", false, nil
+	}
+
+	encodedBitVote := consensusBitVote.EncodeBitVote(roundId)
+	root, err := votingRound.MerkleRoot()
 
 	if err != nil {
 		log.Infof("submit2: Merkle root for round %d not available: %s", roundId, err)
 
-		return "", false, nil //decide what to do with empty round
+		return "", false, nil
 	}
 
-	r2 := rand.New(rand.NewSource(PROVIDER_RANDOM_SEED))
-	random := hex.EncodeToString(crypto.Keccak256([]byte(fmt.Sprintf("%X", r2.Int63()))))
+	randomBig, err := rand.Int(rand.Reader, maxRandom)
 
-	// storeRoot saves root together with random number and address to storage
-	//controller.saveRoot(address, roundID, root, random_num)
-	storeRoot(controller.storage, roundId, address, root, random)
+	if err != nil {
+		log.Errorf("submit2: getting random number for round %d: %s", roundId, err)
 
-	masked := calculateMaskedRoot(root, random, address)
+		return "", false, nil
+	}
+
+	random := common.BigToHash(randomBig)
+
+	masked := calculateMaskedRoot(root, random, common.HexToAddress(address), encodedBitVote)
+
+	payloadMsg, err := payload.BuildMessage(controller.protocolId, roundId, masked)
+
+	if err != nil {
+		log.Errorf("submit2: error building payload for round %d: %s", roundId, err)
+
+		return "", false, nil
+	}
+
+	storeRoot(controller.storage, roundId, payloadMsg, root, random, encodedBitVote)
 
 	log.Debugf("submit2: for round %d and address %s: %s", roundId, address, masked)
-	return masked, true, nil
+
+	return payloadMsg, true, nil
 }
 
+// submitSignaturesService returns merkleRoot encoded in to payload for signing, additionalData, and an indicator of success for roundId.
+// Additional data is concatenation of stored randomNumber and consensusBitVote.
 func (controller *FDCProtocolProviderController) submitSignaturesService(roundId uint64, address string) (string, string, bool) {
-	savedRoots, exists := controller.storage.Get(roundId)
+	savedRoot, exists := controller.storage.Get(roundId)
 	if !exists {
-		log.Infof("submitSigantures: data for round %d not stored", roundId)
+		log.Infof("submitSignatures: data for round %d not stored", roundId)
 		return "", "", false
 	}
 
-	rootData, exists := savedRoots[address]
-
-	if !exists {
-		log.Infof("submitSigantures: root for address %s not stored for round %d", address, roundId)
-
-		return "", "", false
-	}
+	message := buildMessageForSigning(uint8(controller.protocolId), uint32(roundId), savedRoot.merkleRoot)
 
 	log.Info("SubmitSignaturesHandler")
-	log.Logf(zapcore.DebugLevel, "round: %s\n", fmt.Sprint(roundId))
-	log.Logf(zapcore.DebugLevel, "address: %s\n", address)
-	log.Logf(zapcore.DebugLevel, "root: %s\n", rootData.merkleRoot)
-	log.Logf(zapcore.DebugLevel, "random: %s\n", rootData.randomNum)
+	log.Logf(zapcore.DebugLevel, "round: %s", fmt.Sprint(roundId))
+	log.Logf(zapcore.DebugLevel, "address: %s", address)
+	log.Logf(zapcore.DebugLevel, "root: %s", savedRoot.merkleRoot.Hex())
+	log.Logf(zapcore.DebugLevel, "random: %s", savedRoot.randomNum.String())
+	log.Logf(zapcore.DebugLevel, "consensus: %s", "0x"+hex.EncodeToString(savedRoot.consensusBitVote))
 
-	return rootData.merkleRoot, rootData.randomNum, true
+	additionalData := savedRoot.randomNum.Hex() + hex.EncodeToString(savedRoot.consensusBitVote)
+
+	return message, additionalData, true
+}
+
+// buildMessageForSigning builds payload message for submitSignatures.
+//
+// protocolId (1 byte)
+// roundId (4 bytes)
+// randomQualityScore (1 byte)
+// merkleRoot (32 bytes)
+func buildMessageForSigning(protocolId uint8, roundId uint32, merkleRoot common.Hash) string {
+
+	data := make([]byte, 38)
+
+	data[0] = uint8(protocolId)                            // protocolId (1 byte)
+	binary.BigEndian.PutUint32(data[1:5], uint32(roundId)) // roundId (4 bytes)
+	data[5] = 1                                            // random quality score (1 byte)
+	copy(data[6:38], merkleRoot[:])
+
+	return "0x" + hex.EncodeToString(data)
+
 }

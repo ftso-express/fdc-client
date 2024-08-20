@@ -4,6 +4,8 @@ import (
 	"context"
 	"flare-common/database"
 	"flare-common/payload"
+	"flare-common/policy"
+
 	"fmt"
 	"local/fdc/client/attestation"
 	"local/fdc/client/config"
@@ -114,7 +116,19 @@ func TestManagerMethods(t *testing.T) {
 	mngr, err := NewManager(&cfg, sharedDataPipes)
 	require.NoError(t, err)
 
-	err = mngr.OnSigningPolicy(policyLog)
+	signingPolicyParsed, err := policy.ParseSigningPolicyInitializedEvent(policyLog)
+
+	require.NoError(t, err)
+
+	submitToSigning := make(map[common.Address]common.Address)
+
+	for i := range signingPolicyParsed.Voters {
+		submitToSigning[signingPolicyParsed.Voters[i]] = signingPolicyParsed.Voters[i]
+	}
+
+	votersData := shared.VotersData{Policy: signingPolicyParsed, SubmitToSigningAddress: submitToSigning}
+
+	err = mngr.OnSigningPolicy(votersData)
 	require.NoError(t, err)
 
 	for i, badBitVote := range []payload.Message{
@@ -146,7 +160,7 @@ func TestManager(t *testing.T) {
 	require.NoError(t, err)
 
 	// run mocked verifier for test
-	go mocks.MockVerifier(t, 5556, testResponse, requestLog)
+	go mocks.MockVerifierForTests(t, 5556, testResponse, requestLog)
 
 	// run manager
 	ctx, cancel := context.WithCancel(context.Background())
@@ -154,8 +168,20 @@ func TestManager(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
+	signingPolicyParsed, err := policy.ParseSigningPolicyInitializedEvent(policyLog)
+
+	require.NoError(t, err)
+
+	submitToSigning := make(map[common.Address]common.Address)
+
+	for i := range signingPolicyParsed.Voters {
+		submitToSigning[signingPolicyParsed.Voters[i]] = signingPolicyParsed.Voters[i]
+	}
+
+	votersData := shared.VotersData{Policy: signingPolicyParsed, SubmitToSigningAddress: submitToSigning}
+
 	// get signing policy
-	sharedDataPipes.SigningPolicies <- []database.Log{policyLog}
+	sharedDataPipes.Voters <- []shared.VotersData{votersData}
 	time.Sleep(1 * time.Second)
 	policy, _ := mngr.signingPolicyStorage.GetForVotingRound(664111)
 

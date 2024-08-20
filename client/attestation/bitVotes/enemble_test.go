@@ -50,7 +50,7 @@ func TestEnsembleRandom(t *testing.T) {
 
 	start = time.Now()
 
-	solutionCheck := bitvotes.BranchAndBoundBits(aggregatedBitVotes, aggFees, 0, totalWeight, big.NewInt(0), 100000000, bitvotes.Value{big.NewInt(0), big.NewInt(0)}, false)
+	solutionCheck := bitvotes.BranchAndBoundBits(aggregatedBitVotes, aggFees, 0, totalWeight, totalWeight, big.NewInt(0), 100000000, bitvotes.Value{big.NewInt(0), big.NewInt(0)}, false)
 
 	fmt.Println("time passed:", time.Since(start).Seconds())
 	fmt.Printf("solution: %v\n", solution)
@@ -113,7 +113,7 @@ func TestEnsembleFixed(t *testing.T) {
 }
 
 func EnsembleFull(allBitVotes []*bitvotes.WeightedBitVote, fees []*big.Int, totalWeight uint16, maxOperations int) Solution {
-	filterResults, filterSolution := bitvotes.Ensemble(allBitVotes, fees, totalWeight, maxOperations)
+	filterResults, filterSolution, _ := bitvotes.Ensemble(allBitVotes, fees, totalWeight, maxOperations)
 
 	return AssembleSolutionFull(filterResults, filterSolution)
 }

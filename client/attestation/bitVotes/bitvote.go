@@ -42,8 +42,8 @@ type WeightedBitVote struct {
 	BitVote BitVote
 }
 
-// EncodeBitVoteHex encodes BitVote with roundCheck to be published on chain
-func (b BitVote) EncodeBitVoteHex(roundId uint64) string {
+// EncodeBitVote encodes BitVote with roundCheck
+func (b BitVote) EncodeBitVote(roundId uint64) []byte {
 	var encoding []byte
 	roundCheck := byte(roundId % 256)
 
@@ -54,7 +54,13 @@ func (b BitVote) EncodeBitVoteHex(roundId uint64) string {
 	encoding = append(encoding, length...)
 	encoding = append(encoding, b.BitVector.Bytes()...)
 
-	str := hex.EncodeToString(encoding)
+	return encoding
+
+}
+
+// EncodeBitVoteHex encodes BitVote with roundCheck prefixed with 0x to be published on chain.
+func (b BitVote) EncodeBitVoteHex(roundId uint64) string {
+	str := hex.EncodeToString(b.EncodeBitVote(roundId))
 
 	return str
 
@@ -73,8 +79,6 @@ func DecodeBitVoteBytes(bitVoteByte []byte) (BitVote, uint8, error) {
 	length := binary.BigEndian.Uint16(lengthBytes)
 
 	bigBitVector := new(big.Int).SetBytes(bitVector)
-
-	// TODO: decide whether leading zeros are legal
 
 	if bigBitVector.BitLen() > int(length) {
 		return BitVote{}, 0, errors.New("bad bitvote")

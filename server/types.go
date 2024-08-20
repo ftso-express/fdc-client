@@ -1,5 +1,7 @@
 package server
 
+import "github.com/ethereum/go-ethereum/common"
+
 type PDPResponseStatus string
 
 const (
@@ -14,8 +16,10 @@ type PDPResponse struct {
 }
 
 type merkleRootStorageObject struct {
-	merkleRoot string
-	randomNum  string
+	message          string
+	merkleRoot       common.Hash
+	randomNum        common.Hash
+	consensusBitVote []byte
 }
 
 type RootsByAddress map[string]merkleRootStorageObject

@@ -50,6 +50,7 @@ func TestBranchAndBoundProvidersFix(t *testing.T) {
 		aggregatedFees,
 		filterResults.GuaranteedWeight,
 		totalWeight,
+		totalWeight,
 		filterResults.GuaranteedFees,
 		50000000,
 		initialBound,
@@ -70,6 +71,7 @@ func TestBranchAndBoundProvidersFix(t *testing.T) {
 		aggregatedFees,
 		filterResults.GuaranteedWeight,
 		totalWeight,
+		totalWeight,
 		filterResults.GuaranteedFees,
 		50000000,
 		initialBound,
@@ -86,12 +88,13 @@ func TestBranchAndBoundProvidersFix(t *testing.T) {
 		aggregatedFees,
 		filterResults.GuaranteedWeight,
 		totalWeight,
+		totalWeight,
 		filterResults.GuaranteedFees,
 		50000000,
 		initialBound,
 		false,
 	)
-	
+
 	finalSolution2 := AssembleSolutionFull(filterResults, solution2)
 	require.Equal(t, true, solution2.Optimal)
 	require.Equal(t, finalSolutionTest.Value, finalSolution2.Value)
@@ -127,6 +130,7 @@ func TestBranchAndBoundProvidersRandom(t *testing.T) {
 		aggregatedFees,
 		filterResults.GuaranteedWeight,
 		totalWeight,
+		totalWeight,
 		filterResults.GuaranteedFees,
 		200000000,
 		initialBound,
@@ -142,6 +146,7 @@ func TestBranchAndBoundProvidersRandom(t *testing.T) {
 		aggregatedVotes,
 		aggregatedFees,
 		filterResults.GuaranteedWeight,
+		totalWeight,
 		totalWeight,
 		filterResults.GuaranteedFees,
 		100000000,
@@ -167,6 +172,7 @@ func TestBranchAndBoundProvidersRandom(t *testing.T) {
 		aggregatedVotes,
 		aggregatedFees,
 		filterResults.GuaranteedWeight,
+		totalWeight,
 		totalWeight,
 		filterResults.GuaranteedFees,
 		200000000,

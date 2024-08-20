@@ -185,3 +185,70 @@ func TestExtractPayloadsError(t *testing.T) {
 
 	}
 }
+
+func TestBuildMessage(t *testing.T) {
+
+	tests := []struct {
+		protocolId  uint64
+		votingRound uint64
+		payload     string
+		result      string
+	}{
+		{
+			protocolId:  1,
+			votingRound: 1,
+			payload:     "00",
+			result:      "0x0100000001000100",
+		},
+		{
+			protocolId:  255,
+			votingRound: 256,
+			payload:     "110011",
+			result:      "0xff000001000003110011",
+		},
+	}
+
+	for _, test := range tests {
+
+		payloadMsg, err := payload.BuildMessage(test.protocolId, test.votingRound, test.payload)
+
+		require.NoError(t, err)
+
+		require.Equal(t, test.result, payloadMsg)
+	}
+
+}
+
+func TestBuildMessageError(t *testing.T) {
+
+	tests := []struct {
+		protocolId  uint64
+		votingRound uint64
+		payload     string
+	}{
+		{
+			protocolId:  256,
+			votingRound: 1,
+			payload:     "00",
+		},
+		{
+			protocolId:  255,
+			votingRound: 256,
+			payload:     "1100110",
+		},
+		{
+			protocolId:  255,
+			votingRound: 100000000000000,
+			payload:     "110011",
+		},
+	}
+
+	for _, test := range tests {
+
+		_, err := payload.BuildMessage(test.protocolId, test.votingRound, test.payload)
+
+		require.Error(t, err)
+
+	}
+
+}

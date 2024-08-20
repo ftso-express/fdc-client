@@ -2,22 +2,23 @@ package server_test
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/hex"
 	"flare-common/policy"
 	"flare-common/storage"
-	"io"
 	"local/fdc/client/attestation"
+	bitvotes "local/fdc/client/attestation/bitVotes"
 	"local/fdc/client/config"
 	"local/fdc/client/round"
 	"local/fdc/server"
+	"local/fdc/tests/mocks"
+	"math/big"
 	"net/http"
 	"net/url"
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/bradleyjkemp/cupaloy"
-	"github.com/pkg/errors"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,7 +40,7 @@ func TestServer(t *testing.T) {
 		ApiKeys:     []string{"12345", "123456"},
 	}
 
-	s := server.New(&rounds, serverConfig)
+	s := server.New(&rounds, 200, serverConfig)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -47,13 +48,20 @@ func TestServer(t *testing.T) {
 	go s.Run(ctx)
 	defer s.Shutdown()
 
-	round := round.CreateRound(votingRoundID, policy.NewVoterSet(nil, nil))
+	hash := common.HexToHash("0x232")
+
+	round := round.CreateRound(votingRoundID, policy.NewVoterSet(nil, nil, nil))
 	round.Attestations = append(round.Attestations, &attestation.Attestation{
 		RoundId:   votingRoundID,
 		Consensus: true,
 		Status:    attestation.Success,
+		Hash:      hash,
 	})
 	rounds.Store(votingRoundID, round)
+
+	bitVote := bitvotes.BitVote{Length: 1, BitVector: big.NewInt(1)}
+
+	round.ConsensusBitVote = bitVote
 
 	//Wait for the server to be ready.
 	u := url.URL{Scheme: "http", Host: "localhost:8080", Path: "/health"}
@@ -74,79 +82,50 @@ func TestServer(t *testing.T) {
 	)
 
 	t.Run("submit1", func(t *testing.T) {
-		rspData, err := makeGetRequest("submit1", &serverConfig)
+		rspData, err := mocks.MakeGetRequest("submit1", &serverConfig, votingRoundID, submitAddress)
 		require.NoError(t, err)
 
 		t.Log(rspData)
-		require.Equal(t, rspData.Status, server.OK)
+		require.Equal(t, server.OK, rspData.Status)
 		cupaloy.SnapshotT(t, rspData)
 	})
 
+	var submitString string
+
 	t.Run("submit2", func(t *testing.T) {
-		rspData, err := makeGetRequest("submit2", &serverConfig)
+		rspData, err := mocks.MakeGetRequest("submit2", &serverConfig, votingRoundID, submitAddress)
 		require.NoError(t, err)
 
 		t.Log(rspData)
-		require.Equal(t, rspData.Status, server.OK)
-		cupaloy.SnapshotT(t, rspData)
+		require.Equal(t, server.OK, rspData.Status)
+
+		submitString = rspData.Data
+
+		require.Equal(t, "0x", submitString[0:2])
+
 	})
 
 	t.Run("submitSignatures", func(t *testing.T) {
-		rspData, err := makeGetRequest("submitSignatures", &serverConfig)
+		rspData, err := mocks.MakeGetRequest("submitSignatures", &serverConfig, votingRoundID, submitAddress)
 		require.NoError(t, err)
 
 		t.Log(rspData)
-		require.Equal(t, rspData.Status, server.OK)
-		cupaloy.SnapshotT(t, rspData)
+		require.Equal(t, server.OK, rspData.Status)
+
+		require.Equal(t, "0xc80000000101", rspData.Data[:14])
+
+		require.Equal(t, hash.Hex()[2:], rspData.Data[14:])
+
+		random := rspData.AdditionalData[2:66]
+
+		consensusBitVote := rspData.AdditionalData[66:]
+
+		consensusBitVoteBytes, err := hex.DecodeString(consensusBitVote)
+		require.NoError(t, err)
+
+		commitCheck := server.CalculateMaskedRoot(common.HexToHash(rspData.Data), common.HexToHash(random), common.HexToAddress(submitAddress), consensusBitVoteBytes)
+
+		require.Equal(t, submitString[16:], commitCheck)
+
 	})
-}
-
-func makeGetRequest(
-	apiName string, cfg *config.RestServer,
-) (*server.PDPResponse, error) {
-	p, err := url.JoinPath(
-		cfg.FSPSubpath,
-		apiName,
-		strconv.FormatUint(votingRoundID, 10),
-		submitAddress,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	u := url.URL{
-		Scheme: "http",
-		Host:   "localhost:8080",
-		Path:   p,
-	}
-
-	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("X-API-KEY", cfg.ApiKeys[0])
-
-	var client http.Client
-	rsp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer rsp.Body.Close()
-	if rsp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("unexpected status code: %s", rsp.Status)
-	}
-
-	body, err := io.ReadAll(rsp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	rspData := new(server.PDPResponse)
-	if err = json.Unmarshal(body, rspData); err != nil {
-		return nil, err
-	}
-
-	return rspData, nil
 }

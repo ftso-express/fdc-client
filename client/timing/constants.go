@@ -1,35 +1,51 @@
 package timing
 
 import (
-	"errors"
 	"local/fdc/client/config"
 )
 
 const (
-	CollectDurationSec = 90
-	ChooseDurationSec  = 30
-	CommitDurationSec  = 20
-	OffsetSec          = 30
-)
-
-const (
-	defaultT0                = 1658429955 // SGB and Coston
-	defaultRewardEpochLength = 240        //Coston
+	defaultT0                 = 1658429955 // SGB and Coston
+	defaultT0RewardDelay      = 0
+	defaultRewardEpochLength  = 240 //Coston
+	defaultCollectDurationSec = 90
+	defaultChooseDurationSec  = 30
+	defaultCommitDurationSec  = 20
+	defaultOffsetSec          = 30
 )
 
 var Chain config.Timing = config.Timing{
-	T0:                defaultT0,
-	RewardEpochLength: defaultRewardEpochLength,
+	T0:                 defaultT0,
+	T0RewardDelay:      defaultT0RewardDelay,
+	RewardEpochLength:  defaultRewardEpochLength,
+	CollectDurationSec: defaultCollectDurationSec,
+	ChooseDurationSec:  defaultChooseDurationSec,
+	CommitDurationSec:  defaultCommitDurationSec,
+	OffsetSec:          defaultOffsetSec,
 }
 
 func Set(chainTiming config.Timing) error {
-
-	if chainTiming.RewardEpochLength == 0 {
-		return errors.New("illegal reward epoch length")
+	if chainTiming.T0 != 0 {
+		Chain.T0 = chainTiming.T0
+	}
+	if chainTiming.T0RewardDelay != 0 {
+		Chain.T0RewardDelay = chainTiming.T0RewardDelay
+	}
+	if chainTiming.RewardEpochLength != 0 {
+		Chain.RewardEpochLength = chainTiming.RewardEpochLength
+	}
+	if chainTiming.CollectDurationSec != 0 {
+		Chain.CollectDurationSec = chainTiming.CollectDurationSec
+	}
+	if chainTiming.ChooseDurationSec != 0 {
+		Chain.ChooseDurationSec = chainTiming.ChooseDurationSec
+	}
+	if chainTiming.CommitDurationSec != 0 {
+		Chain.CommitDurationSec = chainTiming.CommitDurationSec
+	}
+	if chainTiming.OffsetSec != 0 {
+		Chain.OffsetSec = chainTiming.OffsetSec
 	}
 
-	Chain = chainTiming
-
 	return nil
-
 }

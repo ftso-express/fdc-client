@@ -31,7 +31,6 @@ type Message struct {
 
 // ExtractPayloads extracts Payloads from transactions to submission contract to functions submit1, submit2, submitSignatures.
 func ExtractPayloads(tx *database.Transaction) (map[uint8]Message, error) {
-
 	messages := make(map[uint8]Message)
 
 	dataStr := strings.TrimPrefix(tx.Input, "0x") //trim 0x if needed
@@ -43,9 +42,8 @@ func ExtractPayloads(tx *database.Transaction) (map[uint8]Message, error) {
 
 	data = data[4:] // trim function selector
 	for len(data) > 0 {
-
 		if len(data) < 7 { // 7 = 1 + 4 + 2
-			return nil, errors.New("wrongly formatted tx input")
+			return nil, errors.New("wrongly formatted tx input, too short")
 		}
 
 		protocol := data[0] // 1 byte protocol id
@@ -84,7 +82,7 @@ func ExtractPayloads(tx *database.Transaction) (map[uint8]Message, error) {
 }
 
 func prependZerosToLength(hexString string, finalLength int) (string, error) {
-	p := len(hexString) - finalLength
+	p := finalLength - len(hexString)
 
 	if p < 0 {
 		return hexString, errors.New("string too long")
@@ -96,29 +94,28 @@ func prependZerosToLength(hexString string, finalLength int) (string, error) {
 
 }
 
-func BuildMessage(protocol, votingRound uint64, payload string) (string, error) {
-
+func BuildMessage(protocolId, votingRoundId uint64, payload string) (string, error) {
 	if len(payload)%2 != 0 {
 		return "", errors.New("uneven payload")
 	}
 
-	protocolStr, err := prependZerosToLength(strconv.FormatUint(protocol, 16), 2)
+	protocolIdStr, err := prependZerosToLength(strconv.FormatUint(protocolId, 16), 2)
 
 	if err != nil {
-		return "", errors.New("invalid protocol")
+		return "", fmt.Errorf("invalid protocol, %s", err)
 	}
 
-	votingRoundStr, err := prependZerosToLength(strconv.FormatUint(votingRound, 16), 8)
+	votingRoundIdStr, err := prependZerosToLength(strconv.FormatUint(votingRoundId, 16), 8)
 
 	if err != nil {
-		return "", errors.New("invalid voting round")
+		return "", fmt.Errorf("invalid voting round: %s", err)
 	}
 
-	lenStr, err := prependZerosToLength(strconv.FormatInt(int64(len(payload)), 16), 4)
+	lenStr, err := prependZerosToLength(strconv.FormatInt(int64(len(payload)/2), 16), 4)
 
 	if err != nil {
 		return "", errors.New("invalid payload length")
 	}
 
-	return protocolStr + votingRoundStr + lenStr + payload, nil
+	return "0x" + protocolIdStr + votingRoundIdStr + lenStr + payload, nil
 }

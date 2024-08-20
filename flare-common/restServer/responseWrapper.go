@@ -53,7 +53,7 @@ func writeResponse(w http.ResponseWriter, value any) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(&value)
 	if err != nil {
-		http.Error(w, fmt.Sprint("error writing response: %w", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("error writing response: %s", err), http.StatusInternalServerError)
 	}
 }
 
@@ -62,7 +62,7 @@ func writeResponseError(w http.ResponseWriter, message string) {
 	w.WriteHeader(http.StatusBadRequest)
 	err := json.NewEncoder(w).Encode(map[string]string{"error": message})
 	if err != nil {
-		http.Error(w, fmt.Sprint("error writing response: %w", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("error writing response: %s", err), http.StatusInternalServerError)
 	}
 
 }

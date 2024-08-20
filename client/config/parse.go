@@ -2,7 +2,6 @@ package config
 
 import (
 	"errors"
-	"flare-common/errorf"
 	"fmt"
 	"os"
 	"strings"
@@ -21,13 +20,13 @@ func ParseAttestationTypes(attTypesConfigUnparsed AttestationTypesUnparsed) (Att
 		attType, err := StringToByte32(k)
 
 		if err != nil {
-			return nil, fmt.Errorf("reading type %w", err)
+			return nil, fmt.Errorf("reading type %s", err)
 		}
 
 		attTypeConfig, err := ParseAttestationType(attTypesConfigUnparsed[k])
 
 		if err != nil {
-			return nil, fmt.Errorf("parsing type %s: %w", k, err)
+			return nil, fmt.Errorf("parsing type %s: %s", k, err)
 		}
 
 		attTypesConfig[attType] = attTypeConfig
@@ -43,13 +42,13 @@ func getAbi(path string) (abi.Arguments, string, error) {
 	file, err := os.ReadFile(path)
 
 	if err != nil {
-		return abi.Arguments{}, "", errorf.ReadingFile(path, err)
+		return abi.Arguments{}, "", fmt.Errorf("failed reading file %s with: %s", path, err)
 	}
 
 	args, err := ArgumentsFromAbi(file)
 
 	if err != nil {
-		return abi.Arguments{}, "", fmt.Errorf("retrieving arguments from %s with %w", path, err)
+		return abi.Arguments{}, "", fmt.Errorf("retrieving arguments from %s with %s", path, err)
 	}
 
 	abiString := WhiteSpaceStrip(string(file))
@@ -102,13 +101,13 @@ func ParseAttestationType(attTypeConfigUnparsed AttestationTypeUnparsed) (Attest
 	responseArguments, responseAbiString, err := getAbi(attTypeConfigUnparsed.Abi)
 
 	if err != nil {
-		return AttestationType{}, fmt.Errorf("getting abi %w", err)
+		return AttestationType{}, fmt.Errorf("getting abi %s", err)
 	}
 
 	sourcesConfig, err := parseSources(attTypeConfigUnparsed.Sources)
 
 	if err != nil {
-		return AttestationType{}, fmt.Errorf("parsing: %w", err)
+		return AttestationType{}, fmt.Errorf("parsing: %s", err)
 
 	}
 
@@ -130,13 +129,13 @@ func parseSources(sourcesConfigUnparsed map[string]sourceBig) (map[[32]byte]Sour
 		source, err := StringToByte32(k)
 
 		if err != nil {
-			return nil, fmt.Errorf("reading source %w", err)
+			return nil, fmt.Errorf("reading source %s", err)
 		}
 
 		sourceConfig, err := parseSource(sourcesConfigUnparsed[k])
 
 		if err != nil {
-			return nil, fmt.Errorf("parsing source config %w", err)
+			return nil, fmt.Errorf("parsing source config %s", err)
 		}
 
 		sourcesConfig[source] = sourceConfig

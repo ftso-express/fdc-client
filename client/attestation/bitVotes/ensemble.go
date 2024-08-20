@@ -1,6 +1,7 @@
 package bitvotes
 
 import (
+	"fmt"
 	"math/big"
 )
 
@@ -11,7 +12,7 @@ type ConsensusSolution struct {
 	Optimal bool
 }
 
-func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16, maxOperations int) (*FilterResults, *ConsensusSolution) {
+func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16, maxOperations int) (*FilterResults, *ConsensusSolution, error) {
 	aggregatedVotes, aggregatedFees, filterResults := FilterAndAggregate(allBitVotes, fees, totalWeight)
 
 	method0, method1 := BranchAndBoundBitsDouble, BranchAndBoundVotesDouble
@@ -19,11 +20,22 @@ func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint1
 		method0, method1 = BranchAndBoundVotesDouble, BranchAndBoundBitsDouble
 	}
 
+	weightVoted := filterResults.GuaranteedWeight
+
+	for _, vote := range aggregatedVotes {
+		weightVoted += vote.Weight
+	}
+
+	if weightVoted <= totalWeight/2 {
+		return nil, nil, fmt.Errorf("only %.1f voted", 100*float64(weightVoted)/float64(totalWeight))
+	}
+
 	var solution *ConsensusSolution
 	solution = method0(
 		aggregatedVotes,
 		aggregatedFees,
 		filterResults.GuaranteedWeight,
+		weightVoted,
 		totalWeight,
 		filterResults.GuaranteedFees,
 		maxOperations,
@@ -34,6 +46,7 @@ func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint1
 			aggregatedVotes,
 			aggregatedFees,
 			filterResults.GuaranteedWeight,
+			weightVoted,
 			totalWeight,
 			filterResults.GuaranteedFees,
 			maxOperations,
@@ -45,13 +58,17 @@ func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint1
 		}
 	}
 
-	return filterResults, solution
+	return filterResults, solution, nil
 }
 
-func EnsembleConsensusBitVote(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16, maxOperations int) BitVote {
-	filterResults, filterSolution := ensemble(allBitVotes, fees, totalWeight, maxOperations)
+func EnsembleConsensusBitVote(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16, maxOperations int) (BitVote, error) {
+	filterResults, filterSolution, err := ensemble(allBitVotes, fees, totalWeight, maxOperations)
 
-	return AssembleSolution(filterResults, filterSolution, uint16(len(fees)))
+	if err != nil {
+		return BitVote{}, fmt.Errorf("error consensus bitVote: %s", err)
+	}
+
+	return AssembleSolution(filterResults, filterSolution, uint16(len(fees))), nil
 }
 
 func (solution *branchAndBoundPartialSolution) CalcValueFromFees(allBitVotes []*AggregatedVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) Value {

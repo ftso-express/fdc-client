@@ -3,8 +3,10 @@ package mocks
 import (
 	"encoding/json"
 	"flare-common/database"
+	"flare-common/logger"
 	"fmt"
 	"io"
+
 	"local/fdc/client/attestation"
 	"net/http"
 	"strconv"
@@ -15,11 +17,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func MockVerifier(t *testing.T, port int, response string, testLog database.Log) {
+var log = logger.GetLogger()
+
+func MockVerifierForTests(t *testing.T, port int, response string, testLog database.Log) {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-		MockResponse(t, writer, request, response, testLog)
+		MockResponseForTest(t, writer, request, response, testLog)
 	})
 
 	server := &http.Server{
@@ -34,7 +38,7 @@ func MockVerifier(t *testing.T, port int, response string, testLog database.Log)
 	require.NoError(t, err)
 }
 
-func MockResponse(t *testing.T, writer http.ResponseWriter, request *http.Request, response string, testLog database.Log) {
+func MockResponseForTest(t *testing.T, writer http.ResponseWriter, request *http.Request, response string, testLog database.Log) {
 	body, err := io.ReadAll(request.Body)
 	require.NoError(t, err)
 
@@ -49,4 +53,54 @@ func MockResponse(t *testing.T, writer http.ResponseWriter, request *http.Reques
 
 	_, err = writer.Write(responseBytes)
 	require.NoError(t, err)
+}
+
+func MockVerifier(port int, response string) {
+	r := mux.NewRouter()
+
+	r.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+		MockResponse(writer, request, response)
+	})
+
+	server := &http.Server{
+		Addr:         ":" + strconv.Itoa(port),
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		Handler:      r,
+	}
+
+	fmt.Println("Mock verifier starting")
+	err := server.ListenAndServe()
+	if err != nil {
+		log.Error(err)
+		return
+	}
+}
+
+func MockResponse(writer http.ResponseWriter, request *http.Request, response string) {
+	body, err := io.ReadAll(request.Body)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	var requestStruct attestation.AbiEncodedRequestBody
+	err = json.Unmarshal(body, &requestStruct)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	responseStruct := attestation.AbiEncodedResponseBody{Status: "VALID", AbiEncodedResponse: response}
+	responseBytes, err := json.Marshal(responseStruct)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	_, err = writer.Write(responseBytes)
+	if err != nil {
+		log.Error(err)
+		return
+	}
 }

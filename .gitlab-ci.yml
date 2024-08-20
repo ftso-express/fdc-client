@@ -1,5 +1,5 @@
 variables:
-  GOLANG_VERSION: "1.21.5"
+  GOLANG_VERSION: "1.21.12"
   GOLINT_VERSION: "v1.59.0"
   COVERAGE_FILE: "coverage.out"
   COBERTURA_FILE: "coverage.xml"

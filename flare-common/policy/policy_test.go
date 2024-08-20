@@ -107,7 +107,7 @@ func TestNewSiginigPolicyLogs(t *testing.T) {
 
 		require.NoError(t, err)
 
-		siginingPolicy := policy.NewSigningPolicy(event)
+		siginingPolicy := policy.NewSigningPolicy(event, nil)
 
 		require.Equal(t, test.totalWeight, siginingPolicy.Voters.TotalWeight, fmt.Sprintf("error total weight test %d", i))
 
@@ -133,7 +133,7 @@ func TestStorage(t *testing.T) {
 
 	require.NoError(t, err)
 
-	siginingPolicy2 := policy.NewSigningPolicy(event2)
+	siginingPolicy2 := policy.NewSigningPolicy(event2, nil)
 
 	err = storage.Add(siginingPolicy2)
 
@@ -143,7 +143,7 @@ func TestStorage(t *testing.T) {
 
 	require.NoError(t, err)
 
-	siginingPolicy1 := policy.NewSigningPolicy(event1)
+	siginingPolicy1 := policy.NewSigningPolicy(event1, nil)
 
 	err = storage.Add(siginingPolicy1)
 
