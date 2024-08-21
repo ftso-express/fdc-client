@@ -11,13 +11,13 @@ import (
 )
 
 const (
-	USER_FILE        = "../../tests/configs/userConfig.toml" //relative to test
-	SYSTEM_DIRECTORY = "../../tests/configs/systemConfigs"   //relative to test
+	UserFile        = "../../tests/configs/userConfig.toml" //relative to test
+	SystemDirectory = "../../tests/configs/systemConfigs"   //relative to test
 )
 
 func TestReadUserRaw(t *testing.T) {
 
-	cfg, err := config.ReadUserRaw(USER_FILE)
+	cfg, err := config.ReadUserRaw(UserFile)
 
 	require.NoError(t, err)
 
@@ -51,7 +51,7 @@ func TestReadUserRaw(t *testing.T) {
 
 func TestReadSystem(t *testing.T) {
 
-	sysCfg, err := config.ReadSystem(SYSTEM_DIRECTORY, "coston", 200)
+	sysCfg, err := config.ReadSystem(SystemDirectory, "coston", 200)
 
 	require.NoError(t, err)
 

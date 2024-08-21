@@ -8,8 +8,8 @@ import (
 	"strconv"
 )
 
-type FDCDAController struct {
-	rounds *storage.Cyclic[*round.Round]
+type DAController struct {
+	Rounds *storage.Cyclic[*round.Round]
 }
 
 type RequestsResponse struct {
@@ -40,10 +40,11 @@ func validateRoundIdParam(params map[string]string) (uint64, error) {
 
 }
 
-func (controller *FDCDAController) getRequestController(
+func (controller *DAController) getRequestController(
 	params map[string]string,
 	_ interface{},
-	_ interface{}) (RequestsResponse, *restServer.ErrorHandler) {
+	_ interface{},
+) (RequestsResponse, *restServer.ErrorHandler) {
 	votingRound, err := validateRoundIdParam(params)
 
 	if err != nil {
@@ -54,13 +55,13 @@ func (controller *FDCDAController) getRequestController(
 	request, exists := controller.GetRequests(votingRound)
 
 	if !exists {
-		return RequestsResponse{Status: NOT_AVAILABLE}, nil
+		return RequestsResponse{Status: NotAvailable}, nil
 	}
 
-	return RequestsResponse{Status: OK, Requests: request}, nil
+	return RequestsResponse{Status: Ok, Requests: request}, nil
 }
 
-func (controller *FDCDAController) getAttestationController(
+func (controller *DAController) getAttestationController(
 	params map[string]string,
 	_ interface{},
 	_ interface{}) (AttestationResponse, *restServer.ErrorHandler) {
@@ -74,8 +75,8 @@ func (controller *FDCDAController) getAttestationController(
 	attestations, exists := controller.GetAttestations(votingRound)
 
 	if !exists {
-		return AttestationResponse{Status: NOT_AVAILABLE}, nil
+		return AttestationResponse{Status: NotAvailable}, nil
 	}
 
-	return AttestationResponse{Status: OK, Attestations: attestations}, nil
+	return AttestationResponse{Status: Ok, Attestations: attestations}, nil
 }

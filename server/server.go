@@ -88,7 +88,7 @@ func RegisterFDCProviderRoutes(router restServer.Router, protocolId uint64, roun
 // Registration of routes for the DA layer
 func RegisterDARoutes(router restServer.Router, rounds *storage.Cyclic[*round.Round], securities []string) {
 	// Prepare service controller
-	controller := FDCDAController{rounds: rounds}
+	controller := DAController{Rounds: rounds}
 	paramMap := map[string]string{"votingRoundId": "Voting round ID"}
 
 	getRequests := restServer.GeneralRouteHandler(controller.getRequestController, http.MethodGet, http.StatusOK, paramMap, nil, nil, RequestsResponse{}, securities)

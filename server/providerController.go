@@ -61,10 +61,10 @@ func (controller *FDCProtocolProviderController) submit1Controller(
 		return PDPResponse{}, restServer.InternalServerErrorHandler(err)
 	}
 	if !exists {
-		return PDPResponse{Data: rsp, Status: NOT_AVAILABLE}, nil
+		return PDPResponse{Data: rsp, Status: NotAvailable}, nil
 	}
 
-	response := PDPResponse{Data: rsp, Status: OK}
+	response := PDPResponse{Data: rsp, Status: Ok}
 
 	return response, nil
 }
@@ -85,10 +85,10 @@ func (controller *FDCProtocolProviderController) submit2Controller(
 	}
 
 	if !exists {
-		return PDPResponse{Data: rsp, Status: NOT_AVAILABLE}, nil
+		return PDPResponse{Data: rsp, Status: NotAvailable}, nil
 	}
 
-	response := PDPResponse{Data: rsp, Status: OK}
+	response := PDPResponse{Data: rsp, Status: Ok}
 
 	return response, nil
 }
@@ -104,9 +104,9 @@ func (controller *FDCProtocolProviderController) submitSignaturesController(
 	}
 	message, addData, exists := controller.submitSignaturesService(pathParams.votingRoundId, pathParams.submitAddress)
 	if !exists {
-		return PDPResponse{Status: NOT_AVAILABLE}, nil
+		return PDPResponse{Status: NotAvailable}, nil
 	}
-	response := PDPResponse{Data: message, AdditionalData: addData, Status: OK}
+	response := PDPResponse{Data: message, AdditionalData: addData, Status: Ok}
 
 	return response, nil
 }

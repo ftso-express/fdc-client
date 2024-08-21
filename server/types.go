@@ -9,16 +9,16 @@ import (
 type ResponseStatus string
 
 const (
-	OK            ResponseStatus = "OK"
-	NOT_AVAILABLE ResponseStatus = "NOT_AVAILABLE"
+	Ok           ResponseStatus = "OK"
+	NotAvailable ResponseStatus = "NOT_AVAILABLE"
 )
 
 type AttestationStatus string
 
 const (
-	VALID  AttestationStatus = "OK"
-	FAILED AttestationStatus = "FAILED"
-	ERROR  AttestationStatus = "ERROR"
+	Valid  AttestationStatus = "OK"
+	Failed AttestationStatus = "FAILED"
+	Error  AttestationStatus = "ERROR"
 )
 
 type PDPResponse struct {

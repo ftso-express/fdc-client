@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	SYSTEM_DIRECTORY string = "configs/systemConfigs" // relative to project root
+	SystemDirectory string = "configs/systemConfigs" // relative to project root
 )
 
 var (
@@ -29,7 +29,7 @@ var (
 
 func main() {
 	flag.Parse()
-	userConfig, systemConfig, err := config.GetConfigs(*CfgFlag, SYSTEM_DIRECTORY)
+	userConfig, systemConfig, err := config.GetConfigs(*CfgFlag, SystemDirectory)
 	if err != nil {
 		log.Panicf("cannot read configs: %s", err)
 	}

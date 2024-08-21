@@ -47,7 +47,7 @@ func SystemClientIteration(userConfig *config.UserRaw, submitAddress, submitSigA
 	<-timer.C
 
 	rspData, err := MakeGetRequest("submit1", &userConfig.RestServer, round, submitAddress.Hex())
-	if err != nil || rspData.Status != server.OK {
+	if err != nil || rspData.Status != server.Ok {
 		log.Error("error submit1 response ", rspData, err)
 		return
 	}
@@ -56,7 +56,7 @@ func SystemClientIteration(userConfig *config.UserRaw, submitAddress, submitSigA
 	timer = time.NewTimer(time.Until(time.Unix(int64(submit2Time+6), 0)))
 	<-timer.C
 	rspData, err = MakeGetRequest("submit2", &userConfig.RestServer, round, submitAddress.Hex())
-	if err != nil || rspData.Status != server.OK {
+	if err != nil || rspData.Status != server.Ok {
 		log.Error("error submit2 response ", rspData, err)
 		return
 	}
@@ -65,7 +65,7 @@ func SystemClientIteration(userConfig *config.UserRaw, submitAddress, submitSigA
 	timer = time.NewTimer(time.Until(time.Unix(int64(submitSignature+5), 0)))
 	<-timer.C
 	rspData, err = MakeGetRequest("submitSignatures", &userConfig.RestServer, round, submitSigAddress.Hex())
-	if err != nil || rspData.Status != server.OK {
+	if err != nil || rspData.Status != server.Ok {
 		log.Error("error submit2 response ", rspData, err)
 		return
 	}
