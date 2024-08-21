@@ -9,8 +9,8 @@ import (
 
 //  wip
 
-func (controller *FDCDAController) GetRequests(roundId uint64) ([]DARequest, bool) {
-	round, exists := controller.rounds.Get(roundId)
+func (controller *DAController) GetRequests(roundId uint64) ([]DARequest, bool) {
+	round, exists := controller.Rounds.Get(roundId)
 
 	if !exists {
 		return nil, false
@@ -31,9 +31,9 @@ func AttestationToDARequest(att *attestation.Attestation) DARequest {
 	// TODO: granulate options
 	switch att.Status {
 	case attestation.Success:
-		status = VALID
+		status = Valid
 	default:
-		status = FAILED
+		status = Failed
 
 	}
 
@@ -48,8 +48,8 @@ func AttestationToDARequest(att *attestation.Attestation) DARequest {
 	return dARequest
 }
 
-func (controller *FDCDAController) GetAttestations(roundId uint64) ([]DAAttestation, bool) {
-	round, exists := controller.rounds.Get(roundId)
+func (controller *DAController) GetAttestations(roundId uint64) ([]DAAttestation, bool) {
+	round, exists := controller.Rounds.Get(roundId)
 
 	if !exists {
 		return nil, false
@@ -103,6 +103,7 @@ func AttestationToDAAttestation(att *attestation.Attestation) (DAAttestation, bo
 		RoundId:  att.RoundId,
 		Request:  hex.EncodeToString(att.Request),
 		Response: hex.EncodeToString(att.Response),
+		Abi:      *att.AbiString,
 		hash:     att.Hash,
 	}
 

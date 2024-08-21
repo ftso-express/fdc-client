@@ -76,9 +76,9 @@ type sourceBig struct {
 }
 
 type AttestationType struct {
-	ResponseArguments  abi.Arguments
-	ResponseAbisString string //maybe not needed
-	SourcesConfig      map[[32]byte]Source
+	ResponseArguments abi.Arguments
+	ResponseAbiString string
+	SourcesConfig     map[[32]byte]Source
 }
 
 type AttestationTypeUnparsed struct {

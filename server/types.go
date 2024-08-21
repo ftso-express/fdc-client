@@ -48,6 +48,7 @@ type DAAttestation struct {
 	RoundId  uint64   `json:"roundId"`
 	Request  string   `json:"request"`
 	Response string   `json:"response"`
+	Abi      string   `json:"abi"`
 	Proof    []string `json:"proof"`
 	hash     common.Hash
 }

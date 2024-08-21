@@ -36,8 +36,8 @@ func ParseAttestationTypes(attTypesConfigUnparsed AttestationTypesUnparsed) (Att
 
 }
 
-// getAbi reads abi of a struct from a JSON file and converts it into abi.Arguments and string representation.
-func getAbi(path string) (abi.Arguments, string, error) {
+// GetAbi reads abi of a struct from a JSON file and converts it into abi.Arguments and string representation.
+func GetAbi(path string) (abi.Arguments, string, error) {
 
 	file, err := os.ReadFile(path)
 
@@ -98,7 +98,7 @@ func parseSource(sourceConfigBig sourceBig) (Source, error) {
 
 func ParseAttestationType(attTypeConfigUnparsed AttestationTypeUnparsed) (AttestationType, error) {
 
-	responseArguments, responseAbiString, err := getAbi(attTypeConfigUnparsed.Abi)
+	responseArguments, responseAbiString, err := GetAbi(attTypeConfigUnparsed.Abi)
 
 	if err != nil {
 		return AttestationType{}, fmt.Errorf("getting abi %s", err)
@@ -112,9 +112,9 @@ func ParseAttestationType(attTypeConfigUnparsed AttestationTypeUnparsed) (Attest
 	}
 
 	return AttestationType{
-			ResponseArguments:  responseArguments,
-			ResponseAbisString: responseAbiString,
-			SourcesConfig:      sourcesConfig,
+			ResponseArguments: responseArguments,
+			ResponseAbiString: responseAbiString,
+			SourcesConfig:     sourcesConfig,
 		},
 		nil
 

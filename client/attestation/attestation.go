@@ -68,6 +68,7 @@ type Attestation struct {
 	Consensus   bool
 	Hash        common.Hash
 	Abi         *abi.Arguments
+	AbiString   *string
 	LutLimit    uint64
 	QueueName   string
 	Credentials *VerifierCredentials
@@ -159,6 +160,8 @@ func (a *Attestation) PrepareRequest(attestationTypesConfigs config.AttestationT
 		return fmt.Errorf("prepare request: no configs for: %s", string(bytes.Trim(attType[:], "\x00")))
 	}
 	a.Abi = &attestationTypeConfig.ResponseArguments
+
+	a.AbiString = &attestationTypeConfig.ResponseAbiString
 
 	sourceConfig, ok := attestationTypeConfig.SourcesConfig[source]
 	if !ok {

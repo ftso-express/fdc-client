@@ -11,6 +11,19 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+var stringArgument abi.Argument
+
+func init() {
+
+	stringType, err := abi.NewType("string", "string", []abi.ArgumentMarshaling{})
+
+	if err != nil {
+		log.Panic("cannot build string Solidity type:", err)
+	}
+
+	stringArgument = abi.Argument{Name: "string", Indexed: false, Type: stringType}
+}
+
 type Request []byte
 
 type Response []byte
@@ -84,14 +97,6 @@ func (r Request) Mic() (common.Hash, error) {
 // It is assumed that roundId in the response is set to 0.
 func (r Response) ComputeMic(args *abi.Arguments) (common.Hash, error) {
 	decoded, err := args.Unpack(r)
-	if err != nil {
-		return common.Hash{}, err
-	}
-
-	stringArgument := abi.Argument{}
-	stringArgument.Name = "string"
-	stringArgument.Indexed = false
-	stringArgument.Type, err = abi.NewType("string", "string", []abi.ArgumentMarshaling{})
 	if err != nil {
 		return common.Hash{}, err
 	}
