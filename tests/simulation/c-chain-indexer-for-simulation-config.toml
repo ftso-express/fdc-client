@@ -60,4 +60,4 @@ console = true
 
 [chain]
 node_url = "http://127.0.0.1:8545/"
-chain_type = "eth"
+chain_type = 2 # simulation runs on hardhat, i.e. Ethereum based chain
