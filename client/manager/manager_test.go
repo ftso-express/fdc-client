@@ -112,8 +112,8 @@ func TestManagerMethods(t *testing.T) {
 	cfg, err := config.ReadUserRaw(USER_FILE)
 	require.NoError(t, err)
 
-	sharedDataPipes := shared.NewSharedDataPipes()
-	mngr, err := NewManager(&cfg, sharedDataPipes)
+	sharedDataPipes := shared.NewDataPipes()
+	mngr, err := New(&cfg, sharedDataPipes)
 	require.NoError(t, err)
 
 	signingPolicyParsed, err := policy.ParseSigningPolicyInitializedEvent(policyLog)
@@ -155,8 +155,8 @@ func TestManager(t *testing.T) {
 	require.NoError(t, err)
 
 	// initialize
-	sharedDataPipes := shared.NewSharedDataPipes()
-	mngr, err := NewManager(&cfg, sharedDataPipes)
+	sharedDataPipes := shared.NewDataPipes()
+	mngr, err := New(&cfg, sharedDataPipes)
 	require.NoError(t, err)
 
 	// run mocked verifier for test
@@ -183,7 +183,7 @@ func TestManager(t *testing.T) {
 	// get signing policy
 	sharedDataPipes.Voters <- []shared.VotersData{votersData}
 	time.Sleep(1 * time.Second)
-	policy, _ := mngr.signingPolicyStorage.GetForVotingRound(664111)
+	policy, _ := mngr.signingPolicyStorage.ForVotingRound(664111)
 
 	time.Sleep(1 * time.Second)
 
@@ -204,13 +204,14 @@ func TestManager(t *testing.T) {
 		require.Equal(t, attestation.Success, r.Attestations[i].Status)
 	}
 
-	messages := []payload.Message{}
+	var messages []payload.Message
+
 	for address := range policy.Voters.VoterDataMap {
 		currentLog := bitVoteMessage
 		currentLog.From = address
 		messages = append(messages, currentLog)
 	}
-	round := payload.Round{Id: 664111, Messages: messages}
+	round := payload.Round{ID: 664111, Messages: messages}
 	sharedDataPipes.BitVotes <- round
 
 	time.Sleep(1 * time.Second)

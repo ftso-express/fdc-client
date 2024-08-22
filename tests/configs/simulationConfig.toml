@@ -2,7 +2,7 @@
 # options are: "coston", "songbird", "coston2", "flare"
 chain = "hardhat_test"
 
-protocolId = 200
+protocol_id = 200
 
 [db]
 host = "localhost"

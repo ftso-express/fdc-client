@@ -43,9 +43,9 @@ type WeightedBitVote struct {
 }
 
 // EncodeBitVote encodes BitVote with roundCheck
-func (b BitVote) EncodeBitVote(roundId uint64) []byte {
+func (b BitVote) EncodeBitVote(roundID uint64) []byte {
 	var encoding []byte
-	roundCheck := byte(roundId % 256)
+	roundCheck := byte(roundID % 256)
 
 	length := make([]byte, 2)
 	binary.BigEndian.PutUint16(length, b.Length)
@@ -59,8 +59,8 @@ func (b BitVote) EncodeBitVote(roundId uint64) []byte {
 }
 
 // EncodeBitVoteHex encodes BitVote with roundCheck prefixed with 0x to be published on chain.
-func (b BitVote) EncodeBitVoteHex(roundId uint64) string {
-	str := hex.EncodeToString(b.EncodeBitVote(roundId))
+func (b BitVote) EncodeBitVoteHex(roundID uint64) string {
+	str := hex.EncodeToString(b.EncodeBitVote(roundID))
 
 	return str
 

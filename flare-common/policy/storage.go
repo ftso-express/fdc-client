@@ -7,10 +7,10 @@ import (
 )
 
 // Does not lock the structure, should be called from a function that does lock.
-// We assume that the list is sorted by rewardEpochId and also by startVotingRoundId.
-func (s *SigningPolicyStorage) findByVotingRoundId(votingRoundId uint32) *SigningPolicy {
+// We assume that the list is sorted by rewardEpochID and also by startVotingRoundID.
+func (s *SigningPolicyStorage) findByVotingRoundID(votingRoundID uint32) *SigningPolicy {
 	i, found := sort.Find(len(s.spList), func(i int) int {
-		return cmp.Compare(votingRoundId, s.spList[i].startVotingRoundId)
+		return cmp.Compare(votingRoundID, s.spList[i].startVotingRoundID)
 	})
 	if found {
 		return s.spList[i]
@@ -27,13 +27,13 @@ func (s *SigningPolicyStorage) Add(sp *SigningPolicy) error {
 
 	if len(s.spList) > 0 {
 		// check consistency, previous epoch should be already added
-		if s.spList[len(s.spList)-1].rewardEpochId != sp.rewardEpochId-1 {
-			return fmt.Errorf("missing signing policy for reward epoch id %d", sp.rewardEpochId-1)
+		if s.spList[len(s.spList)-1].rewardEpochID != sp.rewardEpochID-1 {
+			return fmt.Errorf("missing signing policy for reward epoch ID %d", sp.rewardEpochID-1)
 		}
-		// should be sorted by voting round id, should not happen
-		if sp.startVotingRoundId < s.spList[len(s.spList)-1].startVotingRoundId {
-			return fmt.Errorf("signing policy for reward epoch id %d has larger start voting round id than previous policy",
-				sp.rewardEpochId)
+		// should be sorted by voting round ID, should not happen
+		if sp.startVotingRoundID < s.spList[len(s.spList)-1].startVotingRoundID {
+			return fmt.Errorf("signing policy for reward epoch ID %d has larger start voting round ID than previous policy",
+				sp.rewardEpochID)
 		}
 	}
 
@@ -43,43 +43,43 @@ func (s *SigningPolicyStorage) Add(sp *SigningPolicy) error {
 
 // Return the signing policy for the voting round, or nil if not found.
 // Also returns true if the policy is the last one or false otherwise.
-func (s *SigningPolicyStorage) GetForVotingRound(votingRoundId uint32) (*SigningPolicy, bool) {
+func (s *SigningPolicyStorage) ForVotingRound(votingRoundID uint32) (*SigningPolicy, bool) {
 	s.Lock()
 	defer s.Unlock()
 
-	sp := s.findByVotingRoundId(votingRoundId)
+	sp := s.findByVotingRoundID(votingRoundID)
 	if sp == nil {
 		return nil, false
 	}
-	return sp, sp.rewardEpochId == s.spList[len(s.spList)-1].rewardEpochId
+	return sp, sp.rewardEpochID == s.spList[len(s.spList)-1].rewardEpochID
 }
 
-// Removes all signing policies with start voting round id <= than the provided one.
+// Removes all signing policies with start voting round ID <= than the provided one.
 // Returns the list of removed reward epoch ids.
-func (s *SigningPolicyStorage) RemoveByVotingRound(votingRoundId uint32) []uint32 {
+func (s *SigningPolicyStorage) RemoveByVotingRound(votingRoundID uint32) []uint32 {
 	s.Lock()
 	defer s.Unlock()
 
-	var removedRewardEpochIds []uint32
-	for len(s.spList) > 0 && s.spList[0].startVotingRoundId <= votingRoundId {
-		removedRewardEpochIds = append(removedRewardEpochIds, uint32(s.spList[0].rewardEpochId))
+	var removedRewardEpochIDs []uint32
+	for len(s.spList) > 0 && s.spList[0].startVotingRoundID <= votingRoundID {
+		removedRewardEpochIDs = append(removedRewardEpochIDs, uint32(s.spList[0].rewardEpochID))
 		s.spList[0] = nil
 		s.spList = s.spList[1:]
 	}
-	return removedRewardEpochIds
+	return removedRewardEpochIDs
 }
 
-// RemoveBeforeVotingRound removes all signing policies that ended strictly before votingRoundId.
+// RemoveBefore removes all signing policies that ended strictly before votingRoundID.
 // Returns the list of removed reward epoch ids.
-func (s *SigningPolicyStorage) RemoveBeforeVotingRound(votingRoundId uint32) []uint32 {
+func (s *SigningPolicyStorage) RemoveBefore(votingRoundID uint32) []uint32 {
 	s.Lock()
 	defer s.Unlock()
 
-	var removedRewardEpochIds []uint32
-	for len(s.spList) > 1 && s.spList[1].startVotingRoundId < votingRoundId {
-		removedRewardEpochIds = append(removedRewardEpochIds, uint32(s.spList[0].rewardEpochId))
+	var removedRewardEpochIDs []uint32
+	for len(s.spList) > 1 && s.spList[1].startVotingRoundID < votingRoundID {
+		removedRewardEpochIDs = append(removedRewardEpochIDs, uint32(s.spList[0].rewardEpochID))
 		s.spList[0] = nil
 		s.spList = s.spList[1:]
 	}
-	return removedRewardEpochIds
+	return removedRewardEpochIDs
 }

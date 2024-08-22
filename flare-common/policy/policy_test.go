@@ -42,20 +42,20 @@ func TestParseDatabaseLog(t *testing.T) {
 
 	tests := []struct {
 		log                database.Log
-		rewardEpochId      int64
-		startVotingRoundId uint32
+		rewardEpochID      int64
+		startVotingRoundID uint32
 		threshold          uint16
 	}{
 		{
 			log:                log1,
-			rewardEpochId:      2767,
-			startVotingRoundId: 664080,
+			rewardEpochID:      2767,
+			startVotingRoundID: 664080,
 			threshold:          32765,
 		},
 		{
 			log:                log2,
-			rewardEpochId:      2766,
-			startVotingRoundId: 663840,
+			rewardEpochID:      2766,
+			startVotingRoundID: 663840,
 			threshold:          32764,
 		},
 	}
@@ -66,9 +66,9 @@ func TestParseDatabaseLog(t *testing.T) {
 
 		require.NoError(t, err)
 
-		require.Equal(t, test.startVotingRoundId, event.StartVotingRoundId, fmt.Sprintf("error start voting round in test %d", i))
+		require.Equal(t, test.startVotingRoundID, event.StartVotingRoundId, fmt.Sprintf("error start voting round in test %d", i))
 
-		require.Equal(t, big.NewInt(test.rewardEpochId), event.RewardEpochId)
+		require.Equal(t, big.NewInt(test.rewardEpochID), event.RewardEpochId)
 
 	}
 
@@ -127,7 +127,7 @@ func TestNewSiginigPolicyLogs(t *testing.T) {
 
 func TestStorage(t *testing.T) {
 
-	storage := policy.NewSigningPolicyStorage()
+	storage := policy.NewStorage()
 
 	event2, err := policy.ParseSigningPolicyInitializedEvent(log2)
 
@@ -149,29 +149,29 @@ func TestStorage(t *testing.T) {
 
 	require.NoError(t, err)
 
-	policyFromStorage, ok := storage.GetForVotingRound(663845)
+	policyFromStorage, ok := storage.ForVotingRound(663845)
 
 	require.True(t, !ok)
 
 	require.Equal(t, uint16(65528), policyFromStorage.Voters.TotalWeight)
 
-	policyFromStorage, ok = storage.GetForVotingRound(663445)
+	policyFromStorage, ok = storage.ForVotingRound(663445)
 
 	require.True(t, !ok)
 
 	require.Nil(t, policyFromStorage)
 
-	policyFromStorage, ok = storage.GetForVotingRound(673445)
+	policyFromStorage, ok = storage.ForVotingRound(673445)
 
 	require.True(t, ok)
 
 	require.Equal(t, uint16(65529), policyFromStorage.Voters.TotalWeight)
 
-	removeEmpty := storage.RemoveBeforeVotingRound(12)
+	removeEmpty := storage.RemoveBefore(12)
 
 	require.Len(t, removeEmpty, 0)
 
-	removeOne := storage.RemoveBeforeVotingRound(667080)
+	removeOne := storage.RemoveBefore(667080)
 
 	require.Len(t, removeOne, 1)
 

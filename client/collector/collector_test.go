@@ -132,7 +132,7 @@ func TestBitVoteListener(t *testing.T) {
 
 	select {
 	case round := <-bitVotesChan:
-		require.Equal(t, uint64(roundID), round.Id)
+		require.Equal(t, uint64(roundID), round.ID)
 		require.Len(t, round.Messages, 1)
 
 	case <-ctx.Done():

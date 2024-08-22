@@ -94,7 +94,7 @@ func (r Request) Mic() (common.Hash, error) {
 
 // ComputeMic computes Mic from the response.
 // Mic is defined by solidity code abi.encode(response,"Flare") where response is a instance of a struct defined by the attestation type.
-// It is assumed that roundId in the response is set to 0.
+// It is assumed that roundID in the response is set to 0.
 func (r Response) ComputeMic(args *abi.Arguments) (common.Hash, error) {
 	decoded, err := args.Unpack(r)
 	if err != nil {
@@ -113,7 +113,7 @@ func (r Response) ComputeMic(args *abi.Arguments) (common.Hash, error) {
 
 }
 
-// LUT returns the fourth slot in response. Solidity type of Lut is uint64.
+// LUT returns the fourth slot in response. Solidity type of LUT is uint64.
 func (r Response) LUT() (uint64, error) {
 	static, err := IsStaticType(r)
 	if err != nil {
@@ -122,15 +122,15 @@ func (r Response) LUT() (uint64, error) {
 
 	// lut is encoded in the fourth slot
 	lutStartByte := 32 * 3
-	lutIdEndByte := 32 * 4
+	lutIDEndByte := 32 * 4
 
 	// if Response is encoded dynamic struct the first 32 bytes are bytes32(32)
 	if !static {
 		lutStartByte += 32
-		lutIdEndByte += 32
+		lutIDEndByte += 32
 	}
 
-	lut := r[lutStartByte:lutIdEndByte]
+	lut := r[lutStartByte:lutIDEndByte]
 	safe := big.NewInt(0)
 	safe = safe.SetBytes(lut)
 
@@ -155,22 +155,22 @@ func validLUT(lut, lutLimit, roundStart uint64) bool {
 	return comp == -1
 }
 
-// AddRound sets the roundId in the response (third 32 bytes).
-func (r Response) AddRound(roundId uint64) (Response, error) {
+// AddRound sets the roundID in the response (third 32 bytes).
+func (r Response) AddRound(roundID uint64) (Response, error) {
 	static, err := IsStaticType(r)
 	if err != nil {
 		return Response{}, err
 	}
 
-	// roundId is encoded in the third slot
-	roundIdStartByte := 32 * 2
-	roundIdEndByte := 32 * 3
+	// roundID is encoded in the third slot
+	roundIDStartByte := 32 * 2
+	roundIDEndByte := 32 * 3
 	commonFieldsLength := 32 * 4
 
 	// if Response is encoded dynamic struct the first 32 bytes are bytes32(32)
 	if !static {
-		roundIdStartByte += 32
-		roundIdEndByte += 32
+		roundIDStartByte += 32
+		roundIDEndByte += 32
 		commonFieldsLength += 32
 	}
 
@@ -178,23 +178,22 @@ func (r Response) AddRound(roundId uint64) (Response, error) {
 		return Response{}, errors.New("response is to short")
 	}
 
-	roundIdEncoded := make([]byte, 0)
-	roundIdEncoded = binary.BigEndian.AppendUint64(roundIdEncoded, roundId)
-	roundIdSlot := make([]byte, 32-len(roundIdEncoded))
-	roundIdSlot = append(roundIdSlot, roundIdEncoded...)
-	r = slices.Replace(r, roundIdStartByte, roundIdEndByte, roundIdSlot...)
+	roundIDEncoded := binary.BigEndian.AppendUint64(make([]byte, 0), roundID)
+	roundIDSlot := append(make([]byte, 32-len(roundIDEncoded)), roundIDEncoded...)
+
+	r = slices.Replace(r, roundIDStartByte, roundIDEndByte, roundIDSlot...)
 
 	return r, nil
 
 }
 
 // Hash computes hash of the response.
-func (r Response) Hash(roundId uint64) (common.Hash, error) {
+func (r Response) Hash(roundID uint64) (common.Hash, error) {
 	if len(r) < 128 {
 		return common.Hash{}, errors.New("response is to short")
 	}
 
-	_, err := r.AddRound(roundId)
+	_, err := r.AddRound(roundID)
 	if err != nil {
 		return common.Hash{}, err
 	}

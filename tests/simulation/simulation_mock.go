@@ -29,7 +29,7 @@ var (
 
 func main() {
 	flag.Parse()
-	userConfig, systemConfig, err := config.GetConfigs(*CfgFlag, SystemDirectory)
+	userConfig, systemConfig, err := config.ReadConfigs(*CfgFlag, SystemDirectory)
 	if err != nil {
 		log.Panicf("cannot read configs: %s", err)
 	}

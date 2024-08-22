@@ -3,7 +3,7 @@
 chain = "coston"
 
 
-protocolId = 200
+protocol_id = 200
 
 
 [db]

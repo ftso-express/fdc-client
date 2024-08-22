@@ -25,7 +25,7 @@ func main() {
 	var log = logger.GetLogger()
 
 	flag.Parse()
-	userConfigRaw, systemConfig, err := config.GetConfigs(*CfgFlag, SYSTEM_DIRECTORY)
+	userConfigRaw, systemConfig, err := config.ReadConfigs(*CfgFlag, SYSTEM_DIRECTORY)
 	if err != nil {
 		log.Panicf("cannot read configs: %s", err)
 	}
@@ -39,21 +39,21 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Prepare shared data connections that collector, manager and server will use
-	sharedDataPipes := shared.NewSharedDataPipes()
+	sharedDataPipes := shared.NewDataPipes()
 
 	// Start attestation client collector
-	collector := collector.NewCollector(userConfigRaw, systemConfig, sharedDataPipes)
+	collector := collector.New(userConfigRaw, systemConfig, sharedDataPipes)
 	go collector.Run(ctx)
 
 	// Start attestation client manager
-	manager, err := manager.NewManager(userConfigRaw, sharedDataPipes)
+	manager, err := manager.New(userConfigRaw, sharedDataPipes)
 	if err != nil {
 		log.Panicf("failed to create the manager: %s", err)
 	}
 	go manager.Run(ctx)
 
 	// Run attestation client server
-	srv := server.New(&sharedDataPipes.Rounds, uint64(userConfigRaw.ProtocolId), userConfigRaw.RestServer)
+	srv := server.New(&sharedDataPipes.Rounds, uint64(userConfigRaw.ProtocolID), userConfigRaw.RestServer)
 	go srv.Run(ctx)
 	log.Info("Running server")
 

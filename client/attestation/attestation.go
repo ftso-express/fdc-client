@@ -59,19 +59,19 @@ type IndexLog struct {
 }
 
 type Attestation struct {
-	Indexes     []IndexLog // indexLogs of all logs in the round with the Request. The earliest is in the first place.
-	RoundId     uint64
-	Request     Request
-	Response    Response
-	Fee         *big.Int // sum of fees of all logs in the round with the Request
-	Status      Status
-	Consensus   bool
-	Hash        common.Hash
-	Abi         *abi.Arguments
-	AbiString   *string
-	LutLimit    uint64
-	QueueName   string
-	Credentials *VerifierCredentials
+	Indexes           []IndexLog // indexLogs of all logs in the round with the Request. The earliest is in the first place.
+	RoundID           uint64
+	Request           Request
+	Response          Response
+	Fee               *big.Int // sum of fees of all logs in the round with the Request
+	Status            Status
+	Consensus         bool
+	Hash              common.Hash
+	ResponseABI       *abi.Arguments
+	ResponseABIString *string
+	LUTLimit          uint64
+	QueueName         string
+	Credentials       *VerifierCredentials
 }
 
 // earlierLog returns true if a has lower blockNumber then b or has the same blockNumber and lower LogIndex. Otherwise, it returns false.
@@ -93,22 +93,16 @@ func AttestationFromDatabaseLog(request database.Log) (Attestation, error) {
 		return Attestation{}, fmt.Errorf("parsing log: %s", err)
 	}
 
-	roundId, err := timing.RoundIdForTimestamp(request.Timestamp)
+	roundD, err := timing.RoundIDForTimestamp(request.Timestamp)
 	if err != nil {
-		return Attestation{}, fmt.Errorf("parsing log, roundId: %s", err)
+		return Attestation{}, fmt.Errorf("parsing log, roundID: %s", err)
 	}
-
-	// TODO: on the contract 30s offset is not accounted for. FIX THE CONTRACT
-	// if requestLog.VotingRoundId != uint32(roundId) {
-	// 	return Attestation{}, fmt.Errorf("parsing log, roundId on chains: %d vs off chain: %d", requestLog.VotingRoundId, roundId)
-
-	// }
 
 	indexes := []IndexLog{{request.BlockNumber, request.LogIndex}}
 
 	attestation := Attestation{
 		Indexes: indexes,
-		RoundId: roundId,
+		RoundID: roundD,
 		Request: requestLog.Data,
 		Fee:     requestLog.Fee,
 		Status:  Waiting,
@@ -159,9 +153,9 @@ func (a *Attestation) PrepareRequest(attestationTypesConfigs config.AttestationT
 		a.Status = UnsupportedPair
 		return fmt.Errorf("prepare request: no configs for: %s", string(bytes.Trim(attType[:], "\x00")))
 	}
-	a.Abi = &attestationTypeConfig.ResponseArguments
+	a.ResponseABI = &attestationTypeConfig.ResponseArguments
 
-	a.AbiString = &attestationTypeConfig.ResponseAbiString
+	a.ResponseABIString = &attestationTypeConfig.ResponseABIString
 
 	sourceConfig, ok := attestationTypeConfig.SourcesConfig[source]
 	if !ok {
@@ -169,11 +163,11 @@ func (a *Attestation) PrepareRequest(attestationTypesConfigs config.AttestationT
 		return fmt.Errorf("prepare request: no configs for: %s, %s", string(bytes.Trim(attType[:], "\x00")), string(bytes.Trim(source[:], "\x00")))
 	}
 
-	a.LutLimit = sourceConfig.LutLimit
+	a.LUTLimit = sourceConfig.LUTLimit
 	a.Status = Processing
 	a.Credentials = new(VerifierCredentials)
-	a.Credentials.Url = sourceConfig.Url
-	a.Credentials.apiKey = sourceConfig.ApiKey
+	a.Credentials.URL = sourceConfig.URL
+	a.Credentials.apiKey = sourceConfig.APIKey
 	a.QueueName = sourceConfig.QueueName
 
 	return nil
@@ -189,7 +183,7 @@ func (a *Attestation) validateResponse() error {
 		return fmt.Errorf("reading mic in request: %s, %s ", hex.EncodeToString(a.Request), err)
 	}
 
-	micRes, err := a.Response.ComputeMic(a.Abi)
+	micRes, err := a.Response.ComputeMic(a.ResponseABI)
 	if err != nil {
 		a.Status = ProcessError
 		return fmt.Errorf("cannot compute mic for request: %s, %s", hex.EncodeToString(a.Request), err)
@@ -207,14 +201,14 @@ func (a *Attestation) validateResponse() error {
 		return fmt.Errorf("cannot read lut from request: %s, %s", hex.EncodeToString(a.Request), err)
 	}
 
-	roundStart := timing.ChooseStartTimestamp(a.RoundId)
-	if !validLUT(lut, a.LutLimit, roundStart) {
+	roundStart := timing.ChooseStartTimestamp(a.RoundID)
+	if !validLUT(lut, a.LUTLimit, roundStart) {
 		a.Status = InvalidLUT
 		return fmt.Errorf("lot too old in request: %s", hex.EncodeToString(a.Request))
 	}
 
 	// HASH
-	a.Hash, err = a.Response.Hash(a.RoundId)
+	a.Hash, err = a.Response.Hash(a.RoundID)
 	if err != nil {
 		a.Status = ProcessError
 		return fmt.Errorf("cannot compute hash for request: %s", hex.EncodeToString(a.Request))
@@ -239,7 +233,7 @@ func (a *Attestation) Index() IndexLog {
 	if len(a.Indexes) > 0 {
 		return a.Indexes[0]
 	}
-	log.Panicf("attestation without index in round %d with request %s", a.RoundId, hex.EncodeToString(a.Request)) // this should never happen
+	log.Panicf("attestation without index in round %d with request %s", a.RoundID, hex.EncodeToString(a.Request)) // this should never happen
 
 	return IndexLog{math.MaxUint64, math.MaxUint64}
 }

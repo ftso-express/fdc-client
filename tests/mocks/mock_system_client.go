@@ -24,7 +24,7 @@ func MockSystemClient(systemConfig *config.System, userConfig *config.UserRaw, c
 	for {
 		now := time.Now()
 
-		round, err := timing.RoundIdForTimestamp(uint64(now.Unix()))
+		round, err := timing.RoundIDForTimestamp(uint64(now.Unix()))
 		if err != nil {
 			log.Fatal("Error: %s", err)
 		}
@@ -97,7 +97,7 @@ func MakeGetRequest(
 		return nil, err
 	}
 
-	req.Header.Add("X-API-KEY", cfg.ApiKeys[0])
+	req.Header.Add("X-API-KEY", cfg.APIKeys[0])
 
 	var client http.Client
 	rsp, err := client.Do(req)

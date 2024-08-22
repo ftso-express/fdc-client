@@ -18,7 +18,7 @@ import (
 var log = logger.GetLogger()
 
 type Manager struct {
-	protocolId            uint64
+	protocolID            uint64
 	Rounds                storage.Cyclic[*round.Round] // cyclically cached rounds with buffer roundBuffer.
 	lastRoundCreated      uint64
 	Requests              chan []database.Log
@@ -29,9 +29,9 @@ type Manager struct {
 	queues                priorityQueues
 }
 
-// NewManager initializes attestation round manager from raw user configurations.
-func NewManager(configs *config.UserRaw, sharedDataPipes *shared.SharedDataPipes) (*Manager, error) {
-	signingPolicyStorage := policy.NewSigningPolicyStorage()
+// New initializes attestation round manager from raw user configurations.
+func New(configs *config.UserRaw, sharedDataPipes *shared.DataPipes) (*Manager, error) {
+	signingPolicyStorage := policy.NewStorage()
 
 	attestationTypeConfig, err := config.ParseAttestationTypes(configs.AttestationTypeConfig)
 	if err != nil {
@@ -41,7 +41,7 @@ func NewManager(configs *config.UserRaw, sharedDataPipes *shared.SharedDataPipes
 	queues := buildQueues(configs.Queues)
 
 	return &Manager{
-			protocolId:            uint64(configs.ProtocolId),
+			protocolID:            uint64(configs.ProtocolID),
 			Rounds:                sharedDataPipes.Rounds,
 			signingPolicyStorage:  signingPolicyStorage,
 			attestationTypeConfig: attestationTypeConfig,
@@ -87,14 +87,14 @@ func (m *Manager) Run(ctx context.Context) {
 					log.Error("signing policy error:", err)
 				}
 			}
-			deleted := m.signingPolicyStorage.RemoveBeforeVotingRound(uint32(m.lastRoundCreated)) // delete all signing policies that have already ended
+			deleted := m.signingPolicyStorage.RemoveBefore(uint32(m.lastRoundCreated)) // delete all signing policies that have already ended
 
 			for j := range deleted {
 				log.Infof("deleted signing policy for epoch %d", deleted[j])
 			}
 
 		case bitVotesForRound := <-m.BitVotes:
-			log.Debugf("Received %d bitVotes for round %d", len(bitVotesForRound.Messages), bitVotesForRound.Id)
+			log.Debugf("Received %d bitVotes for round %d", len(bitVotesForRound.Messages), bitVotesForRound.ID)
 
 			for i := range bitVotesForRound.Messages {
 				err := m.OnBitVote(bitVotesForRound.Messages[i])
@@ -102,22 +102,22 @@ func (m *Manager) Run(ctx context.Context) {
 					log.Errorf("bit vote error: %s", err)
 				}
 			}
-			r, ok := m.Rounds.Get(bitVotesForRound.Id)
+			r, ok := m.Rounds.Get(bitVotesForRound.ID)
 			if !ok {
 				break
 			}
 
 			err := r.ComputeConsensusBitVote()
 			if err != nil {
-				log.Warnf("Failed bitVote in round %d: %s", bitVotesForRound.Id, err)
+				log.Warnf("Failed bitVote in round %d: %s", bitVotesForRound.ID, err)
 			} else {
-				log.Debugf("Consensus bitVote %s for round %d computed.", r.ConsensusBitVote.EncodeBitVoteHex(bitVotesForRound.Id), bitVotesForRound.Id)
+				log.Debugf("Consensus bitVote %s for round %d computed.", r.ConsensusBitVote.EncodeBitVoteHex(bitVotesForRound.ID), bitVotesForRound.ID)
 
 				noOfRetried, err := m.retryUnsuccessfulChosen(ctx, r)
 				if err != nil {
-					log.Warnf("error retrying round %d: s", r.RoundId, err)
+					log.Warnf("error retrying round %d: s", r.ID, err)
 				} else if noOfRetried > 0 {
-					log.Debugf("retrying %d attestations in round %d", noOfRetried, r.RoundId)
+					log.Debugf("retrying %d attestations in round %d", noOfRetried, r.ID)
 				}
 
 			}
@@ -139,24 +139,24 @@ func (m *Manager) Run(ctx context.Context) {
 	}
 }
 
-// GetOrCreateRound returns a round for roundId either from manager if a round is already stored or creates a new one and stores it.
-func (m *Manager) GetOrCreateRound(roundId uint64) (*round.Round, error) {
-	roundFromId, ok := m.Rounds.Get(roundId)
+// GetOrCreateRound returns a round for roundID either from manager if a round is already stored or creates a new one and stores it.
+func (m *Manager) GetOrCreateRound(roundID uint64) (*round.Round, error) {
+	roundForID, ok := m.Rounds.Get(roundID)
 	if ok {
-		return roundFromId, nil
+		return roundForID, nil
 	}
 
-	policy, _ := m.signingPolicyStorage.GetForVotingRound(uint32(roundId))
+	policy, _ := m.signingPolicyStorage.ForVotingRound(uint32(roundID))
 	if policy == nil {
-		return nil, fmt.Errorf("creating round: no signing policy for round %d", roundId)
+		return nil, fmt.Errorf("creating round: no signing policy for round %d", roundID)
 	}
 
-	roundFromId = round.CreateRound(uint64(roundId), policy.Voters)
-	m.lastRoundCreated = roundId
-	log.Debugf("Round %d created", roundId)
+	roundForID = round.New(uint64(roundID), policy.Voters)
+	m.lastRoundCreated = roundID
+	log.Debugf("Round %d created", roundID)
 
-	m.Rounds.Store(uint64(roundId), roundFromId)
-	return roundFromId, nil
+	m.Rounds.Store(uint64(roundID), roundForID)
+	return roundForID, nil
 }
 
 // OnBitVote process payload message that is assumed to be a bitVote and adds it to the correct round.
@@ -191,7 +191,7 @@ func (m *Manager) OnRequest(ctx context.Context, request database.Log) error {
 		return fmt.Errorf("OnRequest: %s", err)
 	}
 
-	round, err := m.GetOrCreateRound(attestation.RoundId)
+	round, err := m.GetOrCreateRound(attestation.RoundID)
 	if err != nil {
 		return fmt.Errorf("OnRequest: %s", err)
 	}

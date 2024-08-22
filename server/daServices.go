@@ -92,7 +92,7 @@ func AttestationToDAAttestation(att *attestation.Attestation) (DAAttestation, bo
 	isSelected := att.Consensus
 
 	if !isConfirmed && isSelected {
-		return DAAttestation{}, false, fmt.Errorf("request %s in round %d is in consensus but not confirmed", hex.EncodeToString(att.Request), att.RoundId)
+		return DAAttestation{}, false, fmt.Errorf("request %s in round %d is in consensus but not confirmed", hex.EncodeToString(att.Request), att.RoundID)
 	}
 
 	if !isConfirmed || !isSelected {
@@ -100,11 +100,11 @@ func AttestationToDAAttestation(att *attestation.Attestation) (DAAttestation, bo
 	}
 
 	dAAttestation := DAAttestation{
-		RoundId:  att.RoundId,
-		Request:  hex.EncodeToString(att.Request),
-		Response: hex.EncodeToString(att.Response),
-		Abi:      *att.AbiString,
-		hash:     att.Hash,
+		RoundID:     att.RoundID,
+		Request:     hex.EncodeToString(att.Request),
+		Response:    hex.EncodeToString(att.Response),
+		ResponseABI: *att.ResponseABIString,
+		hash:        att.Hash,
 	}
 
 	return dAAttestation, true, nil
@@ -116,7 +116,7 @@ func (DAAtt *DAAttestation) addProof(tree merkle.Tree) error {
 	proofCommon, err := tree.GetProofFromHash(DAAtt.hash)
 
 	if err != nil {
-		return fmt.Errorf("no proof for request %s in round %d", DAAtt.Request, DAAtt.RoundId)
+		return fmt.Errorf("no proof for request %s in round %d", DAAtt.Request, DAAtt.RoundID)
 	}
 
 	proof := make([]string, len(proofCommon))

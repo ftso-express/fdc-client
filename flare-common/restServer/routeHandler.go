@@ -20,14 +20,14 @@ type ErrorHandler struct {
 // Route handler factory
 // The value passed to handler are the path parameters parsed to a map of string, the query parameters parsed to a struct
 // of type Q and the request body parsed to a struct of type B. The response of handler is wrapped to an
-// ApiResponseWrapper object and returned as json. Openapi definitions for the path parameters are generated from the
+// APIResponseWrapper object and returned as json. OpenAPI definitions for the path parameters are generated from the
 // paramDescriptions map, definitions for the query parameters are generated from the queryObject and definitions for the
 // request body are generated from the bodyObject.
 func GeneralRouteHandler[Q interface{}, B interface{}, R interface{}](
 	handler func(map[string]string, Q, B) (R, *ErrorHandler),
 	method string,
 	responseCode int,
-	paramDescriptions map[string]string, // Path params descriptions for openapi
+	paramDescriptions map[string]string, // Path params descriptions for openAPI
 	queryObject Q,
 	bodyObject B,
 	respObject R,
@@ -49,19 +49,19 @@ func GeneralRouteHandler[Q interface{}, B interface{}, R interface{}](
 			err.Handler(w)
 			return
 		}
-		WriteApiResponseOk(w, resp)
+		WriteAPIResponseOk(w, resp)
 	}
 
 	// Swagger definitions
 	pathParams := createPathParamsDescription(paramDescriptions)
-	querystring := createQueryDescription(queryObject)
+	queryString := createQueryDescription(queryObject)
 	requestBody := createRequestBodyDescription(bodyObject)
 	sec := createSecuritiesArray(security)
 
 	swaggerDefinitions := swagger.Definitions{
 		RequestBody: requestBody,
 		PathParams:  pathParams,
-		Querystring: querystring,
+		Querystring: queryString,
 		Responses: map[int]swagger.ContentValue{
 			responseCode: {
 				Content: swagger.Content{
@@ -78,7 +78,7 @@ func GeneralRouteHandler[Q interface{}, B interface{}, R interface{}](
 	}
 }
 
-// Create a securty object for openapi from a list of security names
+// Create a security object for openAPI from a list of security names
 func createSecuritiesArray(security []string) swagger.SecurityRequirements {
 	if security == nil {
 		return nil
@@ -92,7 +92,7 @@ func createSecuritiesArray(security []string) swagger.SecurityRequirements {
 	return ret
 }
 
-// Create openapi path parameters description from a map of parameter names and descriptions
+// Create openAPI path parameters description from a map of parameter names and descriptions
 func createPathParamsDescription(paramDescriptions map[string]string) map[string]swagger.Parameter {
 	if len(paramDescriptions) == 0 {
 		return nil
@@ -108,7 +108,7 @@ func createPathParamsDescription(paramDescriptions map[string]string) map[string
 	return pathParams
 }
 
-// Create openapi query parameters description from a struct
+// Create openAPI query parameters description from a struct
 func createQueryDescription(queryObject interface{}) swagger.ParameterValue {
 	if queryObject == nil {
 		return nil
@@ -118,21 +118,21 @@ func createQueryDescription(queryObject interface{}) swagger.ParameterValue {
 		return nil
 	}
 
-	querystring := make(swagger.ParameterValue)
+	queryString := make(swagger.ParameterValue)
 	for _, field := range fields {
 		name := field.Tag.Get("json")
 		if name == "" {
 			name = field.Name
 		}
-		querystring[name] = swagger.Parameter{
+		queryString[name] = swagger.Parameter{
 			Schema:      &swagger.Schema{Value: ""},
 			Description: field.Tag.Get("jsonschema"),
 		}
 	}
-	return querystring
+	return queryString
 }
 
-// Create openapi request body description from a struct
+// Create openAPI request body description from a struct
 func createRequestBodyDescription(bodyObject interface{}) *swagger.ContentValue {
 	if bodyObject == nil {
 		return nil

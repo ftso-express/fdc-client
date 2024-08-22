@@ -34,7 +34,7 @@ The configurations are set in `userConfig.toml` file in `configs` folder.
 # options are: "coston", "songbird", "coston2", "flare"
 chain = <chainName>
 
-protocolId = <protocolId>
+protocolID = <protocolID>
 ```
 
 ### C-chain Indexer
@@ -121,7 +121,7 @@ time_off = 2 # in seconds. Time off after each unsuccessful attempt.
 ### System Configs
 
 System configs for a pair of chain and protocol ID should be specified in
-`configs/systemConfigs/<protrocolId>/<chain>.toml`
+`configs/systemConfigs/<protrocolID>/<chain>.toml`
 
 The client needs data from three contracts `Submit` for bitVotes, `Relay` for signing policies, and `FDC` for attestation requests.
 The addresses must be specified in the systemConfig file.
@@ -140,7 +140,6 @@ The timestamp of the start of the first reward epoch (T0) and length of reward e
 t0 = 1658429955 # in seconds
 reward_epoch_length = 240 # in voting rounds
 ```
-
 
 ### ABIGEN
 

@@ -22,21 +22,21 @@ type AttestationResponse struct {
 	Attestations []DAAttestation
 }
 
-func validateRoundIdParam(params map[string]string) (uint64, error) {
+func validateRoundIDParam(params map[string]string) (uint64, error) {
 
-	votingRoundIdStr, exists := params["votingRoundId"]
+	votingRoundIDStr, exists := params["votingRoundID"]
 
 	if !exists {
 		return 0, errors.New("missing votingRound param")
 	}
 
-	votingRoundId, err := strconv.ParseUint(votingRoundIdStr, 10, 64)
+	votingRoundID, err := strconv.ParseUint(votingRoundIDStr, 10, 64)
 
 	if err != nil {
 		return 0, errors.New("votingRound param is not a number")
 	}
 
-	return votingRoundId, nil
+	return votingRoundID, nil
 
 }
 
@@ -45,34 +45,34 @@ func (controller *DAController) getRequestController(
 	_ interface{},
 	_ interface{},
 ) (RequestsResponse, *restServer.ErrorHandler) {
-	votingRound, err := validateRoundIdParam(params)
+	votingRoundID, err := validateRoundIDParam(params)
 
 	if err != nil {
 		log.Error(err)
 		return RequestsResponse{}, restServer.BadParamsErrorHandler(err)
 	}
 
-	request, exists := controller.GetRequests(votingRound)
+	requests, exists := controller.GetRequests(votingRoundID)
 
 	if !exists {
 		return RequestsResponse{Status: NotAvailable}, nil
 	}
 
-	return RequestsResponse{Status: Ok, Requests: request}, nil
+	return RequestsResponse{Status: Ok, Requests: requests}, nil
 }
 
 func (controller *DAController) getAttestationController(
 	params map[string]string,
 	_ interface{},
 	_ interface{}) (AttestationResponse, *restServer.ErrorHandler) {
-	votingRound, err := validateRoundIdParam(params)
+	votingRoundID, err := validateRoundIDParam(params)
 
 	if err != nil {
 		log.Error(err)
 		return AttestationResponse{}, restServer.BadParamsErrorHandler(err)
 	}
 
-	attestations, exists := controller.GetAttestations(votingRound)
+	attestations, exists := controller.GetAttestations(votingRoundID)
 
 	if !exists {
 		return AttestationResponse{Status: NotAvailable}, nil

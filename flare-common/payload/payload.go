@@ -14,13 +14,13 @@ import (
 
 type Round struct {
 	Messages []Message
-	Id       uint64
+	ID       uint64
 }
 
 type Message struct {
 	From             common.Address
 	Selector         string // function selector
-	Protocol         uint8  // id of the protocol
+	Protocol         uint8  // ID of the protocol
 	VotingRound      uint64
 	Timestamp        uint64
 	BlockNumber      uint64
@@ -46,9 +46,9 @@ func ExtractPayloads(tx *database.Transaction) (map[uint8]Message, error) {
 			return nil, errors.New("wrongly formatted tx input, too short")
 		}
 
-		protocol := data[0] // 1 byte protocol id
+		protocol := data[0] // 1 byte protocol ID
 
-		votingRound := binary.BigEndian.Uint32(data[1:5]) // 4 bytes votingRoundId
+		votingRound := binary.BigEndian.Uint32(data[1:5]) // 4 bytes votingRoundID
 
 		length := binary.BigEndian.Uint16(data[5:7]) // 2 bytes length of payload in bytes
 
@@ -94,18 +94,18 @@ func prependZerosToLength(hexString string, finalLength int) (string, error) {
 
 }
 
-func BuildMessage(protocolId, votingRoundId uint64, payload string) (string, error) {
+func BuildMessage(protocolID, votingRoundID uint64, payload string) (string, error) {
 	if len(payload)%2 != 0 {
 		return "", errors.New("uneven payload")
 	}
 
-	protocolIdStr, err := prependZerosToLength(strconv.FormatUint(protocolId, 16), 2)
+	protocolIDStr, err := prependZerosToLength(strconv.FormatUint(protocolID, 16), 2)
 
 	if err != nil {
 		return "", fmt.Errorf("invalid protocol, %s", err)
 	}
 
-	votingRoundIdStr, err := prependZerosToLength(strconv.FormatUint(votingRoundId, 16), 8)
+	votingRoundIDStr, err := prependZerosToLength(strconv.FormatUint(votingRoundID, 16), 8)
 
 	if err != nil {
 		return "", fmt.Errorf("invalid voting round: %s", err)
@@ -117,5 +117,5 @@ func BuildMessage(protocolId, votingRoundId uint64, payload string) (string, err
 		return "", errors.New("invalid payload length")
 	}
 
-	return "0x" + protocolIdStr + votingRoundIdStr + lenStr + payload, nil
+	return "0x" + protocolIDStr + votingRoundIDStr + lenStr + payload, nil
 }

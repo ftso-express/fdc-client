@@ -78,7 +78,7 @@ func TestExtractPayloads(t *testing.T) {
 
 		require.True(t, ok, fmt.Sprintf("missing payload in test %d", i))
 
-		require.Equal(t, test.protocol, payloadFTSO.Protocol, fmt.Sprintf("wrong protocol id in test %d", i))
+		require.Equal(t, test.protocol, payloadFTSO.Protocol, fmt.Sprintf("wrong protocol ID in test %d", i))
 
 		require.Equal(t, test.votingRound, payloadFTSO.VotingRound, fmt.Sprintf("wrong voting round in test %d", i))
 
@@ -189,19 +189,19 @@ func TestExtractPayloadsError(t *testing.T) {
 func TestBuildMessage(t *testing.T) {
 
 	tests := []struct {
-		protocolId  uint64
+		protocolID  uint64
 		votingRound uint64
 		payload     string
 		result      string
 	}{
 		{
-			protocolId:  1,
+			protocolID:  1,
 			votingRound: 1,
 			payload:     "00",
 			result:      "0x0100000001000100",
 		},
 		{
-			protocolId:  255,
+			protocolID:  255,
 			votingRound: 256,
 			payload:     "110011",
 			result:      "0xff000001000003110011",
@@ -210,7 +210,7 @@ func TestBuildMessage(t *testing.T) {
 
 	for _, test := range tests {
 
-		payloadMsg, err := payload.BuildMessage(test.protocolId, test.votingRound, test.payload)
+		payloadMsg, err := payload.BuildMessage(test.protocolID, test.votingRound, test.payload)
 
 		require.NoError(t, err)
 
@@ -222,22 +222,22 @@ func TestBuildMessage(t *testing.T) {
 func TestBuildMessageError(t *testing.T) {
 
 	tests := []struct {
-		protocolId  uint64
+		protocolID  uint64
 		votingRound uint64
 		payload     string
 	}{
 		{
-			protocolId:  256,
+			protocolID:  256,
 			votingRound: 1,
 			payload:     "00",
 		},
 		{
-			protocolId:  255,
+			protocolID:  255,
 			votingRound: 256,
 			payload:     "1100110",
 		},
 		{
-			protocolId:  255,
+			protocolID:  255,
 			votingRound: 100000000000000,
 			payload:     "110011",
 		},
@@ -245,7 +245,7 @@ func TestBuildMessageError(t *testing.T) {
 
 	for _, test := range tests {
 
-		_, err := payload.BuildMessage(test.protocolId, test.votingRound, test.payload)
+		_, err := payload.BuildMessage(test.protocolID, test.votingRound, test.payload)
 
 		require.Error(t, err)
 

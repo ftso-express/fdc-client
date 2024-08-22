@@ -23,7 +23,7 @@ func TestReadUserRaw(t *testing.T) {
 
 	require.Equal(t, "coston", cfg.Chain)
 
-	require.Equal(t, uint8(200), cfg.ProtocolId)
+	require.Equal(t, uint8(200), cfg.ProtocolID)
 
 	parsed, err := config.ParseAttestationTypes(cfg.AttestationTypeConfig)
 
@@ -45,7 +45,7 @@ func TestReadUserRaw(t *testing.T) {
 
 	require.True(t, ok)
 
-	require.Equal(t, "12345", sourceConfig.ApiKey)
+	require.Equal(t, "12345", sourceConfig.APIKey)
 
 }
 

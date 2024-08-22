@@ -19,7 +19,7 @@ type Server struct {
 
 func New(
 	rounds *storage.Cyclic[*round.Round],
-	protocolId uint64,
+	protocolID uint64,
 	serverConfig config.RestServer,
 ) Server {
 	// Create Mux router
@@ -32,8 +32,8 @@ func New(
 
 	// create api auth middleware
 	keyMiddleware := &restServer.AipKeyAuthMiddleware{
-		KeyName: serverConfig.ApiKeyName,
-		Keys:    serverConfig.ApiKeys,
+		KeyName: serverConfig.APIKeyName,
+		Keys:    serverConfig.APIKeys,
 	}
 	keyMiddleware.Init()
 
@@ -47,7 +47,7 @@ func New(
 	// create fsp sub router
 	fspSubRouter := router.WithPrefix(serverConfig.FSPSubpath, serverConfig.FSPTitle)
 	// Register routes for FSP
-	RegisterFDCProviderRoutes(fspSubRouter, protocolId, rounds, []string{serverConfig.ApiKeyName})
+	RegisterFDCProviderRoutes(fspSubRouter, protocolID, rounds, []string{serverConfig.APIKeyName})
 	fspSubRouter.AddMiddleware(keyMiddleware.Middleware)
 
 	// Register routes
@@ -70,32 +70,32 @@ func New(
 }
 
 // Registration of routes for the FDC protocol provider
-func RegisterFDCProviderRoutes(router restServer.Router, protocolId uint64, rounds *storage.Cyclic[*round.Round], securities []string) {
+func RegisterFDCProviderRoutes(router restServer.Router, protocolID uint64, rounds *storage.Cyclic[*round.Round], securities []string) {
 	// Prepare service controller
-	controller := newFDCProtocolProviderController(rounds, protocolId)
-	paramMap := map[string]string{"votingRoundId": "Voting round ID", "submitAddress": "Submit address"}
+	controller := newFDCProtocolProviderController(rounds, protocolID)
+	paramMap := map[string]string{"votingRoundID": "Voting round ID", "submitAddress": "Submit address"}
 
 	submit1Handler := restServer.GeneralRouteHandler(controller.submit1Controller, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{}, securities)
-	router.AddRoute("/submit1/{votingRoundId}/{submitAddress}", submit1Handler, "Submit1")
+	router.AddRoute("/submit1/{votingRoundID}/{submitAddress}", submit1Handler, "Submit1")
 
 	submit2Handler := restServer.GeneralRouteHandler(controller.submit2Controller, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{}, securities)
-	router.AddRoute("/submit2/{votingRoundId}/{submitAddress}", submit2Handler, "Submit2")
+	router.AddRoute("/submit2/{votingRoundID}/{submitAddress}", submit2Handler, "Submit2")
 
 	submitSignaturesHandler := restServer.GeneralRouteHandler(controller.submitSignaturesController, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{}, securities)
-	router.AddRoute("/submitSignatures/{votingRoundId}/{submitAddress}", submitSignaturesHandler, "SubmitSignatures")
+	router.AddRoute("/submitSignatures/{votingRoundID}/{submitAddress}", submitSignaturesHandler, "SubmitSignatures")
 }
 
 // Registration of routes for the DA layer
 func RegisterDARoutes(router restServer.Router, rounds *storage.Cyclic[*round.Round], securities []string) {
 	// Prepare service controller
 	controller := DAController{Rounds: rounds}
-	paramMap := map[string]string{"votingRoundId": "Voting round ID"}
+	paramMap := map[string]string{"votingRoundID": "Voting round ID"}
 
 	getRequests := restServer.GeneralRouteHandler(controller.getRequestController, http.MethodGet, http.StatusOK, paramMap, nil, nil, RequestsResponse{}, securities)
-	router.AddRoute("/getRequests/{votingRoundId}", getRequests, "GetRequests")
+	router.AddRoute("/getRequests/{votingRoundID}", getRequests, "GetRequests")
 
 	getAttestations := restServer.GeneralRouteHandler(controller.getAttestationController, http.MethodGet, http.StatusOK, paramMap, nil, nil, AttestationResponse{}, securities)
-	router.AddRoute("/getAttestations/{votingRoundId}", getAttestations, "GetAttestations")
+	router.AddRoute("/getAttestations/{votingRoundID}", getAttestations, "GetAttestations")
 }
 
 func (s *Server) Run(ctx context.Context) {

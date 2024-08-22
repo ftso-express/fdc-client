@@ -36,8 +36,8 @@ func ParseAttestationTypes(attTypesConfigUnparsed AttestationTypesUnparsed) (Att
 
 }
 
-// GetAbi reads abi of a struct from a JSON file and converts it into abi.Arguments and string representation.
-func GetAbi(path string) (abi.Arguments, string, error) {
+// ReadABI reads abi of a struct from a JSON file and converts it into abi.Arguments and string representation.
+func ReadABI(path string) (abi.Arguments, string, error) {
 
 	file, err := os.ReadFile(path)
 
@@ -45,7 +45,7 @@ func GetAbi(path string) (abi.Arguments, string, error) {
 		return abi.Arguments{}, "", fmt.Errorf("failed reading file %s with: %s", path, err)
 	}
 
-	args, err := ArgumentsFromAbi(file)
+	args, err := ArgumentsFromABI(file)
 
 	if err != nil {
 		return abi.Arguments{}, "", fmt.Errorf("retrieving arguments from %s with %s", path, err)
@@ -57,8 +57,8 @@ func GetAbi(path string) (abi.Arguments, string, error) {
 
 }
 
-// ArgumentsFromAbi convert byte encoded json abi into abu.Arguments.
-func ArgumentsFromAbi(abiBytes []byte) (abi.Arguments, error) {
+// ArgumentsFromABI convert byte encoded json abi into abu.Arguments.
+func ArgumentsFromABI(abiBytes []byte) (abi.Arguments, error) {
 
 	var arg abi.Argument
 
@@ -72,14 +72,14 @@ func ArgumentsFromAbi(abiBytes []byte) (abi.Arguments, error) {
 
 }
 
-// parseSource takes sourceBig and converts LutLimit from big.int to uint64.
+// parseSource takes sourceBig and converts LUTLimit from big.int to uint64.
 func parseSource(sourceConfigBig sourceBig) (Source, error) {
 
-	if !sourceConfigBig.LutLimit.IsUint64() {
+	if !sourceConfigBig.LUTLimit.IsUint64() {
 		return Source{
-				Url:       sourceConfigBig.Url,
-				ApiKey:    sourceConfigBig.ApiKey,
-				LutLimit:  0,
+				URL:       sourceConfigBig.URL,
+				APIKey:    sourceConfigBig.APIKey,
+				LUTLimit:  0,
 				QueueName: sourceConfigBig.QueueName,
 			},
 			errors.New("lutLimit does not fit in uint64")
@@ -87,9 +87,9 @@ func parseSource(sourceConfigBig sourceBig) (Source, error) {
 	}
 
 	return Source{
-			Url:       sourceConfigBig.Url,
-			ApiKey:    sourceConfigBig.ApiKey,
-			LutLimit:  sourceConfigBig.LutLimit.Uint64(),
+			URL:       sourceConfigBig.URL,
+			APIKey:    sourceConfigBig.APIKey,
+			LUTLimit:  sourceConfigBig.LUTLimit.Uint64(),
 			QueueName: sourceConfigBig.QueueName,
 		},
 		nil
@@ -98,7 +98,7 @@ func parseSource(sourceConfigBig sourceBig) (Source, error) {
 
 func ParseAttestationType(attTypeConfigUnparsed AttestationTypeUnparsed) (AttestationType, error) {
 
-	responseArguments, responseAbiString, err := GetAbi(attTypeConfigUnparsed.Abi)
+	responseArguments, responseAbiString, err := ReadABI(attTypeConfigUnparsed.ABIPath)
 
 	if err != nil {
 		return AttestationType{}, fmt.Errorf("getting abi %s", err)
@@ -113,7 +113,7 @@ func ParseAttestationType(attTypeConfigUnparsed AttestationTypeUnparsed) (Attest
 
 	return AttestationType{
 			ResponseArguments: responseArguments,
-			ResponseAbiString: responseAbiString,
+			ResponseABIString: responseAbiString,
 			SourcesConfig:     sourcesConfig,
 		},
 		nil

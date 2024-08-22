@@ -28,7 +28,7 @@ const (
 )
 
 type Round struct {
-	RoundId          uint64
+	ID               uint64
 	Attestations     []*attestation.Attestation
 	attestationMap   map[common.Hash]*attestation.Attestation
 	bitVotes         []*bitvotes.WeightedBitVote
@@ -38,9 +38,9 @@ type Round struct {
 	merkleTree       merkle.Tree
 }
 
-// CreateRound returns a pointer to a new round with roundId and voterSet.
-func CreateRound(roundId uint64, voterSet *policy.VoterSet) *Round {
-	return &Round{RoundId: roundId, voterSet: voterSet, attestationMap: make(map[common.Hash]*attestation.Attestation)}
+// New returns a pointer to a new round with ID and voterSet.
+func New(ID uint64, voterSet *policy.VoterSet) *Round {
+	return &Round{ID: ID, voterSet: voterSet, attestationMap: make(map[common.Hash]*attestation.Attestation)}
 }
 
 // AddAttestation checks whether an attestation with such request is already in the round.
@@ -89,11 +89,10 @@ func (r *Round) BitVote() (bitvotes.BitVote, error) {
 
 // BitVoteHex returns the 0x prefixed hex string encoded BitVote for the round according to the current status of Attestations.
 func (r *Round) BitVoteHex(prefixed bool) (string, error) {
-	r.sortAttestations()
 
-	bitVote, err := attestation.BitVoteFromAttestations(r.Attestations)
+	bitVote, err := r.BitVote()
 	if err != nil {
-		return "", fmt.Errorf("cannot get bitVote for round %d: %s", r.RoundId, err)
+		return "", fmt.Errorf("cannot get bitVote for round %d: %s", r.ID, err)
 	}
 
 	bvString := ""
@@ -102,7 +101,7 @@ func (r *Round) BitVoteHex(prefixed bool) (string, error) {
 		bvString = "0x"
 	}
 
-	bvString += bitVote.EncodeBitVoteHex(r.RoundId)
+	bvString += bitVote.EncodeBitVoteHex(r.ID)
 
 	return bvString, nil
 }
@@ -143,7 +142,7 @@ func (r *Round) ConsensusBitVoteHex() (string, error) {
 		return "", errors.New("no consensus bitVote")
 	}
 
-	return r.ConsensusBitVote.EncodeBitVoteHex(r.RoundId), nil
+	return r.ConsensusBitVote.EncodeBitVoteHex(r.ID), nil
 }
 
 // setConsensusStatus sets consensus status of the attestations.
@@ -152,7 +151,7 @@ func (r *Round) ConsensusBitVoteHex() (string, error) {
 func (r *Round) setConsensusStatus(consensusBitVote bitvotes.BitVote) error {
 	// sanity check
 	if consensusBitVote.BitVector.BitLen() > len(r.Attestations) {
-		return fmt.Errorf("missing attestation for round %d", r.RoundId)
+		return fmt.Errorf("missing attestation for round %d", r.ID)
 	}
 
 	for i := range r.Attestations {
@@ -168,7 +167,7 @@ func (r *Round) setConsensusStatus(consensusBitVote bitvotes.BitVote) error {
 func (r *Round) MerkleTree() (merkle.Tree, error) {
 	r.sortAttestations()
 
-	hashes := []common.Hash{}
+	var hashes []common.Hash
 	for i := range r.Attestations {
 		if r.Attestations[i].Consensus {
 			if r.Attestations[i].Status != attestation.Success {

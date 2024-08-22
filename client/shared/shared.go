@@ -22,15 +22,15 @@ type VotersData struct {
 	SubmitToSigningAddress map[common.Address]common.Address
 }
 
-type SharedDataPipes struct {
+type DataPipes struct {
 	Rounds   storage.Cyclic[*round.Round] // cyclically cached rounds with buffer roundBuffer.
 	Requests chan []database.Log
 	BitVotes chan payload.Round
 	Voters   chan []VotersData
 }
 
-func NewSharedDataPipes() *SharedDataPipes {
-	return &SharedDataPipes{
+func NewDataPipes() *DataPipes {
+	return &DataPipes{
 		Rounds:   storage.NewCyclic[*round.Round](roundBuffer),
 		Voters:   make(chan []VotersData, signingPolicyBufferSize),
 		BitVotes: make(chan payload.Round, bitVoteBufferSize),

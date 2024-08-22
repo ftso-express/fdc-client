@@ -62,7 +62,7 @@ func TestResponse(t *testing.T) {
 
 		abiFile, err := os.ReadFile(test.abi)
 		require.NoError(t, err)
-		abi, err := config.ArgumentsFromAbi(abiFile)
+		abi, err := config.ArgumentsFromABI(abiFile)
 		require.NoError(t, err)
 
 		//isStaticType

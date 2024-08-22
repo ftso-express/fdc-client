@@ -30,14 +30,14 @@ func calculateMaskedRoot(root common.Hash, random common.Hash, address common.Ad
 	return hex.EncodeToString(crypto.Keccak256(root.Bytes(), random.Bytes(), address.Bytes(), bitVote))
 }
 
-// storeRoot stores root, random, and consensusBitVote for roundId to be used in submitSignatures.
+// storeRoot stores root, random, and consensusBitVote for roundID to be used in submitSignatures.
 //
 // It only stores the merkleRootStorageObject the first time it is called.
-func storeRoot(storage storage.Cyclic[merkleRootStorageObject], roundId uint64, message string, root, random common.Hash, consensusBitVote []byte) {
-	_, exists := storage.Get(roundId)
+func storeRoot(storage storage.Cyclic[merkleRootStorageObject], roundID uint64, message string, root, random common.Hash, consensusBitVote []byte) {
+	_, exists := storage.Get(roundID)
 
 	if exists {
-		log.Debugf("root for round %d already stored", roundId)
+		log.Debugf("root for round %d already stored", roundID)
 	}
 	if !exists {
 
@@ -47,16 +47,16 @@ func storeRoot(storage storage.Cyclic[merkleRootStorageObject], roundId uint64, 
 			randomNum:        random,
 			consensusBitVote: consensusBitVote,
 		}
-		storage.Store(roundId, object)
+		storage.Store(roundID, object)
 	}
 
 }
 
-// submit1Service returns 0x prefixed hex encoded bitVote for roundId and a boolean indicating its existence.
-func (controller *FDCProtocolProviderController) submit1Service(roundId uint64, _ string) (string, bool, error) {
-	votingRound, exists := controller.rounds.Get(roundId)
+// submit1Service returns 0x prefixed hex encoded bitVote for roundID and a boolean indicating its existence.
+func (controller *FDCProtocolProviderController) submit1Service(roundID uint64, _ string) (string, bool, error) {
+	votingRound, exists := controller.rounds.Get(roundID)
 	if !exists {
-		log.Infof("submit1 round %d not stored", roundId)
+		log.Infof("submit1 round %d not stored", roundID)
 		return "", false, nil
 	}
 	bitVoteString, err := votingRound.BitVoteHex(false)
@@ -66,7 +66,7 @@ func (controller *FDCProtocolProviderController) submit1Service(roundId uint64, 
 		return "", false, err
 	}
 
-	payloadMsg, err := payload.BuildMessage(controller.protocolId, roundId, bitVoteString)
+	payloadMsg, err := payload.BuildMessage(controller.protocolID, roundID, bitVoteString)
 
 	if err != nil {
 		log.Errorf("submit1: error building payload %s", err)
@@ -74,26 +74,26 @@ func (controller *FDCProtocolProviderController) submit1Service(roundId uint64, 
 		return "", false, err
 	}
 
-	log.Debugf("submit1: for round %d: %s", roundId, payloadMsg)
+	log.Debugf("submit1: for round %d: %s", roundID, payloadMsg)
 
 	return payloadMsg, true, nil
 }
 
-// submit2Service returns 0x prefixed commit data for roundId and address and an indicator of success.
-// commit data is a hash of merkleRoot, roundId, address, and encodedBitVote.
+// submit2Service returns 0x prefixed commit data for roundID and address and an indicator of success.
+// commit data is a hash of merkleRoot, roundID, address, and encodedBitVote.
 // The data is stored to be used in the reveal.
-func (controller *FDCProtocolProviderController) submit2Service(roundId uint64, address string) (string, bool, error) {
+func (controller *FDCProtocolProviderController) submit2Service(roundID uint64, address string) (string, bool, error) {
 
-	commit, exists := controller.storage.Get(roundId)
+	commit, exists := controller.storage.Get(roundID)
 
 	if exists {
 		return commit.message, true, nil
 	}
 
-	votingRound, exists := controller.rounds.Get(roundId)
+	votingRound, exists := controller.rounds.Get(roundID)
 
 	if !exists {
-		log.Infof("submit2: round %d not stored", roundId)
+		log.Infof("submit2: round %d not stored", roundID)
 
 		return "", false, nil
 	}
@@ -101,16 +101,16 @@ func (controller *FDCProtocolProviderController) submit2Service(roundId uint64, 
 	consensusBitVote, err := votingRound.GetConsensusBitVote()
 
 	if err != nil {
-		log.Infof("submit2: consensus bitVote for round %d not available: %s", roundId, err)
+		log.Infof("submit2: consensus bitVote for round %d not available: %s", roundID, err)
 
 		return "", false, nil
 	}
 
-	encodedBitVote := consensusBitVote.EncodeBitVote(roundId)
+	encodedBitVote := consensusBitVote.EncodeBitVote(roundID)
 	root, err := votingRound.MerkleRoot()
 
 	if err != nil {
-		log.Infof("submit2: Merkle root for round %d not available: %s", roundId, err)
+		log.Infof("submit2: Merkle root for round %d not available: %s", roundID, err)
 
 		return "", false, nil
 	}
@@ -118,7 +118,7 @@ func (controller *FDCProtocolProviderController) submit2Service(roundId uint64, 
 	randomBig, err := rand.Int(rand.Reader, maxRandom)
 
 	if err != nil {
-		log.Errorf("submit2: getting random number for round %d: %s", roundId, err)
+		log.Errorf("submit2: getting random number for round %d: %s", roundID, err)
 
 		return "", false, nil
 	}
@@ -127,34 +127,34 @@ func (controller *FDCProtocolProviderController) submit2Service(roundId uint64, 
 
 	masked := calculateMaskedRoot(root, random, common.HexToAddress(address), encodedBitVote)
 
-	payloadMsg, err := payload.BuildMessage(controller.protocolId, roundId, masked)
+	payloadMsg, err := payload.BuildMessage(controller.protocolID, roundID, masked)
 
 	if err != nil {
-		log.Errorf("submit2: error building payload for round %d: %s", roundId, err)
+		log.Errorf("submit2: error building payload for round %d: %s", roundID, err)
 
 		return "", false, nil
 	}
 
-	storeRoot(controller.storage, roundId, payloadMsg, root, random, encodedBitVote)
+	storeRoot(controller.storage, roundID, payloadMsg, root, random, encodedBitVote)
 
-	log.Debugf("submit2: for round %d and address %s: %s", roundId, address, masked)
+	log.Debugf("submit2: for round %d and address %s: %s", roundID, address, masked)
 
 	return payloadMsg, true, nil
 }
 
-// submitSignaturesService returns merkleRoot encoded in to payload for signing, additionalData, and an indicator of success for roundId.
+// submitSignaturesService returns merkleRoot encoded in to payload for signing, additionalData, and an indicator of success for roundID.
 // Additional data is concatenation of stored randomNumber and consensusBitVote.
-func (controller *FDCProtocolProviderController) submitSignaturesService(roundId uint64, address string) (string, string, bool) {
-	savedRoot, exists := controller.storage.Get(roundId)
+func (controller *FDCProtocolProviderController) submitSignaturesService(roundID uint64, address string) (string, string, bool) {
+	savedRoot, exists := controller.storage.Get(roundID)
 	if !exists {
-		log.Infof("submitSignatures: data for round %d not stored", roundId)
+		log.Infof("submitSignatures: data for round %d not stored", roundID)
 		return "", "", false
 	}
 
-	message := buildMessageForSigning(uint8(controller.protocolId), uint32(roundId), savedRoot.merkleRoot)
+	message := buildMessageForSigning(uint8(controller.protocolID), uint32(roundID), savedRoot.merkleRoot)
 
 	log.Info("SubmitSignaturesHandler")
-	log.Logf(zapcore.DebugLevel, "round: %s", fmt.Sprint(roundId))
+	log.Logf(zapcore.DebugLevel, "round: %s", fmt.Sprint(roundID))
 	log.Logf(zapcore.DebugLevel, "address: %s", address)
 	log.Logf(zapcore.DebugLevel, "root: %s", savedRoot.merkleRoot.Hex())
 	log.Logf(zapcore.DebugLevel, "random: %s", savedRoot.randomNum.String())
@@ -167,17 +167,17 @@ func (controller *FDCProtocolProviderController) submitSignaturesService(roundId
 
 // buildMessageForSigning builds payload message for submitSignatures.
 //
-// protocolId (1 byte)
-// roundId (4 bytes)
+// protocolID (1 byte)
+// roundID (4 bytes)
 // randomQualityScore (1 byte)
 // merkleRoot (32 bytes)
-func buildMessageForSigning(protocolId uint8, roundId uint32, merkleRoot common.Hash) string {
+func buildMessageForSigning(protocolID uint8, roundID uint32, merkleRoot common.Hash) string {
 
 	data := make([]byte, 38)
 
-	data[0] = uint8(protocolId)                            // protocolId (1 byte)
-	binary.BigEndian.PutUint32(data[1:5], uint32(roundId)) // roundId (4 bytes)
-	data[5] = 1                                            // random quality score (1 byte)
+	data[0] = uint8(protocolID)
+	binary.BigEndian.PutUint32(data[1:5], uint32(roundID))
+	data[5] = 1
 	copy(data[6:38], merkleRoot[:])
 
 	return "0x" + hex.EncodeToString(data)

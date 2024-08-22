@@ -22,65 +22,65 @@ type FilterResults struct {
 // FilterBits identifies the bits that are supported by all or by not more than 50% of the totalWeight
 // and moves them from RemainingBits to AlwaysInBits or AlwaysOutBits, respectively.
 // Fees of bits moved to AlwaysInBits are added to guaranteedFees.
-func (results *FilterResults) FilterBits(bitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16) *FilterResults {
-	for i := range results.RemainingBits {
-		support := results.GuaranteedWeight
+func (fr *FilterResults) FilterBits(bitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16) *FilterResults {
+	for i := range fr.RemainingBits {
+		support := fr.GuaranteedWeight
 
-		for j := range results.RemainingVotes {
+		for j := range fr.RemainingVotes {
 			if bitVotes[j].BitVote.BitVector.Bit(i) == 1 {
 				support += bitVotes[j].Weight
 			}
 		}
 
-		if support == results.RemainingWeight {
-			results.AlwaysInBits = append(results.AlwaysInBits, i)
-			results.GuaranteedFees.Add(results.GuaranteedFees, fees[i])
+		if support == fr.RemainingWeight {
+			fr.AlwaysInBits = append(fr.AlwaysInBits, i)
+			fr.GuaranteedFees.Add(fr.GuaranteedFees, fees[i])
 
-			delete(results.RemainingBits, i)
+			delete(fr.RemainingBits, i)
 		} else if support <= totalWeight/2 {
-			results.AlwaysOutBits = append(results.AlwaysOutBits, i)
+			fr.AlwaysOutBits = append(fr.AlwaysOutBits, i)
 
-			delete(results.RemainingBits, i)
+			delete(fr.RemainingBits, i)
 		}
 
 	}
 
-	return results
+	return fr
 }
 
 // FilterBitsOnes moves bits that are supported by all RemainingVotes to AlwaysInBits and updates GuaranteedFees.
-func (results *FilterResults) FilterBitsOnes(bitVotes []*WeightedBitVote, fees []*big.Int) *FilterResults {
+func (fr *FilterResults) FilterBitsOnes(bitVotes []*WeightedBitVote, fees []*big.Int) *FilterResults {
 
 bits:
-	for i := range results.RemainingBits {
-		for j := range results.RemainingVotes {
+	for i := range fr.RemainingBits {
+		for j := range fr.RemainingVotes {
 			if bitVotes[j].BitVote.BitVector.Bit(i) == 0 {
 				continue bits
 			}
 		}
 
-		results.AlwaysInBits = append(results.AlwaysInBits, i)
-		results.GuaranteedFees.Add(results.GuaranteedFees, fees[i])
+		fr.AlwaysInBits = append(fr.AlwaysInBits, i)
+		fr.GuaranteedFees.Add(fr.GuaranteedFees, fees[i])
 
-		delete(results.RemainingBits, i)
+		delete(fr.RemainingBits, i)
 	}
 
-	return results
+	return fr
 }
 
 // FilterVoters moves votes from RemainingVotes that are all zero or all one on RemainingBits to AlwaysOutVotes
 // or AlwaysInVotes, respectively.
 //
 // GuaranteedWeight and RemainingWeight are updated accordingly.
-func (results *FilterResults) FilterVotes(bitVotes []*WeightedBitVote, totalWeight uint16) (*FilterResults, bool) {
+func (fr *FilterResults) FilterVotes(bitVotes []*WeightedBitVote, totalWeight uint16) (*FilterResults, bool) {
 	somethingChanged := false
 
 votes:
-	for i := range results.RemainingVotes {
+	for i := range fr.RemainingVotes {
 		allOnes := true
 		allZeros := true
 
-		for j := range results.RemainingBits {
+		for j := range fr.RemainingBits {
 			if !allOnes && !allZeros {
 				continue votes
 			}
@@ -98,20 +98,20 @@ votes:
 		if allOnes {
 			somethingChanged = true
 
-			results.AlwaysInVotes = append(results.AlwaysInVotes, i)
-			results.GuaranteedWeight += bitVotes[i].Weight
+			fr.AlwaysInVotes = append(fr.AlwaysInVotes, i)
+			fr.GuaranteedWeight += bitVotes[i].Weight
 
-			delete(results.RemainingVotes, i)
+			delete(fr.RemainingVotes, i)
 
-		} else if allZeros && len(results.AlwaysInBits) == 0 {
+		} else if allZeros && len(fr.AlwaysInBits) == 0 {
 			somethingChanged = true
-			results.AlwaysOutVotes = append(results.AlwaysOutVotes, i)
+			fr.AlwaysOutVotes = append(fr.AlwaysOutVotes, i)
 
-			delete(results.RemainingVotes, i)
+			delete(fr.RemainingVotes, i)
 		}
 	}
 
-	return results, somethingChanged
+	return fr, somethingChanged
 
 }
 
@@ -305,4 +305,3 @@ func AssembleSolution(filterResults *FilterResults, filteredSolution *ConsensusS
 
 	return BitVote{BitVector: consensusBitVote, Length: numberOfAttestations}
 }
-

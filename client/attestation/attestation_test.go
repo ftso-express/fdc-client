@@ -75,7 +75,7 @@ func TestHandleAttestation(t *testing.T) {
 
 	err = att.PrepareRequest(attestationTypesConfigs)
 	require.NoError(t, err)
-	att.Credentials.Url = "http://localhost:5555"
+	att.Credentials.URL = "http://localhost:5555"
 
 	go mocks.MockVerifierForTests(t, 5555, testResponse, testLog)
 	time.Sleep(1 * time.Second)

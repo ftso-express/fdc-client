@@ -12,7 +12,7 @@ import (
 
 type userCommon struct {
 	Chain      string            `toml:"chain"`
-	ProtocolId uint8             `toml:"protocolId"`
+	ProtocolID uint8             `toml:"protocol_id"`
 	DB         database.DBConfig `toml:"db"`
 	RestServer RestServer        `toml:"rest_server"`
 	Queues     Queues            `toml:"queues"`
@@ -36,8 +36,8 @@ type System struct {
 
 type RestServer struct {
 	Addr       string   `toml:"addr"`
-	ApiKeyName string   `toml:"api_key_name"`
-	ApiKeys    []string `toml:"api_keys"`
+	APIKeyName string   `toml:"api_key_name"`
+	APIKeys    []string `toml:"api_keys"`
 
 	Title       string `toml:"title"`
 	FSPTitle    string `toml:"fsp_sub_router_title"`
@@ -60,29 +60,27 @@ type Addresses struct {
 }
 
 type Source struct {
-	Url       string
-	ApiKey    string
-	LutLimit  uint64
+	URL       string
+	APIKey    string
+	LUTLimit  uint64
 	QueueName string
-	//add pointer to a queue
 }
 
 type sourceBig struct {
-	Url       string   `toml:"url"`
-	ApiKey    string   `toml:"api_key"`
-	LutLimit  *big.Int `toml:"lut_limit"`
+	URL       string   `toml:"url"`
+	APIKey    string   `toml:"api_key"`
+	LUTLimit  *big.Int `toml:"lut_limit"`
 	QueueName string   `toml:"queue"`
-	//add pointer to a queue
 }
 
 type AttestationType struct {
 	ResponseArguments abi.Arguments
-	ResponseAbiString string
+	ResponseABIString string
 	SourcesConfig     map[[32]byte]Source
 }
 
 type AttestationTypeUnparsed struct {
-	Abi     string               `toml:"abi_path"`
+	ABIPath string               `toml:"abi_path"`
 	Sources map[string]sourceBig `toml:"sources"`
 }
 

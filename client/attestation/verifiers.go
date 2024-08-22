@@ -12,17 +12,17 @@ import (
 
 // Function used to resolve attestation requests
 
-type AbiEncodedRequestBody struct {
-	AbiEncodedRequest string `json:"abiEncodedRequest"`
+type ABIEncodedRequestBody struct {
+	ABIEncodedRequest string `json:"abiEncodedRequest"`
 }
 
-type AbiEncodedResponseBody struct {
+type ABIEncodedResponseBody struct {
 	Status             string `json:"status"`
-	AbiEncodedResponse string `json:"abiEncodedResponse"`
+	ABIEncodedResponse string `json:"abiEncodedResponse"`
 }
 
 type VerifierCredentials struct {
-	Url    string
+	URL    string
 	apiKey string
 }
 
@@ -32,13 +32,13 @@ func ResolveAttestationRequest(ctx context.Context, att *Attestation) ([]byte, b
 	client := &http.Client{}
 	requestBytes := att.Request
 	encoded := hex.EncodeToString(requestBytes)
-	payload := AbiEncodedRequestBody{AbiEncodedRequest: "0x" + encoded}
+	payload := ABIEncodedRequestBody{ABIEncodedRequest: "0x" + encoded}
 	encodedBody, err := json.Marshal(payload)
 	if err != nil {
 		return nil, false, err
 	}
 
-	request, err := http.NewRequestWithContext(ctx, "POST", att.Credentials.Url, bytes.NewBuffer(encodedBody))
+	request, err := http.NewRequestWithContext(ctx, "POST", att.Credentials.URL, bytes.NewBuffer(encodedBody))
 	if err != nil {
 		return nil, false, err
 	}
@@ -55,7 +55,7 @@ func ResolveAttestationRequest(ctx context.Context, att *Attestation) ([]byte, b
 	// close response body after function ends
 	defer resp.Body.Close()
 
-	responseBody := AbiEncodedResponseBody{}
+	responseBody := ABIEncodedResponseBody{}
 	decoder := json.NewDecoder(resp.Body)
 	decoder.DisallowUnknownFields()
 
@@ -66,7 +66,7 @@ func ResolveAttestationRequest(ctx context.Context, att *Attestation) ([]byte, b
 	if responseBody.Status != "VALID" {
 		return nil, false, nil
 	}
-	responseBytes, err := hex.DecodeString(strings.TrimPrefix(responseBody.AbiEncodedResponse, "0x"))
+	responseBytes, err := hex.DecodeString(strings.TrimPrefix(responseBody.ABIEncodedResponse, "0x"))
 	if err != nil {
 		return nil, false, err
 	}

@@ -45,10 +45,10 @@ type DARequest struct {
 }
 
 type DAAttestation struct {
-	RoundId  uint64   `json:"roundId"`
-	Request  string   `json:"request"`
-	Response string   `json:"response"`
-	Abi      string   `json:"abi"`
-	Proof    []string `json:"proof"`
-	hash     common.Hash
+	RoundID     uint64   `json:"roundId"`
+	Request     string   `json:"request"`
+	Response    string   `json:"response"`
+	ResponseABI string   `json:"abi"`
+	Proof       []string `json:"proof"`
+	hash        common.Hash
 }

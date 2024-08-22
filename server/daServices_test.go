@@ -33,20 +33,20 @@ func makeController(t *testing.T) server.DAController {
 
 	require.NoError(t, err)
 
-	abi, abiString, err := config.GetAbi("../tests/configs/abis/EVMTransaction.json")
+	abi, abiString, err := config.ReadABI("../tests/configs/abis/EVMTransaction.json")
 
 	require.NoError(t, err)
 
-	round := round.CreateRound(1, policy.NewVoterSet(nil, nil, nil))
+	round := round.New(1, policy.NewVoterSet(nil, nil, nil))
 	round.Attestations = append(round.Attestations, &attestation.Attestation{
-		Request:   request,
-		Response:  response,
-		RoundId:   1,
-		Consensus: true,
-		Status:    attestation.Success,
-		Hash:      hash,
-		Abi:       &abi,
-		AbiString: &abiString,
+		Request:           request,
+		Response:          response,
+		RoundID:           1,
+		Consensus:         true,
+		Status:            attestation.Success,
+		Hash:              hash,
+		ResponseABI:       &abi,
+		ResponseABIString: &abiString,
 	})
 	rounds.Store(votingRoundID, round)
 
@@ -83,5 +83,5 @@ func TestGetAttestations(t *testing.T) {
 
 	require.Len(t, attestations, 1)
 
-	fmt.Printf("attestations: %v\n", attestations[0].Abi)
+	fmt.Printf("attestations: %v\n", attestations[0].ResponseABI)
 }

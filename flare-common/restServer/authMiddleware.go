@@ -48,7 +48,7 @@ func (keyMiddleware *AipKeyAuthMiddleware) Middleware(next http.Handler) http.Ha
 		// Check the api key
 		token := r.Header.Get(keyMiddleware.KeyName)
 		if _, found := keyMiddleware.keyMap[token]; found {
-			// Api key is valid
+			// API key is valid
 			next.ServeHTTP(w, r)
 			return
 		}

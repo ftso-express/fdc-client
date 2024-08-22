@@ -22,7 +22,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-var chainId = int64(31337)
+var chainID = int64(31337)
 
 func MockParticipants(systemConfig *config.System, participants []string, client *ethclient.Client, requestData string) {
 	gasPrice, err := client.SuggestGasPrice(context.Background())
@@ -45,7 +45,7 @@ func MockParticipants(systemConfig *config.System, participants []string, client
 	for {
 		now := time.Now()
 
-		round, err := timing.RoundIdForTimestamp(uint64(now.Unix()))
+		round, err := timing.RoundIDForTimestamp(uint64(now.Unix()))
 		if err != nil {
 			log.Fatal("Error: %s", err)
 		}
@@ -105,7 +105,7 @@ func sendRequest(i int, client *ethclient.Client, fdcHub *fdc.Fdc, fromAddress c
 		return err
 	}
 
-	opts, err := bind.NewKeyedTransactorWithChainID(privateKeyECDSA, big.NewInt(chainId))
+	opts, err := bind.NewKeyedTransactorWithChainID(privateKeyECDSA, big.NewInt(chainID))
 	if err != nil {
 		log.Fatal("Error: %s", err)
 	}
@@ -170,7 +170,7 @@ func sendBitvote(round uint64, client *ethclient.Client, toAddress, fromAddress 
 	}
 
 	tx := types.NewTransaction(nonce, toAddress, big.NewInt(int64(0)), uint64(8000000), gasPrice, dataBytes)
-	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(big.NewInt(chainId)), privateKeyECDSA)
+	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(big.NewInt(chainID)), privateKeyECDSA)
 	if err != nil {
 		return err
 	}

@@ -36,36 +36,36 @@ var voterRegisteredEventSel common.Hash
 var log = logger.GetLogger()
 
 func init() {
-	relayAbi, err := relay.RelayMetaData.GetAbi()
+	relayABI, err := relay.RelayMetaData.GetAbi()
 	if err != nil {
 		log.Panic("cannot get relayAby:", err)
 	}
 
-	signingPolicyEvent, ok := relayAbi.Events["SigningPolicyInitialized"]
+	signingPolicyEvent, ok := relayABI.Events["SigningPolicyInitialized"]
 	if !ok {
 		log.Panic("cannot get SigningPolicyInitialized event:", err)
 	}
 	signingPolicyInitializedEventSel = signingPolicyEvent.ID
 
-	fdcAbi, err := fdc.FdcMetaData.GetAbi()
+	fdcABI, err := fdc.FdcMetaData.GetAbi()
 
 	if err != nil {
-		log.Panic("cannot get fdcAbi:", err)
+		log.Panic("cannot get fdcABI:", err)
 	}
 
-	requestEvent, ok := fdcAbi.Events["AttestationRequest"]
+	requestEvent, ok := fdcABI.Events["AttestationRequest"]
 	if !ok {
 		log.Panic("cannot get AttestationRequest event:", err)
 	}
 
 	AttestationRequestEventSel = requestEvent.ID
 
-	registryAbi, err := registry.RegistryMetaData.GetAbi()
+	registryABI, err := registry.RegistryMetaData.GetAbi()
 	if err != nil {
-		log.Panic("cannot get registryAbi:", err)
+		log.Panic("cannot get registryABI:", err)
 	}
 
-	voterRegisteredEvent, ok := registryAbi.Events["VoterRegistered"]
+	voterRegisteredEvent, ok := registryABI.Events["VoterRegistered"]
 
 	if !ok {
 		log.Panic("cannot get VoterRegistered event:", err)
@@ -76,7 +76,7 @@ func init() {
 }
 
 type Collector struct {
-	ProtocolId                   uint8
+	ProtocolID                   uint8
 	SubmitContractAddress        common.Address
 	FdcContractAddress           common.Address
 	RelayContractAddress         common.Address
@@ -89,12 +89,8 @@ type Collector struct {
 	SigningPolicies chan []shared.VotersData
 }
 
-// NewCollector creates new Collector from user and system configs.
-func NewCollector(user *config.UserRaw, system *config.System, sharedDataPipes *shared.SharedDataPipes) *Collector {
-	// CONSTANTS
-	// requestEventSignature := "251377668af6553101c9bb094ba89c0c536783e005e203625e6cd57345918cc9"
-	// signingPolicySignature := "91d0280e969157fc6c5b8f952f237b03d934b18534dafcac839075bbc33522f8"
-
+// New creates new Collector from user and system configs.
+func New(user *config.UserRaw, system *config.System, sharedDataPipes *shared.DataPipes) *Collector {
 	db, err := database.Connect(&user.DB)
 	if err != nil {
 		log.Panic("Could not connect to database:", err)
@@ -106,7 +102,7 @@ func NewCollector(user *config.UserRaw, system *config.System, sharedDataPipes *
 	}
 
 	runner := Collector{
-		ProtocolId:                   user.ProtocolId,
+		ProtocolID:                   user.ProtocolID,
 		SubmitContractAddress:        system.Addresses.SubmitContract,
 		FdcContractAddress:           system.Addresses.FdcContract,
 		RelayContractAddress:         system.Addresses.RelayContract,
@@ -136,8 +132,8 @@ func ParseFuncSel(sigInput string) ([4]byte, error) {
 
 // Run starts SigningPolicyInitializedListener, BitVoteListener, and AttestationRequestListener,
 // assigns their channels to the RoundManager, and starts the RoundManager.
-func (r *Collector) Run(ctx context.Context) {
-	state, err := database.FetchState(ctx, r.DB)
+func (c *Collector) Run(ctx context.Context) {
+	state, err := database.FetchState(ctx, c.DB)
 	if err != nil {
 		log.Panic("database error:", err)
 	}
@@ -148,9 +144,9 @@ func (r *Collector) Run(ctx context.Context) {
 
 	chooseTrigger := make(chan uint64)
 
-	go SigningPolicyInitializedListener(ctx, r.DB, r.RelayContractAddress, r.VoterRegistryContractAddress, r.SigningPolicies)
-	go BitVoteListener(ctx, r.DB, r.SubmitContractAddress, r.submit1Sel, r.ProtocolId, chooseTrigger, r.BitVotes)
-	go AttestationRequestListener(ctx, r.DB, r.FdcContractAddress, requestListenerInterval, r.Requests)
+	go SigningPolicyInitializedListener(ctx, c.DB, c.RelayContractAddress, c.VoterRegistryContractAddress, c.SigningPolicies)
+	go BitVoteListener(ctx, c.DB, c.SubmitContractAddress, c.submit1Sel, c.ProtocolID, chooseTrigger, c.BitVotes)
+	go AttestationRequestListener(ctx, c.DB, c.FdcContractAddress, requestListenerInterval, c.Requests)
 
-	PrepareChooseTriggers(ctx, chooseTrigger, r.DB)
+	PrepareChooseTriggers(ctx, chooseTrigger, c.DB)
 }

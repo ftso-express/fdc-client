@@ -67,13 +67,13 @@ func writeResponseError(w http.ResponseWriter, message string) {
 
 }
 
-// Equivalent to WriteApiResponse with status ApiResponseStatusOk
-func WriteApiResponseOk[T any](w http.ResponseWriter, value T) {
+// Equivalent to WriteAPIResponse with status APIResponseStatusOk
+func WriteAPIResponseOk[T any](w http.ResponseWriter, value T) {
 	writeResponse(w, value)
 }
 
 // Use for error responses
-func WriteApiResponseError(
+func WriteAPIResponseError(
 	w http.ResponseWriter,
 	errorMessage string,
 	errorDetails string,
@@ -90,13 +90,13 @@ func DecodeBody(w http.ResponseWriter, r *http.Request, value interface{}) bool 
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&value)
 	if err != nil {
-		WriteApiResponseError(w,
+		WriteAPIResponseError(w,
 			"error parsing request body", err.Error())
 		return false
 	}
 	err = validate.Struct(value)
 	if err != nil {
-		WriteApiResponseError(w,
+		WriteAPIResponseError(w,
 			"error validating request body", err.Error())
 		return false
 	}
@@ -107,13 +107,13 @@ func DecodeQueryParams(w http.ResponseWriter, r *http.Request, value interface{}
 	decoder := schema.NewDecoder()
 	err := decoder.Decode(value, r.URL.Query())
 	if err != nil {
-		WriteApiResponseError(w,
+		WriteAPIResponseError(w,
 			"error parsing query params", err.Error())
 		return false
 	}
 	err = validate.Struct(value)
 	if err != nil {
-		WriteApiResponseError(w,
+		WriteAPIResponseError(w,
 			"error validating query params", err.Error())
 		return false
 	}
@@ -126,7 +126,7 @@ func BadParamsErrorHandler(err error) *ErrorHandler {
 	}
 	return &ErrorHandler{
 		Handler: func(w http.ResponseWriter) {
-			WriteApiResponseError(w, err.Error(), err.Error())
+			WriteAPIResponseError(w, err.Error(), err.Error())
 		},
 	}
 }
@@ -134,7 +134,7 @@ func BadParamsErrorHandler(err error) *ErrorHandler {
 func InternalServerErrorHandler(err error) *ErrorHandler {
 	return &ErrorHandler{
 		Handler: func(w http.ResponseWriter) {
-			WriteApiResponseError(w, "internal server error", err.Error())
+			WriteAPIResponseError(w, "internal server error", err.Error())
 		},
 	}
 }
