@@ -15,6 +15,11 @@
           "internalType": "address",
           "name": "_addressUpdater",
           "type": "address"
+        },
+        {
+          "internalType": "uint8",
+          "name": "_requestsOffsetSeconds",
+          "type": "uint8"
         }
       ],
       "stateMutability": "nonpayable",
@@ -126,6 +131,39 @@
           "type": "uint24"
         },
         {
+          "components": [
+            {
+              "internalType": "bytes32",
+              "name": "attestationType",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "source",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint24",
+              "name": "inflationShare",
+              "type": "uint24"
+            },
+            {
+              "internalType": "uint8",
+              "name": "minRequestsThreshold",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint224",
+              "name": "mode",
+              "type": "uint224"
+            }
+          ],
+          "indexed": false,
+          "internalType": "struct IFdcInflationConfigurations.FdcConfiguration[]",
+          "name": "fdcConfigurations",
+          "type": "tuple[]"
+        },
+        {
           "indexed": false,
           "internalType": "uint256",
           "name": "amount",
@@ -133,6 +171,19 @@
         }
       ],
       "name": "InflationRewardsOffered",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint8",
+          "name": "requestsOffsetSeconds",
+          "type": "uint8"
+        }
+      ],
+      "name": "RequestsOffsetSet",
       "type": "event"
     },
     {
@@ -174,50 +225,6 @@
       "type": "event"
     },
     {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "bytes32",
-          "name": "_type",
-          "type": "bytes32"
-        },
-        {
-          "indexed": true,
-          "internalType": "bytes32",
-          "name": "source",
-          "type": "bytes32"
-        }
-      ],
-      "name": "TypeAndSourceFeeRemoved",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "bytes32",
-          "name": "_type",
-          "type": "bytes32"
-        },
-        {
-          "indexed": true,
-          "internalType": "bytes32",
-          "name": "source",
-          "type": "bytes32"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "fee",
-          "type": "uint256"
-        }
-      ],
-      "name": "TypeAndSourceFeeSet",
-      "type": "event"
-    },
-    {
       "inputs": [
         {
           "internalType": "bytes4",
@@ -254,6 +261,32 @@
       "name": "executeGovernanceCall",
       "outputs": [],
       "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "fdcInflationConfigurations",
+      "outputs": [
+        {
+          "internalType": "contract IFdcInflationConfigurations",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "fdcRequestFeeConfigurations",
+      "outputs": [
+        {
+          "internalType": "contract IFdcRequestFeeConfigurations",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -316,25 +349,6 @@
           "internalType": "address",
           "name": "",
           "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "bytes",
-          "name": "_data",
-          "type": "bytes"
-        }
-      ],
-      "name": "getRequestFee",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -475,42 +489,6 @@
     {
       "inputs": [
         {
-          "internalType": "bytes32",
-          "name": "_type",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "bytes32",
-          "name": "_source",
-          "type": "bytes32"
-        }
-      ],
-      "name": "removeTypeAndSourceFee",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "bytes32[]",
-          "name": "_types",
-          "type": "bytes32[]"
-        },
-        {
-          "internalType": "bytes32[]",
-          "name": "_sources",
-          "type": "bytes32[]"
-        }
-      ],
-      "name": "removeTypeAndSourceFees",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
           "internalType": "bytes",
           "name": "_data",
           "type": "bytes"
@@ -519,6 +497,19 @@
       "name": "requestAttestation",
       "outputs": [],
       "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "requestsOffsetSeconds",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -550,45 +541,12 @@
     {
       "inputs": [
         {
-          "internalType": "bytes32",
-          "name": "_type",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "bytes32",
-          "name": "_source",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_fee",
-          "type": "uint256"
+          "internalType": "uint8",
+          "name": "_requestsOffsetSeconds",
+          "type": "uint8"
         }
       ],
-      "name": "setTypeAndSourceFee",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "bytes32[]",
-          "name": "_types",
-          "type": "bytes32[]"
-        },
-        {
-          "internalType": "bytes32[]",
-          "name": "_sources",
-          "type": "bytes32[]"
-        },
-        {
-          "internalType": "uint256[]",
-          "name": "_fees",
-          "type": "uint256[]"
-        }
-      ],
-      "name": "setTypeAndSourceFees",
+      "name": "setRequestsOffset",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -684,25 +642,6 @@
       "name": "triggerRewardEpochSwitchover",
       "outputs": [],
       "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "bytes32",
-          "name": "typeAndSource",
-          "type": "bytes32"
-        }
-      ],
-      "name": "typeAndSourceFees",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "fee",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
       "type": "function"
     },
     {

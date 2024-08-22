@@ -12,7 +12,7 @@ import (
 	bitvotes "local/fdc/client/attestation/bitVotes"
 	"local/fdc/client/config"
 	"local/fdc/client/timing"
-	"local/fdc/contracts/fdc"
+	"local/fdc/contracts/fdchub"
 	"math"
 	"math/big"
 
@@ -38,14 +38,14 @@ const (
 var log = logger.GetLogger()
 
 // fdcFilterer is only used for Attestation Requests logs parsing. Set in init().
-var fdcFilterer *fdc.FdcFilterer
+var fdcFilterer *fdchub.FdcHubFilterer
 
 // init sets the fdcFilterer
 func init() {
 
 	var err error
 
-	fdcFilterer, err = fdc.NewFdcFilterer(common.Address{}, nil)
+	fdcFilterer, err = fdchub.NewFdcHubFilterer(common.Address{}, nil)
 
 	if err != nil {
 		log.Panic("cannot get fdc contract:", err)
@@ -220,7 +220,7 @@ func (a *Attestation) validateResponse() error {
 }
 
 // ParseAttestationRequestLog tries to parse AttestationRequest log as stored in the database.
-func ParseAttestationRequestLog(dbLog database.Log) (*fdc.FdcAttestationRequest, error) {
+func ParseAttestationRequestLog(dbLog database.Log) (*fdchub.FdcHubAttestationRequest, error) {
 	contractLog, err := events.ConvertDatabaseLogToChainLog(dbLog)
 	if err != nil {
 		return nil, err

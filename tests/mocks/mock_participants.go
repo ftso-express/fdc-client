@@ -10,7 +10,7 @@ import (
 	"local/fdc/client/collector"
 	"local/fdc/client/config"
 	"local/fdc/client/timing"
-	"local/fdc/contracts/fdc"
+	"local/fdc/contracts/fdchub"
 	"math/big"
 	"strconv"
 	"time"
@@ -31,7 +31,7 @@ func MockParticipants(systemConfig *config.System, participants []string, client
 	}
 	gasPrice.Mul(gasPrice, big.NewInt(2))
 
-	fdcHub, err := fdc.NewFdc(systemConfig.Addresses.FdcContract, client)
+	fdcHub, err := fdchub.NewFdcHub(systemConfig.Addresses.FdcContract, client)
 	if err != nil {
 		log.Fatal("Error: %s", err)
 	}
@@ -97,7 +97,7 @@ func Participants(sks []string) ([]common.Address, []*ecdsa.PrivateKey, error) {
 	return pks, privKeys, nil
 }
 
-func sendRequest(i int, client *ethclient.Client, fdcHub *fdc.Fdc, fromAddress common.Address, privateKeyECDSA *ecdsa.PrivateKey, gasPrice *big.Int, requestData string) error {
+func sendRequest(i int, client *ethclient.Client, fdcHub *fdchub.FdcHub, fromAddress common.Address, privateKeyECDSA *ecdsa.PrivateKey, gasPrice *big.Int, requestData string) error {
 	cut := len(strconv.Itoa(i))
 	data := requestData[:len(requestData)-cut] + strconv.Itoa(i)
 	dataBytes, err := hex.DecodeString(data)

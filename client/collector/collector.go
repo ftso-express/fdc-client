@@ -12,7 +12,7 @@ import (
 	"flare-common/payload"
 	"local/fdc/client/config"
 	"local/fdc/client/shared"
-	"local/fdc/contracts/fdc"
+	"local/fdc/contracts/fdchub"
 
 	"time"
 
@@ -47,7 +47,7 @@ func init() {
 	}
 	signingPolicyInitializedEventSel = signingPolicyEvent.ID
 
-	fdcABI, err := fdc.FdcMetaData.GetAbi()
+	fdcABI, err := fdchub.FdcHubMetaData.GetAbi()
 
 	if err != nil {
 		log.Panic("cannot get fdcABI:", err)
