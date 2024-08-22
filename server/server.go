@@ -85,7 +85,7 @@ func RegisterFDCProviderRoutes(router restServer.Router, protocolID uint64, roun
 	router.AddRoute("/submitSignatures/{votingRoundID}/{submitAddress}", submitSignaturesHandler, "SubmitSignatures")
 }
 
-// Registration of routes for the DA layer
+// Registration of routes for the DA layer WIP
 func RegisterDARoutes(router restServer.Router, rounds *storage.Cyclic[*round.Round], securities []string) {
 	// Prepare service controller
 	controller := DAController{Rounds: rounds}
