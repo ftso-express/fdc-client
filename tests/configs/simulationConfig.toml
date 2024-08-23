@@ -7,7 +7,7 @@ protocol_id = 200
 [db]
 host = "localhost"
 port = 3306
-database = "flare_ftso_indexer"
+database = "flare_ftso_indexer_fdc_simulation"
 username = "root"
 password = "root"
 log_queries = false

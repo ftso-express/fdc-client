@@ -7,12 +7,12 @@ import (
 	"flare-common/contracts/registry"
 	"flare-common/contracts/relay"
 
+	"flare-common/contracts/fdchub"
 	"flare-common/database"
 	"flare-common/logger"
 	"flare-common/payload"
 	"local/fdc/client/config"
 	"local/fdc/client/shared"
-	"local/fdc/contracts/fdchub"
 
 	"time"
 

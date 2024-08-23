@@ -4,8 +4,8 @@
 
 ### Simulate chain and Flare System
 
-Using the repository `flare-smart-contracts-v2`, branch `e2e-fdc-temp`
-found [here](https://gitlab.com/flarenetwork/flare-smart-contracts-v2/-/tree/e2e-fdc-temp?ref_type=heads)
+Using the repository `flare-smart-contracts-v2`, branch `fdc`
+found [here](https://gitlab.com/flarenetwork/flare-smart-contracts-v2/-/tree/fdc?ref_type=heads)
 one can deploy all the Fast Updates contracts
 together with the whole Flare system and voter repository. Navigate to the
 repository and run
@@ -32,19 +32,29 @@ t0 = 1722567915 # to be replaced by the firstVotingEpochStartSec
 ### Run indexer and database
 
 Using the repository `flare-system-c-chain-indexer` found [here](https://github.com/flare-foundation/flare-system-c-chain-indexer)
-run an indexer of the hardhat chain used in the simulation. Deploy a database
-(for example by running `docker compose up indexer-db`
-in `docker/local` of this repository). Then run (in the `flare-system-c-chain-indexer` repository)
+run an indexer of the hardhat chain used in the simulation. The process is Dockerized. First
+deploy a database by navigating in `docker/test` of this repository and run
+```bash
+docker compose up indexer-db
+```
+and then run 
+```bash
+docker compose up indexer
+```
+in the same directory.
+
+
+## FDC client in simulated environment
+
+Run a FDC client to participate in this simulation:
 
 ```bash
-go run main.go --config c-chain-indexer-for-simulation-config.toml
+go run main/main.go --config tests/configs/simulationConfig.toml
 ```
-
-where `c-chain-indexer-for-simulation-config.toml` is the config file found in this folder.
 
 ### Simulate participants submitting requests, other data providers, and a verification server
 
-Run
+Finally run
 
 ```bash
 go run tests/simulation/simulation_mock.go --config tests/configs/simulationConfig.toml
@@ -57,13 +67,8 @@ to simulate:
 -   a simple verification server that returns a hardcoded confirmation,
 -   a system client querying the FDC server to provide data to be submitted on the blockchain.
 
-## FDC client in simulated environment
+The FDC client should be responding to the above actions.
 
-Finally one can run a FDC client to participate in this simulation:
-
-```bash
-go run main/main.go --config tests/configs/simulationConfig.toml
-```
 
 TODO: Currently the simulation is rather static in the sense that the every round, at the
 same time a request is sent, that is always confirmed by all the providers. Make the
