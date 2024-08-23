@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"flare-common/contracts/fdchub"
 	"flare-common/database"
 	"flare-common/events"
 	"flare-common/logger"
@@ -12,7 +13,6 @@ import (
 	bitvotes "local/fdc/client/attestation/bitVotes"
 	"local/fdc/client/config"
 	"local/fdc/client/timing"
-	"local/fdc/contracts/fdchub"
 	"math"
 	"math/big"
 

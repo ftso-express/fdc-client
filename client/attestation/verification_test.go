@@ -46,7 +46,7 @@ func TestResponse(t *testing.T) {
 		{
 			response:     responseBDT,
 			isStaticType: true,
-			abi:          "../../configs/abis/BalanceDecreasingTransaction.json",
+			abi:          "../../tests/configs/abis/BalanceDecreasingTransaction.json",
 			mic:          "2f51362aef7ff57fa4aa74ecca9a5fbaffc123416d7df97226e8635776f06d0b",
 			lut:          1716305740,
 			round:        123123,

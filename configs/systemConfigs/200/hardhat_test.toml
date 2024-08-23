@@ -6,7 +6,7 @@ fdc_contract = "0xb682dEEf4f8e298d86bFc3e21f50c675151FB974"
 voter_registry_contract = "0xB00cC45B4a7d3e1FEE684cFc4417998A1c183e6d"
 
 [timing]
-t0 = 1723533629
+t0 = 1724394673
 t0_reward_delay = 20000
 reward_epoch_length = 5
 collect_duration_sec = 20

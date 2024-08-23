@@ -14,32 +14,48 @@ Implements
 
 ## Client
 
-### Collector
-
 ### Attestation
 
-An attestation is created for each request emitted by the FDC contract.
+An attestation is created for each request emitted by the FDC contract. The
+package includes all the functions needed to handle the requests, as well as
+for well as a sub-package `bitvotes` for calculating a consensus for the
+joint response.
+
+### Collector
+
+Collector package includes a functionality that is continuously making requests
+to the C-chain database to obtain information about requests, bit votes and
+signing policies posted on the chain. It submits the results to the
+`Requests`, `BitVotes` and `SigningPolicies` channels.
 
 #### Manager
 
 Manager has an infinite loop that constantly listens to the `Requests`, `BitVotes` and `SigningPolicies` channels.
-SigningPolicy is received once per reward epoch. It is stored in signing policy storage.
-Requests are delivered as they are emitted on chain. A request is assigned to the round according to the timestamp of its emission, it is put into a queue to be sent to the verifier.
 
-Manager holds rounds in a cyclic storage.
+SigningPolicy is received once per reward epoch. It is stored in signing policy storage.
+Requests are delivered as they are emitted on chain. 
+
+Manager holds rounds in a cyclic storage. A request is assigned to the round according to the timestamp of its emission, it is put into a queue to be sent to the verifier.
 
 BitVotes are received after the end of each choose phase.
-Once they are received the consensus bitVote is computed.
+Once they are received, the consensus bitVote is computed.
 After the consensus bitVote is computed, the requests that were chosen but not confirmed are resent to the verifiers.
 
 #### Round
 
-The round holds an attestation for each request.
+The round holds all the information gathered and computed in one round.
+
+It holds an attestation for each request.
 The attestations are sorted by the order of the emissions of their underlying requests.
 
-The bitVote for the round is build when queried.
-
+The bitVote for the round is build when queried and bitVotes consensus is saved when available.
 The Merkle Tree can only be build after the consensus bitVote is computed and all the chosen requests are confirmed.
+
+#### Config, Shared, Timing, and Utils
+
+The packages `config`, `shared`, `timing`, and `utils`, respectively, include functions 
+and structs for parsing the configuration of the client, creating shared data, calculating
+the timing of various epochs, and for general work with slices and maps.
 
 # Logic
 

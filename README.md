@@ -99,7 +99,7 @@ queue = "queue1"
 [verifiers.<attestationType>.Sources.<source2>]
 url = "http://url/of/the/verifier2"
 api_key = "api-key2"
-lut_limit = "queue2"
+lut_limit = "123124124"
 queue = "queue2"
 ```
 
