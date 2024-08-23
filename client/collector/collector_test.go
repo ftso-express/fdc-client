@@ -17,9 +17,9 @@ import (
 )
 
 const (
-	submitContractAddrHex = "0x90C6423ec3Ea40591bAdb177171B64c7e6556028"
-	protocol              = 0xc8
-	roundID               = 1
+	submitContractAddrHex        = "0x90C6423ec3Ea40591bAdb177171B64c7e6556028"
+	protocol                     = 0xc8
+	roundID               uint32 = 1
 )
 
 var (
@@ -61,7 +61,7 @@ func TestPrepareChooseTrigger(t *testing.T) {
 
 	db.Create(&state)
 
-	trigger := make(chan uint64)
+	trigger := make(chan uint32)
 
 	go collector.PrepareChooseTriggers(ctx, trigger, db)
 
@@ -92,11 +92,14 @@ func TestBitVoteListener(t *testing.T) {
 	err := db.AutoMigrate(&database.Transaction{})
 	require.NoError(t, err)
 
-	trigger := make(chan uint64)
+	trigger := make(chan uint32)
 	bitVotesChan := make(chan payload.Round, 2)
 
-	msg, err := payload.BuildMessage(200, 1, "0100050b")
+	pyld, err := hex.DecodeString("0100050b")
+
 	require.NoError(t, err)
+
+	msg := payload.BuildMessage(200, 1, pyld)
 
 	input := hex.EncodeToString(funcSel[:]) + msg[2:]
 
@@ -132,7 +135,7 @@ func TestBitVoteListener(t *testing.T) {
 
 	select {
 	case round := <-bitVotesChan:
-		require.Equal(t, uint64(roundID), round.ID)
+		require.Equal(t, roundID, round.ID)
 		require.Len(t, round.Messages, 1)
 
 	case <-ctx.Done():

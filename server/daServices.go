@@ -9,7 +9,7 @@ import (
 
 //  wip
 
-func (controller *DAController) GetRequests(roundId uint64) ([]DARequest, bool) {
+func (controller *DAController) GetRequests(roundId uint32) ([]DARequest, bool) {
 	round, exists := controller.Rounds.Get(roundId)
 
 	if !exists {
@@ -48,7 +48,7 @@ func AttestationToDARequest(att *attestation.Attestation) DARequest {
 	return dARequest
 }
 
-func (controller *DAController) GetAttestations(roundId uint64) ([]DAAttestation, bool) {
+func (controller *DAController) GetAttestations(roundId uint32) ([]DAAttestation, bool) {
 	round, exists := controller.Rounds.Get(roundId)
 
 	if !exists {

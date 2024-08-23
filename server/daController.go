@@ -11,7 +11,7 @@ import (
 )
 
 type DAController struct {
-	Rounds *storage.Cyclic[*round.Round]
+	Rounds *storage.Cyclic[*round.Round, uint32]
 }
 
 type RequestsResponse struct {
@@ -24,7 +24,7 @@ type AttestationResponse struct {
 	Attestations []DAAttestation
 }
 
-func validateRoundIDParam(params map[string]string) (uint64, error) {
+func validateRoundIDParam(params map[string]string) (uint32, error) {
 
 	votingRoundIDStr, exists := params["votingRoundID"]
 
@@ -32,13 +32,13 @@ func validateRoundIDParam(params map[string]string) (uint64, error) {
 		return 0, errors.New("missing votingRound param")
 	}
 
-	votingRoundID, err := strconv.ParseUint(votingRoundIDStr, 10, 64)
+	votingRoundID, err := strconv.ParseUint(votingRoundIDStr, 10, 32)
 
 	if err != nil {
-		return 0, errors.New("votingRound param is not a number")
+		return 0, errors.New("votingRound param is not a 32 bit number")
 	}
 
-	return votingRoundID, nil
+	return uint32(votingRoundID), nil
 
 }
 

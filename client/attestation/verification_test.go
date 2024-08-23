@@ -31,7 +31,7 @@ func TestResponse(t *testing.T) {
 		abi          string
 		mic          string
 		lut          uint64
-		round        uint64
+		round        uint32
 		hash         string
 	}{
 		{

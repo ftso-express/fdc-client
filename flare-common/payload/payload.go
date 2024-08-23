@@ -6,7 +6,6 @@ import (
 	"errors"
 	"flare-common/database"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -14,14 +13,14 @@ import (
 
 type Round struct {
 	Messages []Message
-	ID       uint64
+	ID       uint32
 }
 
 type Message struct {
 	From             common.Address
 	Selector         string // function selector
-	Protocol         uint8  // ID of the protocol
-	VotingRound      uint64
+	ProtocolID       uint8
+	VotingRound      uint32
 	Timestamp        uint64
 	BlockNumber      uint64
 	TransactionIndex uint64
@@ -63,8 +62,8 @@ func ExtractPayloads(tx *database.Transaction) (map[uint8]Message, error) {
 		message := Message{
 			From:             common.HexToAddress(tx.FromAddress),
 			Selector:         tx.FunctionSig,
-			Protocol:         protocol,
-			VotingRound:      uint64(votingRound),
+			ProtocolID:       protocol,
+			VotingRound:      votingRound,
 			Timestamp:        tx.Timestamp,
 			BlockNumber:      tx.BlockNumber,
 			TransactionIndex: tx.TransactionIndex,
@@ -81,41 +80,19 @@ func ExtractPayloads(tx *database.Transaction) (map[uint8]Message, error) {
 	return messages, nil
 }
 
-func prependZerosToLength(hexString string, finalLength int) (string, error) {
-	p := finalLength - len(hexString)
+func BuildMessage(protocolID uint8, votingRoundID uint32, payload []byte) string {
 
-	if p < 0 {
-		return hexString, errors.New("string too long")
-	}
+	payloadLen := len(payload)
 
-	prefix := strings.Repeat("0", p)
+	message := make([]byte, 7)
 
-	return prefix + hexString, nil
+	message[0] = protocolID
 
-}
+	binary.BigEndian.PutUint32(message[1:5], votingRoundID)
 
-func BuildMessage(protocolID, votingRoundID uint64, payload string) (string, error) {
-	if len(payload)%2 != 0 {
-		return "", errors.New("uneven payload")
-	}
+	binary.BigEndian.PutUint16(message[5:7], uint16(payloadLen))
 
-	protocolIDStr, err := prependZerosToLength(strconv.FormatUint(protocolID, 16), 2)
+	message = append(message, payload...)
 
-	if err != nil {
-		return "", fmt.Errorf("invalid protocol, %s", err)
-	}
-
-	votingRoundIDStr, err := prependZerosToLength(strconv.FormatUint(votingRoundID, 16), 8)
-
-	if err != nil {
-		return "", fmt.Errorf("invalid voting round: %s", err)
-	}
-
-	lenStr, err := prependZerosToLength(strconv.FormatInt(int64(len(payload)/2), 16), 4)
-
-	if err != nil {
-		return "", errors.New("invalid payload length")
-	}
-
-	return "0x" + protocolIDStr + votingRoundIDStr + lenStr + payload, nil
+	return "0x" + hex.EncodeToString(message)
 }

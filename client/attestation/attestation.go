@@ -60,7 +60,7 @@ type IndexLog struct {
 
 type Attestation struct {
 	Indexes           []IndexLog // indexLogs of all logs in the round with the Request. The earliest is in the first place.
-	RoundID           uint64
+	RoundID           uint32
 	Request           Request
 	Response          Response
 	Fee               *big.Int // sum of fees of all logs in the round with the Request

@@ -38,7 +38,7 @@ func MockSystemClient(systemConfig *config.System, userConfig *config.UserRaw, c
 	}
 }
 
-func SystemClientIteration(userConfig *config.UserRaw, submitAddress, submitSigAddress common.Address, round uint64) {
+func SystemClientIteration(userConfig *config.UserRaw, submitAddress, submitSigAddress common.Address, round uint32) {
 	submit1Time := timing.ChooseStartTimestamp(round)
 	submit2Time := submit1Time + timing.Chain.ChooseDurationSec
 	submitSignature := submit2Time + timing.Chain.CommitDurationSec
@@ -73,12 +73,12 @@ func SystemClientIteration(userConfig *config.UserRaw, submitAddress, submitSigA
 }
 
 func MakeGetRequest(
-	apiName string, cfg *config.RestServer, votingRoundID uint64, submitAddress string,
+	apiName string, cfg *config.RestServer, votingRoundID uint32, submitAddress string,
 ) (*server.PDPResponse, error) {
 	p, err := url.JoinPath(
 		cfg.FSPSubpath,
 		apiName,
-		strconv.FormatUint(votingRoundID, 10),
+		strconv.FormatUint(uint64(votingRoundID), 10),
 		submitAddress,
 	)
 	if err != nil {

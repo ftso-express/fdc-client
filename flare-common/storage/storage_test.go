@@ -7,9 +7,9 @@ import (
 
 func TestCyclicSimple(t *testing.T) {
 
-	const size uint64 = 4
+	const size int = 4
 
-	stg := storage.NewCyclic[uint64](size)
+	stg := storage.NewCyclic[uint64, int](size)
 
 	if stg.Size() != size {
 		t.Error("wrong size")
@@ -53,9 +53,9 @@ func TestCyclicSimple(t *testing.T) {
 }
 
 func TestCyclicArray(t *testing.T) {
-	const size uint64 = 4
+	const size int = 4
 
-	stg := storage.NewCyclic[[]uint64](size)
+	stg := storage.NewCyclic[[]uint64, int](size)
 
 	_, exists := stg.Get(123)
 
@@ -95,9 +95,9 @@ func TestCyclicArray(t *testing.T) {
 }
 
 func TestCyclicArrayPointer(t *testing.T) {
-	const size uint64 = 4
+	const size int = 4
 
-	stg := storage.NewCyclic[*[]uint64](size)
+	stg := storage.NewCyclic[*[]uint64, int](size)
 
 	_, exists := stg.Get(123)
 
@@ -135,9 +135,9 @@ func TestCyclicArrayPointer(t *testing.T) {
 // maps are pointers
 func TestCyclicMap(t *testing.T) {
 
-	const size uint64 = 4
+	const size int = 4
 
-	stg := storage.NewCyclic[map[uint64]uint64](size)
+	stg := storage.NewCyclic[map[uint64]uint64, int](size)
 
 	_, exists := stg.Get(123)
 

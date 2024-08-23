@@ -34,7 +34,7 @@ const (
 )
 
 func TestServer(t *testing.T) {
-	rounds := storage.NewCyclic[*round.Round](10)
+	rounds := storage.NewCyclic[*round.Round, uint32](10)
 	serverConfig := config.RestServer{
 		Title:       "FDC protocol data provider API",
 		FSPTitle:    "FDC protocol data provider for FSP client",
@@ -145,7 +145,9 @@ func TestServer(t *testing.T) {
 		consensusBitVoteBytes, err := hex.DecodeString(consensusBitVote)
 		require.NoError(t, err)
 
-		commitCheck := server.CalculateMaskedRoot(common.HexToHash(rspData.Data), common.HexToHash(random), common.HexToAddress(submitAddress), consensusBitVoteBytes)
+		commitCheckBytes := server.CalculateMaskedRoot(common.HexToHash(rspData.Data), common.HexToHash(random), common.HexToAddress(submitAddress), consensusBitVoteBytes)
+
+		commitCheck := hex.EncodeToString(commitCheckBytes)
 
 		require.Equal(t, submitString[16:], commitCheck)
 

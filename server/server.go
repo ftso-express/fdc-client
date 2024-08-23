@@ -18,8 +18,8 @@ type Server struct {
 }
 
 func New(
-	rounds *storage.Cyclic[*round.Round],
-	protocolID uint64,
+	rounds *storage.Cyclic[*round.Round, uint32],
+	protocolID uint8,
 	serverConfig config.RestServer,
 ) Server {
 	// Create Mux router
@@ -70,7 +70,7 @@ func New(
 }
 
 // Registration of routes for the FDC protocol provider
-func RegisterFDCProviderRoutes(router restServer.Router, protocolID uint64, rounds *storage.Cyclic[*round.Round], securities []string) {
+func RegisterFDCProviderRoutes(router restServer.Router, protocolID uint8, rounds *storage.Cyclic[*round.Round, uint32], securities []string) {
 	// Prepare service controller
 	controller := newFDCProtocolProviderController(rounds, protocolID)
 	paramMap := map[string]string{"votingRoundID": "Voting round ID", "submitAddress": "Submit address"}
@@ -86,7 +86,7 @@ func RegisterFDCProviderRoutes(router restServer.Router, protocolID uint64, roun
 }
 
 // Registration of routes for the DA layer WIP
-func RegisterDARoutes(router restServer.Router, rounds *storage.Cyclic[*round.Round], securities []string) {
+func RegisterDARoutes(router restServer.Router, rounds *storage.Cyclic[*round.Round, uint32], securities []string) {
 	// Prepare service controller
 	controller := DAController{Rounds: rounds}
 	paramMap := map[string]string{"votingRoundID": "Voting round ID"}

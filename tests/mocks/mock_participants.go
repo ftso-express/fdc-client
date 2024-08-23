@@ -143,7 +143,7 @@ func sendRequest(i int, client *ethclient.Client, fdcHub *fdchub.FdcHub, fromAdd
 	return nil
 }
 
-func sendBitvote(round uint64, client *ethclient.Client, toAddress, fromAddress common.Address, privateKeyECDSA *ecdsa.PrivateKey, gasPrice *big.Int) error {
+func sendBitvote(round uint32, client *ethclient.Client, toAddress, fromAddress common.Address, privateKeyECDSA *ecdsa.PrivateKey, gasPrice *big.Int) error {
 	bitvote := bitvotes.BitVote{Length: 1, BitVector: big.NewInt(1)}
 	submit1FuncSel, err := collector.ParseFuncSel(collector.Submit1FuncSelHex)
 	if err != nil {

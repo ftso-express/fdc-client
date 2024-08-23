@@ -156,7 +156,7 @@ func validLUT(lut, lutLimit, roundStart uint64) bool {
 }
 
 // AddRound sets the roundID in the response (third 32 bytes).
-func (r Response) AddRound(roundID uint64) (Response, error) {
+func (r Response) AddRound(roundID uint32) (Response, error) {
 	static, err := IsStaticType(r)
 	if err != nil {
 		return Response{}, err
@@ -178,7 +178,7 @@ func (r Response) AddRound(roundID uint64) (Response, error) {
 		return Response{}, errors.New("response is to short")
 	}
 
-	roundIDEncoded := binary.BigEndian.AppendUint64(make([]byte, 0), roundID)
+	roundIDEncoded := binary.BigEndian.AppendUint32(make([]byte, 0), roundID)
 	roundIDSlot := append(make([]byte, 32-len(roundIDEncoded)), roundIDEncoded...)
 
 	r = slices.Replace(r, roundIDStartByte, roundIDEndByte, roundIDSlot...)
@@ -188,7 +188,7 @@ func (r Response) AddRound(roundID uint64) (Response, error) {
 }
 
 // Hash computes hash of the response.
-func (r Response) Hash(roundID uint64) (common.Hash, error) {
+func (r Response) Hash(roundID uint32) (common.Hash, error) {
 	if len(r) < 128 {
 		return common.Hash{}, errors.New("response is to short")
 	}

@@ -45,7 +45,7 @@ type DARequest struct {
 }
 
 type DAAttestation struct {
-	RoundID     uint64   `json:"roundId"`
+	RoundID     uint32   `json:"roundId"`
 	Request     string   `json:"request"`
 	Response    string   `json:"response"`
 	ResponseABI string   `json:"abi"`

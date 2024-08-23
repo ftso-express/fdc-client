@@ -1,6 +1,7 @@
 package payload_test
 
 import (
+	"encoding/hex"
 	"flare-common/database"
 	"flare-common/payload"
 	"fmt"
@@ -47,7 +48,7 @@ func TestExtractPayloads(t *testing.T) {
 		tx           *database.Transaction
 		protocol     uint8
 		nuOfPayloads int
-		votingRound  uint64
+		votingRound  uint32
 		length       uint16
 	}{
 		{
@@ -78,7 +79,7 @@ func TestExtractPayloads(t *testing.T) {
 
 		require.True(t, ok, fmt.Sprintf("missing payload in test %d", i))
 
-		require.Equal(t, test.protocol, payloadFTSO.Protocol, fmt.Sprintf("wrong protocol ID in test %d", i))
+		require.Equal(t, test.protocol, payloadFTSO.ProtocolID, fmt.Sprintf("wrong protocol ID in test %d", i))
 
 		require.Equal(t, test.votingRound, payloadFTSO.VotingRound, fmt.Sprintf("wrong voting round in test %d", i))
 
@@ -189,8 +190,8 @@ func TestExtractPayloadsError(t *testing.T) {
 func TestBuildMessage(t *testing.T) {
 
 	tests := []struct {
-		protocolID  uint64
-		votingRound uint64
+		protocolID  uint8
+		votingRound uint32
 		payload     string
 		result      string
 	}{
@@ -210,45 +211,15 @@ func TestBuildMessage(t *testing.T) {
 
 	for _, test := range tests {
 
-		payloadMsg, err := payload.BuildMessage(test.protocolID, test.votingRound, test.payload)
+		payloadBytes, err := hex.DecodeString(test.payload)
+
+		require.NoError(t, err)
+
+		payloadMsg := payload.BuildMessage(test.protocolID, test.votingRound, payloadBytes)
 
 		require.NoError(t, err)
 
 		require.Equal(t, test.result, payloadMsg)
-	}
-
-}
-
-func TestBuildMessageError(t *testing.T) {
-
-	tests := []struct {
-		protocolID  uint64
-		votingRound uint64
-		payload     string
-	}{
-		{
-			protocolID:  256,
-			votingRound: 1,
-			payload:     "00",
-		},
-		{
-			protocolID:  255,
-			votingRound: 256,
-			payload:     "1100110",
-		},
-		{
-			protocolID:  255,
-			votingRound: 100000000000000,
-			payload:     "110011",
-		},
-	}
-
-	for _, test := range tests {
-
-		_, err := payload.BuildMessage(test.protocolID, test.votingRound, test.payload)
-
-		require.Error(t, err)
-
 	}
 
 }

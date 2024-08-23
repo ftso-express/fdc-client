@@ -28,7 +28,7 @@ const (
 )
 
 type Round struct {
-	ID               uint64
+	ID               uint32
 	Attestations     []*attestation.Attestation
 	attestationMap   map[common.Hash]*attestation.Attestation
 	bitVotes         []*bitvotes.WeightedBitVote
@@ -39,7 +39,7 @@ type Round struct {
 }
 
 // New returns a pointer to a new round with ID and voterSet.
-func New(ID uint64, voterSet *policy.VoterSet) *Round {
+func New(ID uint32, voterSet *policy.VoterSet) *Round {
 	return &Round{ID: ID, voterSet: voterSet, attestationMap: make(map[common.Hash]*attestation.Attestation)}
 }
 
@@ -88,22 +88,14 @@ func (r *Round) BitVote() (bitvotes.BitVote, error) {
 }
 
 // BitVoteHex returns the 0x prefixed hex string encoded BitVote for the round according to the current status of Attestations.
-func (r *Round) BitVoteHex(prefixed bool) (string, error) {
+func (r *Round) BitVoteBytes() ([]byte, error) {
 
 	bitVote, err := r.BitVote()
 	if err != nil {
-		return "", fmt.Errorf("cannot get bitVote for round %d: %s", r.ID, err)
+		return nil, fmt.Errorf("cannot get bitVote for round %d: %s", r.ID, err)
 	}
 
-	bvString := ""
-
-	if prefixed {
-		bvString = "0x"
-	}
-
-	bvString += bitVote.EncodeBitVoteHex(r.ID)
-
-	return bvString, nil
+	return bitVote.EncodeBitVote(r.ID), nil
 }
 
 // ComputeConsensusBitVote computes the consensus BitVote according to the collected bitVotes and sets consensus status to the attestations.

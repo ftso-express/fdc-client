@@ -4,31 +4,31 @@ import (
 	"fmt"
 )
 
-func RoundIDForTimestamp(t uint64) (uint64, error) {
+func RoundIDForTimestamp(t uint64) (uint32, error) {
 	if t+Chain.OffsetSec < Chain.T0 {
 		return 0, fmt.Errorf("timestamp: %d before first round : %d", t, Chain.T0-Chain.OffsetSec)
 	}
 
 	roundID := (t + Chain.OffsetSec - Chain.T0) / Chain.CollectDurationSec
 
-	return roundID, nil
+	return uint32(roundID), nil
 }
 
-func RoundStartTime(n uint64) uint64 {
-	return Chain.T0 + n*Chain.CollectDurationSec - Chain.OffsetSec
+func RoundStartTime(n uint32) uint64 {
+	return Chain.T0 + uint64(n)*Chain.CollectDurationSec - Chain.OffsetSec
 }
 
-func ChooseStartTimestamp(n uint64) uint64 {
+func ChooseStartTimestamp(n uint32) uint64 {
 	return RoundStartTime(n + 1)
 }
 
-func ChooseEndTimestamp(n uint64) uint64 {
+func ChooseEndTimestamp(n uint32) uint64 {
 	return ChooseStartTimestamp(n) + Chain.ChooseDurationSec
 }
 
 // NextChoosePhaseEnd returns the roundID of the round whose choose phase is next in line to end and the timestamp of the end.
 // If t is right at the end of choose phase, the returned round is current and the timestamp is t.
-func NextChooseEnd(t uint64) (uint64, uint64) {
+func NextChooseEnd(t uint64) (uint32, uint64) {
 
 	if t+Chain.OffsetSec < Chain.T0+Chain.ChooseDurationSec+1 {
 		return 0, ChooseEndTimestamp(0)
@@ -36,13 +36,13 @@ func NextChooseEnd(t uint64) (uint64, uint64) {
 
 	roundID := (t - Chain.T0 + Chain.OffsetSec - Chain.ChooseDurationSec - 1) / Chain.CollectDurationSec
 
-	endTimestamp := ChooseEndTimestamp(roundID)
+	endTimestamp := ChooseEndTimestamp(uint32(roundID))
 
-	return roundID, endTimestamp
+	return uint32(roundID), endTimestamp
 }
 
 // LastCollectPhaseStart returns roundID and start timestamp of the latest round.
-func LastCollectPhaseStart(t uint64) (uint64, uint64, error) {
+func LastCollectPhaseStart(t uint64) (uint32, uint64, error) {
 	roundID, err := RoundIDForTimestamp(t)
 
 	if err != nil {

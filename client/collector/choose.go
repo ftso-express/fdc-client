@@ -20,11 +20,11 @@ func BitVoteListener(
 	submitContractAddress common.Address,
 	funcSel [4]byte,
 	protocol uint8,
-	trigger <-chan uint64,
+	trigger <-chan uint32,
 	roundChan chan<- payload.Round,
 ) {
 	for {
-		var roundID uint64
+		var roundID uint32
 
 		select {
 		case roundID = <-trigger:
@@ -84,13 +84,15 @@ func BitVoteListener(
 }
 
 // PrepareChooseTriggers tracks chain timestamps and passes roundID of the round whose choose phase has just ended to the trigger channel.
-func PrepareChooseTriggers(ctx context.Context, trigger chan uint64, db *gorm.DB) {
+func PrepareChooseTriggers(ctx context.Context, trigger chan uint32, db *gorm.DB) {
 	state, err := database.FetchState(ctx, db)
 	if err != nil {
 		log.Panic("database error:", err)
 	}
 
-	nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp := new(uint64), new(uint64)
+	nextChoosePhaseRoundIDEnd := new(uint32)
+	nextChoosePhaseEndTimestamp := new(uint64)
+
 	*nextChoosePhaseRoundIDEnd, *nextChoosePhaseEndTimestamp = timing.NextChooseEnd(state.BlockTimestamp)
 
 	bitVoteTicker := time.NewTicker(time.Hour) // timer will be reset to collect duration
@@ -150,10 +152,10 @@ func configureTicker(ctx context.Context, ticker *time.Ticker, start time.Time, 
 // If conditions are met, roundID is passed to the channel c.
 func tryTriggerBitVote(
 	ctx context.Context,
-	nextChoosePhaseRoundIDEnd *uint64,
+	nextChoosePhaseRoundIDEnd *uint32,
 	nextChoosePhaseEndTimestamp *uint64,
 	currentBlockTime uint64,
-	c chan uint64,
+	c chan uint32,
 ) bool {
 	now := uint64(time.Now().Unix())
 
@@ -174,7 +176,7 @@ func tryTriggerBitVote(
 
 	if (now - bitVoteOffChainTriggerSeconds) > *nextChoosePhaseEndTimestamp {
 		select {
-		case c <- uint64(*nextChoosePhaseRoundIDEnd):
+		case c <- *nextChoosePhaseRoundIDEnd:
 			log.Infof("bitVote for round %d started with off-chain time", *nextChoosePhaseRoundIDEnd)
 
 		case <-ctx.Done():

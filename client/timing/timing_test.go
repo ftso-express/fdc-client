@@ -16,7 +16,7 @@ func TestRoundIDForTimestamp(t *testing.T) {
 
 	tests := []struct {
 		timestamp uint64
-		roundID   uint64
+		roundID   uint32
 	}{
 		{
 			timestamp: timing.Chain.T0 - timing.Chain.OffsetSec,
@@ -39,7 +39,7 @@ func TestRoundIDForTimestamp(t *testing.T) {
 func TestTimesForRounds(t *testing.T) {
 
 	tests := []struct {
-		roundID            uint64
+		roundID            uint32
 		timestampStart     uint64
 		timestampChoose    uint64
 		timestampChooseEnd uint64
@@ -79,16 +79,16 @@ func TestTimesForTimestamps(t *testing.T) {
 
 	roundIDChoose, chooseEnd := timing.NextChooseEnd(0)
 
-	require.Equal(t, uint64(0), roundIDChoose)
+	require.Equal(t, uint32(0), roundIDChoose)
 	require.Equal(t, timing.Chain.T0+timing.Chain.ChooseDurationSec+timing.Chain.CollectDurationSec-timing.Chain.OffsetSec, chooseEnd)
 
 	require.Error(t, err)
 
 	tests := []struct {
 		timestamp      uint64
-		roundIDChoose  uint64
+		roundIDChoose  uint32
 		chooseEnd      uint64
-		roundIDCollect uint64
+		roundIDCollect uint32
 		collectStart   uint64
 	}{
 		{

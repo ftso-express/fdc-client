@@ -53,7 +53,7 @@ func main() {
 	go manager.Run(ctx)
 
 	// Run attestation client server
-	srv := server.New(&sharedDataPipes.Rounds, uint64(userConfigRaw.ProtocolID), userConfigRaw.RestServer)
+	srv := server.New(&sharedDataPipes.Rounds, userConfigRaw.ProtocolID, userConfigRaw.RestServer)
 	go srv.Run(ctx)
 	log.Info("Running server")
 

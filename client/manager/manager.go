@@ -18,12 +18,12 @@ import (
 var log = logger.GetLogger()
 
 type Manager struct {
-	protocolID            uint64
-	Rounds                storage.Cyclic[*round.Round] // cyclically cached rounds with buffer roundBuffer.
-	lastRoundCreated      uint64
-	Requests              chan []database.Log
-	BitVotes              chan payload.Round
-	SigningPolicies       chan []shared.VotersData
+	protocolID            uint8
+	Rounds                storage.Cyclic[*round.Round, uint32] // cyclically cached rounds with buffer roundBuffer.
+	lastRoundCreated      uint32
+	requests              <-chan []database.Log
+	bitVotes              <-chan payload.Round
+	signingPolicies       <-chan []shared.VotersData
 	signingPolicyStorage  *policy.SigningPolicyStorage
 	attestationTypeConfig config.AttestationTypes
 	queues                priorityQueues
@@ -41,14 +41,14 @@ func New(configs *config.UserRaw, sharedDataPipes *shared.DataPipes) (*Manager, 
 	queues := buildQueues(configs.Queues)
 
 	return &Manager{
-			protocolID:            uint64(configs.ProtocolID),
+			protocolID:            configs.ProtocolID,
 			Rounds:                sharedDataPipes.Rounds,
 			signingPolicyStorage:  signingPolicyStorage,
 			attestationTypeConfig: attestationTypeConfig,
 			queues:                queues,
-			SigningPolicies:       sharedDataPipes.Voters,
-			BitVotes:              sharedDataPipes.BitVotes,
-			Requests:              sharedDataPipes.Requests,
+			signingPolicies:       sharedDataPipes.Voters,
+			bitVotes:              sharedDataPipes.BitVotes,
+			requests:              sharedDataPipes.Requests,
 		},
 		nil
 }
@@ -62,7 +62,7 @@ func (m *Manager) Run(ctx context.Context) {
 	go runQueues(ctx, m.queues)
 
 	select {
-	case signingPolicies = <-m.SigningPolicies:
+	case signingPolicies = <-m.signingPolicies:
 		log.Info("Initial signing policies received")
 
 	case <-ctx.Done():
@@ -78,7 +78,7 @@ func (m *Manager) Run(ctx context.Context) {
 
 	for {
 		select {
-		case signingPolicies := <-m.SigningPolicies:
+		case signingPolicies := <-m.signingPolicies:
 			log.Debug("New signing policy received")
 
 			for i := range signingPolicies {
@@ -93,7 +93,7 @@ func (m *Manager) Run(ctx context.Context) {
 				log.Infof("deleted signing policy for epoch %d", deleted[j])
 			}
 
-		case bitVotesForRound := <-m.BitVotes:
+		case bitVotesForRound := <-m.bitVotes:
 			log.Debugf("Received %d bitVotes for round %d", len(bitVotesForRound.Messages), bitVotesForRound.ID)
 
 			for i := range bitVotesForRound.Messages {
@@ -122,7 +122,7 @@ func (m *Manager) Run(ctx context.Context) {
 
 			}
 
-		case requests := <-m.Requests:
+		case requests := <-m.requests:
 			log.Debugf("Received %d requests.", len(requests))
 
 			for i := range requests {
@@ -140,7 +140,7 @@ func (m *Manager) Run(ctx context.Context) {
 }
 
 // GetOrCreateRound returns a round for roundID either from manager if a round is already stored or creates a new one and stores it.
-func (m *Manager) GetOrCreateRound(roundID uint64) (*round.Round, error) {
+func (m *Manager) GetOrCreateRound(roundID uint32) (*round.Round, error) {
 	roundForID, ok := m.Rounds.Get(roundID)
 	if ok {
 		return roundForID, nil
@@ -151,21 +151,21 @@ func (m *Manager) GetOrCreateRound(roundID uint64) (*round.Round, error) {
 		return nil, fmt.Errorf("creating round: no signing policy for round %d", roundID)
 	}
 
-	roundForID = round.New(uint64(roundID), policy.Voters)
+	roundForID = round.New(roundID, policy.Voters)
 	m.lastRoundCreated = roundID
 	log.Debugf("Round %d created", roundID)
 
-	m.Rounds.Store(uint64(roundID), roundForID)
+	m.Rounds.Store(roundID, roundForID)
 	return roundForID, nil
 }
 
 // OnBitVote process payload message that is assumed to be a bitVote and adds it to the correct round.
 func (m *Manager) OnBitVote(message payload.Message) error {
-	if message.Timestamp < timing.ChooseStartTimestamp(uint64(message.VotingRound)) {
+	if message.Timestamp < timing.ChooseStartTimestamp(message.VotingRound) {
 		return fmt.Errorf("bitVote from %s for voting round %d too soon", message.From, message.VotingRound)
 	}
 
-	if message.Timestamp > timing.ChooseEndTimestamp(uint64(message.VotingRound)) {
+	if message.Timestamp > timing.ChooseEndTimestamp(message.VotingRound) {
 		return fmt.Errorf("bitVote from %s for voting round %d too late", message.From, message.VotingRound)
 	}
 

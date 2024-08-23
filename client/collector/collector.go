@@ -84,9 +84,9 @@ type Collector struct {
 
 	DB              *gorm.DB
 	submit1Sel      [4]byte
-	Requests        chan []database.Log
-	BitVotes        chan payload.Round
-	SigningPolicies chan []shared.VotersData
+	Requests        chan<- []database.Log
+	BitVotes        chan<- payload.Round
+	SigningPolicies chan<- []shared.VotersData
 }
 
 // New creates new Collector from user and system configs.
@@ -142,7 +142,7 @@ func (c *Collector) Run(ctx context.Context) {
 		log.Panicf("database not up to date. lags for %d minutes", k/60)
 	}
 
-	chooseTrigger := make(chan uint64)
+	chooseTrigger := make(chan uint32)
 
 	go SigningPolicyInitializedListener(ctx, c.DB, c.RelayContractAddress, c.VoterRegistryContractAddress, c.SigningPolicies)
 	go BitVoteListener(ctx, c.DB, c.SubmitContractAddress, c.submit1Sel, c.ProtocolID, chooseTrigger, c.BitVotes)
