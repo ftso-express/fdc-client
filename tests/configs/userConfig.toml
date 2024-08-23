@@ -23,6 +23,8 @@ api_keys = ["12345", "123456"]
 title = "FDC protocol data provider API"
 fsp_sub_router_title = "FDC protocol data provider for FSP client"
 fsp_sub_router_path = "/fsp"
+da_sub_router_title = "DA endpoints"
+da_sub_router_path = "/da"
 version = "0.0.0"
 swagger_path = "/api-doc"
 

@@ -44,11 +44,17 @@ func New(
 		SecuritySchemes: keyMiddleware.SecuritySchemes(),
 	})
 
-	// create fsp sub router
+	// create FSP sub router
 	fspSubRouter := router.WithPrefix(serverConfig.FSPSubpath, serverConfig.FSPTitle)
 	// Register routes for FSP
 	RegisterFDCProviderRoutes(fspSubRouter, protocolID, rounds, []string{serverConfig.APIKeyName})
 	fspSubRouter.AddMiddleware(keyMiddleware.Middleware)
+
+	// create DA sub router
+	daSubRouter := router.WithPrefix(serverConfig.DAPSubpath, serverConfig.DATitle)
+	// Register routes for DA
+	RegisterDARoutes(daSubRouter, rounds, []string{serverConfig.APIKeyName})
+	daSubRouter.AddMiddleware(keyMiddleware.Middleware)
 
 	// Register routes
 	router.Finalize()

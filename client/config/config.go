@@ -39,9 +39,13 @@ type RestServer struct {
 	APIKeyName string   `toml:"api_key_name"`
 	APIKeys    []string `toml:"api_keys"`
 
-	Title       string `toml:"title"`
-	FSPTitle    string `toml:"fsp_sub_router_title"`
-	FSPSubpath  string `toml:"fsp_sub_router_path"`
+	Title      string `toml:"title"`
+	FSPTitle   string `toml:"fsp_sub_router_title"`
+	FSPSubpath string `toml:"fsp_sub_router_path"`
+
+	DATitle    string `toml:"da_sub_router_title"`
+	DAPSubpath string `toml:"da_sub_router_path"`
+
 	Version     string `toml:"version"`
 	SwaggerPath string `toml:"swagger_path"`
 }
