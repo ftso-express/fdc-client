@@ -84,7 +84,7 @@ func (c MockCollectorDB) FetchLogsByAddressAndTopic0BlockNumber(
 	return c.Logs, nil
 }
 
-func (c MockCollectorDB) FetchLogsByAddressAndTopic0TimestampToBlockNumber(
+func (c MockCollectorDB) FetchLogsByAddressAndTopic0FromTimestampToBlockNumber(
 	ctx context.Context,
 	address common.Address,
 	topic0 common.Hash,

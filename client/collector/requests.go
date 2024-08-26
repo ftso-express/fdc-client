@@ -32,7 +32,7 @@ func AttestationRequestListener(
 
 	lastQueriedBlock := state.Index
 
-	logs, err := database.FetchLogsByAddressAndTopic0TimestampToBlockNumber(
+	logs, err := database.FetchLogsByAddressAndTopic0FromTimestampToBlockNumber(
 		ctx, db, fdcContractAddress, AttestationRequestEventSel, int64(startTimestamp), int64(state.Index),
 	)
 	if err != nil {

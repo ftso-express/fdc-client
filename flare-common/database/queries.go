@@ -94,8 +94,8 @@ func fetchLogsByAddressAndTopic0Timestamp(
 	return logs, nil
 }
 
-// Fetch all logs matching address and topic0 from timestamp to block number, order by timestamp
-func FetchLogsByAddressAndTopic0TimestampToBlockNumber(
+// Fetch all logs matching address and topic0 from timestamp (included) to block number (included), order by timestamp
+func FetchLogsByAddressAndTopic0FromTimestampToBlockNumber(
 	ctx context.Context,
 	db *gorm.DB,
 	address common.Address,
@@ -107,7 +107,7 @@ func FetchLogsByAddressAndTopic0TimestampToBlockNumber(
 	err := backoff.RetryNotify(
 		func() error {
 			var err error
-			logs, err = fetchLogsByAddressAndTopic0TimestampToBlockNumber(
+			logs, err = fetchLogsByAddressAndTopic0FromTimestampToBlockNumber(
 				ctx, db, address, topic0, from, to,
 			)
 			return err
@@ -121,7 +121,7 @@ func FetchLogsByAddressAndTopic0TimestampToBlockNumber(
 	return logs, err
 }
 
-func fetchLogsByAddressAndTopic0TimestampToBlockNumber(
+func fetchLogsByAddressAndTopic0FromTimestampToBlockNumber(
 	ctx context.Context,
 	db *gorm.DB,
 	address common.Address,
