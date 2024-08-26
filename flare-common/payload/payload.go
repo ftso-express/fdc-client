@@ -36,7 +36,7 @@ func ExtractPayloads(tx *database.Transaction) (map[uint8]Message, error) {
 
 	data, err := hex.DecodeString(dataStr)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding input of tx: %s", tx.Hash)
+		return nil, fmt.Errorf("error decoding input of tx: %s, %v", tx.Hash, err)
 	}
 
 	data = data[4:] // trim function selector
@@ -74,23 +74,18 @@ func ExtractPayloads(tx *database.Transaction) (map[uint8]Message, error) {
 		messages[protocol] = message
 
 		data = data[end:] // trim the extracted payload
-
 	}
-
 	return messages, nil
 }
 
+// BuildMessage builds a message string from protocolID, votingRoundID and payload.
+// The message string is in the format: 0x<protocolID(1 byte)><votingRoundID(4 byte)><payloadLength(2 byte)><payload>
 func BuildMessage(protocolID uint8, votingRoundID uint32, payload []byte) string {
-
-	payloadLen := len(payload)
-
 	message := make([]byte, 7)
-
 	message[0] = protocolID
 
 	binary.BigEndian.PutUint32(message[1:5], votingRoundID)
-
-	binary.BigEndian.PutUint16(message[5:7], uint16(payloadLen))
+	binary.BigEndian.PutUint16(message[5:7], uint16(len(payload)))
 
 	message = append(message, payload...)
 
