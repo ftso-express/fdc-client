@@ -39,8 +39,8 @@ func BitVoteListener(
 			db,
 			submitContractAddress,
 			funcSel,
-			int64(timing.ChooseStartTimestamp(roundID)),
-			int64(timing.ChooseEndTimestamp(roundID)),
+			int64(timing.ChooseStartTimestamp(roundID))-1, // -1 to include first second of the choose phase and its bitVotes
+			int64(timing.ChooseEndTimestamp(roundID))-1,   // bitVotes that happen on the deadline are not considered valid
 		)
 		if err != nil {
 			log.Error("fetch txs error:", err)
@@ -69,8 +69,6 @@ func BitVoteListener(
 
 			select {
 			case roundChan <- payload.Round{Messages: bitVotes, ID: roundID}:
-				log.Debugf("sent bitVotes for round %d", roundID)
-
 			case <-ctx.Done():
 				log.Info("BitVoteListener exiting")
 				return
@@ -159,25 +157,21 @@ func tryTriggerBitVote(
 ) bool {
 	now := uint64(time.Now().Unix())
 
-	if currentBlockTime > *nextChoosePhaseEndTimestamp {
-		select {
-		case c <- *nextChoosePhaseRoundIDEnd:
-			log.Infof("bitVote for round %d started with on-chain time", *nextChoosePhaseRoundIDEnd)
+	logMsg := ""
+	isTriggered := false
 
-		case <-ctx.Done():
-			log.Info("tryTriggerBitVote exiting:", ctx.Err())
-			return false
-		}
-
-		*nextChoosePhaseRoundIDEnd, *nextChoosePhaseEndTimestamp = timing.NextChooseEnd(currentBlockTime)
-
-		return true
+	if currentBlockTime >= *nextChoosePhaseEndTimestamp {
+		logMsg = "on-chain"
+		isTriggered = true
+	} else if (now - bitVoteOffChainTriggerSeconds) > *nextChoosePhaseEndTimestamp {
+		logMsg = "off-chain"
+		isTriggered = true
 	}
 
-	if (now - bitVoteOffChainTriggerSeconds) > *nextChoosePhaseEndTimestamp {
+	if isTriggered {
 		select {
 		case c <- *nextChoosePhaseRoundIDEnd:
-			log.Infof("bitVote for round %d started with off-chain time", *nextChoosePhaseRoundIDEnd)
+			log.Infof("bitVote for round %d started with %s time", *nextChoosePhaseRoundIDEnd, logMsg)
 
 		case <-ctx.Done():
 			log.Info("tryTriggerBitVote exiting:", ctx.Err())
@@ -185,10 +179,9 @@ func tryTriggerBitVote(
 		}
 
 		*nextChoosePhaseRoundIDEnd++
-		*nextChoosePhaseEndTimestamp = *nextChoosePhaseEndTimestamp + timing.Chain.CollectDurationSec
+		*nextChoosePhaseEndTimestamp += timing.Chain.CollectDurationSec
 
 		return true
-
 	}
 
 	return false

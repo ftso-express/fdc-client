@@ -145,13 +145,9 @@ func sendRequest(i int, client *ethclient.Client, fdcHub *fdchub.FdcHub, fromAdd
 
 func sendBitvote(round uint32, client *ethclient.Client, toAddress, fromAddress common.Address, privateKeyECDSA *ecdsa.PrivateKey, gasPrice *big.Int) error {
 	bitvote := bitvotes.BitVote{Length: 1, BitVector: big.NewInt(1)}
-	submit1FuncSel, err := collector.ParseFuncSel(collector.Submit1FuncSelHex)
-	if err != nil {
-		log.Panic("Could not parse submit1FuncSel:", err)
-	}
 	data := bitvote.EncodeBitVoteHex(round)
 	bitvotesBytes, _ := hex.DecodeString(data)
-	dataBytes := append(submit1FuncSel[:], 200)
+	dataBytes := append(collector.Submit1FuncSel[:], 200)
 
 	votingRound := make([]byte, 4)
 	binary.BigEndian.PutUint32(votingRound, uint32(round)) // todo

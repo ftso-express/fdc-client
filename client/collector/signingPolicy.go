@@ -55,6 +55,8 @@ func SigningPolicyInitializedListener(
 }
 
 // spiTargetedListener that only starts aggressive queries for new signingPolicyInitialized events a bit before the expected emission and stops once it gets one and waits until the next window.
+//
+// spi = signing policy initialized
 func spiTargetedListener(
 	ctx context.Context,
 	db *gorm.DB,
@@ -70,13 +72,17 @@ func spiTargetedListener(
 	}
 
 	lastInitializedRewardEpochID := lastSigningPolicy.RewardEpochId.Uint64()
+	startOffset := int64(10) // Start collecting signing policy event 10 voting epochs before the expected start of the next reward epoch
+	if (timing.Chain.RewardEpochLength/20)+1 < 10 {
+		startOffset = int64(timing.Chain.RewardEpochLength/20) + 1 // Start 1/20 of voting epochs if 1/20 of all voting epochs in reward epoch is less than 10
+	}
 
 	for {
-		expectedStartOfTheNextSigningPolicyInitialized := timing.ExpectedRewardEpochStartTimestamp(lastInitializedRewardEpochID + 1)
-		untilStart := time.Until(time.Unix(int64(expectedStartOfTheNextSigningPolicyInitialized)-int64(timing.Chain.CollectDurationSec)*(int64(timing.Chain.RewardEpochLength)/20+1), 0)) // head start for querying 1/20 of the reward period
+		expectedSPIStart := timing.ExpectedRewardEpochStartTimestamp(lastInitializedRewardEpochID + 1)
+		untilStart := time.Until(time.Unix(int64(expectedSPIStart)-int64(timing.Chain.CollectDurationSec)*startOffset, 0)) // head start for querying of signing policy
 		timer := time.NewTimer(untilStart)
 
-		log.Infof("next signing policy expected in %.1f minutes", untilStart.Minutes())
+		log.Infof("next signing policy expected in %s hours", untilStart)
 		select {
 		case <-timer.C:
 			log.Debug("querying for next signing policy")
@@ -130,6 +136,9 @@ func queryNextSPI(
 			log.Debug("Adding signing policy to channel")
 
 			votersDataArray := make([]shared.VotersData, 0)
+			if len(logs) > 1 {
+				log.Warnf("More than one signing policy initialized event found in the same end of reward epoch query window (reward epoch %d)", latestRewardEpoch)
+			}
 			for i := range logs {
 				votersData, err := AddSubmitAddressesToSigningPolicy(ctx, db, registryContractAddress, logs[i])
 				if err != nil {

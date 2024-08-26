@@ -99,12 +99,10 @@ func AddSubmitAddressesToSigningPolicy(ctx context.Context, db *gorm.DB, registr
 	rewardEpochID := data.RewardEpochId.Uint64()
 	submitToSigning, err := SubmitToSigningPolicyAddress(ctx, db, registryContractAddress, rewardEpochID)
 
-	log.Debugf("received %d registered submit addresses", len(submitToSigning))
-
 	if err != nil {
 		return shared.VotersData{}, fmt.Errorf("error adding submit addresses: %s", err)
 	}
+	log.Debugf("received %d registered submit addresses", len(submitToSigning))
 
 	return shared.VotersData{Policy: data, SubmitToSigningAddress: submitToSigning}, nil
-
 }

@@ -15,10 +15,10 @@ func AttestationRequestListener(
 	ctx context.Context,
 	db *gorm.DB,
 	fdcContractAddress common.Address,
-	ListenerInterval time.Duration,
+	listenerInterval time.Duration,
 	logChan chan<- []database.Log,
 ) {
-	trigger := time.NewTicker(ListenerInterval)
+	trigger := time.NewTicker(listenerInterval)
 
 	_, startTimestamp, err := timing.LastCollectPhaseStart(uint64(time.Now().Unix()))
 	if err != nil {

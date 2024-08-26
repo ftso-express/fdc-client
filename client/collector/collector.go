@@ -2,10 +2,9 @@ package collector
 
 import (
 	"context"
-	"encoding/hex"
-	"errors"
 	"flare-common/contracts/registry"
 	"flare-common/contracts/relay"
+	"flare-common/contracts/submission"
 
 	"flare-common/contracts/fdchub"
 	"flare-common/database"
@@ -26,12 +25,13 @@ const (
 	requestListenerInterval       = 2 * time.Second
 	databasePollTime              = 2 * time.Second
 	bitVoteHeadStart              = 5 * time.Second
-	Submit1FuncSelHex             = "6c532fae"
 )
 
 var signingPolicyInitializedEventSel common.Hash
 var AttestationRequestEventSel common.Hash
 var voterRegisteredEventSel common.Hash
+
+var Submit1FuncSel [4]byte
 
 var log = logger.GetLogger()
 
@@ -73,6 +73,11 @@ func init() {
 
 	voterRegisteredEventSel = voterRegisteredEvent.ID
 
+	submissionABI, err := submission.SubmissionMetaData.GetAbi()
+	if err != nil {
+		log.Panic("cannot get submission ABI:", err)
+	}
+	copy(Submit1FuncSel[:], submissionABI.Methods["submit1"].ID[:4])
 }
 
 type Collector struct {
@@ -83,7 +88,6 @@ type Collector struct {
 	VoterRegistryContractAddress common.Address
 
 	DB              *gorm.DB
-	submit1Sel      [4]byte
 	Requests        chan<- []database.Log
 	BitVotes        chan<- payload.Round
 	SigningPolicies chan<- []shared.VotersData
@@ -96,11 +100,6 @@ func New(user *config.UserRaw, system *config.System, sharedDataPipes *shared.Da
 		log.Panic("Could not connect to database:", err)
 	}
 
-	submit1FuncSel, err := ParseFuncSel(Submit1FuncSelHex)
-	if err != nil {
-		log.Panic("Could not parse submit1FuncSel:", err)
-	}
-
 	runner := Collector{
 		ProtocolID:                   user.ProtocolID,
 		SubmitContractAddress:        system.Addresses.SubmitContract,
@@ -109,25 +108,12 @@ func New(user *config.UserRaw, system *config.System, sharedDataPipes *shared.Da
 		VoterRegistryContractAddress: system.Addresses.VoterRegistryContract,
 
 		DB:              db,
-		submit1Sel:      submit1FuncSel,
 		SigningPolicies: sharedDataPipes.Voters,
 		BitVotes:        sharedDataPipes.BitVotes,
 		Requests:        sharedDataPipes.Requests,
 	}
 
 	return &runner
-}
-
-func ParseFuncSel(sigInput string) ([4]byte, error) {
-	var ret [4]byte
-	inputBytes := []byte(sigInput)
-
-	if hex.DecodedLen(len(inputBytes)) != 4 {
-		return ret, errors.New("invalid length for function selector")
-	}
-
-	_, err := hex.Decode(ret[:], inputBytes)
-	return ret, err
 }
 
 // Run starts SigningPolicyInitializedListener, BitVoteListener, and AttestationRequestListener,
@@ -142,11 +128,10 @@ func (c *Collector) Run(ctx context.Context) {
 		log.Panicf("database not up to date. lags for %d minutes", k/60)
 	}
 
-	chooseTrigger := make(chan uint32)
-
 	go SigningPolicyInitializedListener(ctx, c.DB, c.RelayContractAddress, c.VoterRegistryContractAddress, c.SigningPolicies)
-	go BitVoteListener(ctx, c.DB, c.SubmitContractAddress, c.submit1Sel, c.ProtocolID, chooseTrigger, c.BitVotes)
 	go AttestationRequestListener(ctx, c.DB, c.FdcContractAddress, requestListenerInterval, c.Requests)
 
+	chooseTrigger := make(chan uint32)
+	go BitVoteListener(ctx, c.DB, c.SubmitContractAddress, Submit1FuncSel, c.ProtocolID, chooseTrigger, c.BitVotes)
 	PrepareChooseTriggers(ctx, chooseTrigger, c.DB)
 }
