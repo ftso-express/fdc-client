@@ -111,13 +111,14 @@ var bitVoteMessage = payload.Message{
 func TestManagerMethods(t *testing.T) {
 	cfg, err := config.ReadUserRaw(USER_FILE)
 	require.NoError(t, err)
+	attestationTypeConfig, err := config.ParseAttestationTypes(cfg.AttestationTypeConfig)
+	require.NoError(t, err)
 
 	sharedDataPipes := shared.NewDataPipes()
-	mngr, err := New(&cfg, sharedDataPipes)
+	mngr, err := New(&cfg, attestationTypeConfig, sharedDataPipes)
 	require.NoError(t, err)
 
 	signingPolicyParsed, err := policy.ParseSigningPolicyInitializedEvent(policyLog)
-
 	require.NoError(t, err)
 
 	submitToSigning := make(map[common.Address]common.Address)
@@ -153,10 +154,12 @@ func TestManagerMethods(t *testing.T) {
 func TestManager(t *testing.T) {
 	cfg, err := config.ReadUserRaw(USER_FILE)
 	require.NoError(t, err)
+	attestationTypeConfig, err := config.ParseAttestationTypes(cfg.AttestationTypeConfig)
+	require.NoError(t, err)
 
 	// initialize
 	sharedDataPipes := shared.NewDataPipes()
-	mngr, err := New(&cfg, sharedDataPipes)
+	mngr, err := New(&cfg, attestationTypeConfig, sharedDataPipes)
 	require.NoError(t, err)
 
 	// run mocked verifier for test

@@ -39,7 +39,6 @@ var log2 = database.Log{
 }
 
 func TestParseDatabaseLog(t *testing.T) {
-
 	tests := []struct {
 		log                database.Log
 		rewardEpochID      int64
@@ -102,25 +101,17 @@ func TestNewSiginigPolicyLogs(t *testing.T) {
 	}
 
 	for i, test := range tests {
-
 		event, err := policy.ParseSigningPolicyInitializedEvent(test.log)
-
 		require.NoError(t, err)
 
 		siginingPolicy := policy.NewSigningPolicy(event, nil)
-
 		require.Equal(t, test.totalWeight, siginingPolicy.Voters.TotalWeight, fmt.Sprintf("error total weight test %d", i))
-
 		require.Len(t, siginingPolicy.Voters.VoterDataMap, test.noOfVoters, fmt.Sprintf("error number of voters test %d", i))
 
 		voterData, ok := siginingPolicy.Voters.VoterDataMap[common.HexToAddress(test.voter)]
-
 		require.True(t, ok, fmt.Sprintf("error missing voter in test %d", i))
-
 		require.Equal(t, test.voterWeight, voterData.Weight, fmt.Sprintf("error wrong weight test %d", i))
-
 		require.Equal(t, test.voterWeight, voterData.Weight, fmt.Sprintf("error wrong index test %d", i))
-
 	}
 
 }

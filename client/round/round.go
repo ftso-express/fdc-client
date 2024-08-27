@@ -219,7 +219,6 @@ func (r *Round) ProcessBitVote(message payload.Message) error {
 
 	if roundCheck != uint8(message.VotingRound%256) {
 		return fmt.Errorf("wrong round check from: expected %d, got %d", message.VotingRound%256, roundCheck)
-
 	}
 
 	if int(bitVote.Length) != len(r.Attestations) {
@@ -227,17 +226,13 @@ func (r *Round) ProcessBitVote(message payload.Message) error {
 	}
 
 	signingAddress, exists := r.voterSet.SubmitToSigningAddress[message.From]
-
 	if !exists {
 		return fmt.Errorf("no signing address")
-
 	}
 
 	voter, exists := r.voterSet.VoterDataMap[signingAddress]
-
 	if !exists {
 		return fmt.Errorf("invalid voter")
-
 	}
 
 	weight := voter.Weight

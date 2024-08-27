@@ -43,7 +43,7 @@ func NewVoterSet(voters []common.Address, weights []uint16, SubmitToSigningAddre
 		}
 	}
 	vs.VoterDataMap = vMap
-
 	vs.SubmitToSigningAddress = SubmitToSigningAddress
+	
 	return &vs
 }

@@ -34,6 +34,10 @@ func main() {
 	if err != nil {
 		log.Panicf("cannot set timing: %s", err)
 	}
+	attestationTypeConfig, err := config.ParseAttestationTypes(userConfigRaw.AttestationTypeConfig)
+	if err != nil {
+		log.Panicf("att types config: %s", err)
+	}
 
 	// Prepare context, that can cancel all goroutines
 	ctx, cancel := context.WithCancel(context.Background())
@@ -46,7 +50,7 @@ func main() {
 	go collector.Run(ctx)
 
 	// Start attestation client manager
-	manager, err := manager.New(userConfigRaw, sharedDataPipes)
+	manager, err := manager.New(userConfigRaw, attestationTypeConfig, sharedDataPipes)
 	if err != nil {
 		log.Panicf("failed to create the manager: %s", err)
 	}

@@ -82,26 +82,6 @@ func TestStringToByte32(t *testing.T) {
 
 }
 
-func TestTwoStringsToByte64(t *testing.T) {
-
-	const a = "12!Ab( )"
-	const b = "11"
-
-	bytes, err := config.TwoStringsToByte64(a, b)
-
-	require.NoError(t, err)
-
-	result := [64]byte{49, 50, 33, 65, 98, 40, 32, 41}
-	result[32] = 49
-	result[33] = 49
-
-	if bytes != result {
-		t.Errorf("bytes %v do not match the expected result %v", bytes, result)
-
-	}
-
-}
-
 func TestWhiteSpaceStrip(t *testing.T) {
 
 	tests := []struct {

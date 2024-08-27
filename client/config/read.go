@@ -5,8 +5,11 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
+	"unicode"
 
 	"github.com/BurntSushi/toml"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 )
 
 func ReadConfigs(userFilePath, systemFilePath string) (*UserRaw, *System, error) {
@@ -49,4 +52,33 @@ func readToml[C any](filePath string) (C, error) {
 	}
 
 	return config, nil
+}
+
+// ReadABI reads abi of a struct from a JSON file and converts it into abi.Arguments and string representation.
+func ReadABI(path string) (abi.Arguments, string, error) {
+	file, err := os.ReadFile(path)
+	if err != nil {
+		return abi.Arguments{}, "", fmt.Errorf("failed reading file %s with: %s", path, err)
+	}
+
+	args, err := ArgumentsFromABI(file)
+	if err != nil {
+		return abi.Arguments{}, "", fmt.Errorf("retrieving arguments from %s with %s", path, err)
+	}
+
+	abiString := WhiteSpaceStrip(string(file))
+
+	return args, abiString, nil
+}
+
+// WhiteSpaceStrip removes any white space character from the string.
+func WhiteSpaceStrip(str string) string {
+	var b strings.Builder
+	b.Grow(len(str))
+	for _, ch := range str {
+		if !unicode.IsSpace(ch) {
+			b.WriteRune(ch)
+		}
+	}
+	return b.String()
 }

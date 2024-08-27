@@ -18,7 +18,6 @@ import (
 var log = logger.GetLogger()
 
 type Manager struct {
-	protocolID            uint8
 	Rounds                storage.Cyclic[*round.Round, uint32] // cyclically cached rounds with buffer roundBuffer.
 	lastRoundCreated      uint32
 	requests              <-chan []database.Log
@@ -30,18 +29,12 @@ type Manager struct {
 }
 
 // New initializes attestation round manager from raw user configurations.
-func New(configs *config.UserRaw, sharedDataPipes *shared.DataPipes) (*Manager, error) {
+func New(configs *config.UserRaw, attestationTypeConfig config.AttestationTypes, sharedDataPipes *shared.DataPipes) (*Manager, error) {
 	signingPolicyStorage := policy.NewStorage()
-
-	attestationTypeConfig, err := config.ParseAttestationTypes(configs.AttestationTypeConfig)
-	if err != nil {
-		return nil, fmt.Errorf("error new manger, att types: %s", err)
-	}
 
 	queues := buildQueues(configs.Queues)
 
 	return &Manager{
-			protocolID:            configs.ProtocolID,
 			Rounds:                sharedDataPipes.Rounds,
 			signingPolicyStorage:  signingPolicyStorage,
 			attestationTypeConfig: attestationTypeConfig,
@@ -165,7 +158,7 @@ func (m *Manager) OnBitVote(message payload.Message) error {
 		return fmt.Errorf("bitVote from %s for voting round %d too soon", message.From, message.VotingRound)
 	}
 
-	if message.Timestamp > timing.ChooseEndTimestamp(message.VotingRound) {
+	if message.Timestamp >= timing.ChooseEndTimestamp(message.VotingRound) {
 		return fmt.Errorf("bitVote from %s for voting round %d too late", message.From, message.VotingRound)
 	}
 
@@ -208,7 +201,6 @@ func (m *Manager) OnRequest(ctx context.Context, request database.Log) error {
 
 // OnSigningPolicy parses SigningPolicyInitialized log and stores it into the signingPolicyStorage.
 func (m *Manager) OnSigningPolicy(data shared.VotersData) error {
-
 	parsedPolicy := policy.NewSigningPolicy(data.Policy, data.SubmitToSigningAddress)
 	log.Infof("Processing signing policy for rewardEpoch %s", data.Policy.RewardEpochId.String())
 
