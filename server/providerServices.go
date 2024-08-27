@@ -33,7 +33,7 @@ func calculateMaskedRoot(root common.Hash, random common.Hash, address common.Ad
 // storeRoot stores root, random, and consensusBitVote for roundID to be used in submitSignatures.
 //
 // It only stores the merkleRootStorageObject the first time it is called.
-func storeRoot(storage storage.Cyclic[merkleRootStorageObject, uint32], roundID uint32, message string, root, random common.Hash, consensusBitVote []byte) {
+func storeRoot(storage *storage.Cyclic[uint32, merkleRootStorageObject], roundID uint32, message string, root, random common.Hash, consensusBitVote []byte) {
 	_, exists := storage.Get(roundID)
 
 	if exists {

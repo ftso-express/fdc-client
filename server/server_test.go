@@ -34,7 +34,7 @@ const (
 )
 
 func TestServer(t *testing.T) {
-	rounds := storage.NewCyclic[*round.Round, uint32](10)
+	rounds := storage.NewCyclic[uint32, *round.Round](10)
 	serverConfig := config.RestServer{
 		Title:       "FDC protocol data provider API",
 		FSPTitle:    "FDC protocol data provider for FSP client",

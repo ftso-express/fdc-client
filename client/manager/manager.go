@@ -18,7 +18,7 @@ import (
 var log = logger.GetLogger()
 
 type Manager struct {
-	Rounds                storage.Cyclic[*round.Round, uint32] // cyclically cached rounds with buffer roundBuffer.
+	Rounds                storage.Cyclic[uint32, *round.Round] // cyclically cached rounds with buffer roundBuffer.
 	lastRoundCreated      uint32
 	requests              <-chan []database.Log
 	bitVotes              <-chan payload.Round

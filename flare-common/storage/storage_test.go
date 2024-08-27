@@ -9,7 +9,7 @@ func TestCyclicSimple(t *testing.T) {
 
 	const size int = 4
 
-	stg := storage.NewCyclic[uint64, int](size)
+	stg := storage.NewCyclic[int, uint64](size)
 
 	if stg.Size() != size {
 		t.Error("wrong size")
@@ -55,7 +55,7 @@ func TestCyclicSimple(t *testing.T) {
 func TestCyclicArray(t *testing.T) {
 	const size int = 4
 
-	stg := storage.NewCyclic[[]uint64, int](size)
+	stg := storage.NewCyclic[int, []uint64](size)
 
 	_, exists := stg.Get(123)
 
@@ -97,7 +97,7 @@ func TestCyclicArray(t *testing.T) {
 func TestCyclicArrayPointer(t *testing.T) {
 	const size int = 4
 
-	stg := storage.NewCyclic[*[]uint64, int](size)
+	stg := storage.NewCyclic[int, *[]uint64](size)
 
 	_, exists := stg.Get(123)
 
@@ -134,13 +134,11 @@ func TestCyclicArrayPointer(t *testing.T) {
 
 // maps are pointers
 func TestCyclicMap(t *testing.T) {
-
 	const size int = 4
 
-	stg := storage.NewCyclic[map[uint64]uint64, int](size)
+	stg := storage.NewCyclic[int, map[uint64]uint64](size)
 
 	_, exists := stg.Get(123)
-
 	if exists {
 		t.Error("unset but exists")
 	}
@@ -150,7 +148,6 @@ func TestCyclicMap(t *testing.T) {
 	stg.Store(1, mp)
 
 	_, exists = stg.Get(1)
-
 	if !exists {
 		t.Error("not stored")
 	}
@@ -158,9 +155,7 @@ func TestCyclicMap(t *testing.T) {
 	mp[2] = 3
 
 	getOne, exists := stg.Get(1)
-
 	if !exists || getOne[2] != 3 {
 		t.Error("map not modified")
 	}
-
 }

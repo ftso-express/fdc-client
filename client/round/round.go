@@ -40,7 +40,12 @@ type Round struct {
 
 // New returns a pointer to a new round with ID and voterSet.
 func New(ID uint32, voterSet *policy.VoterSet) *Round {
-	return &Round{ID: ID, voterSet: voterSet, attestationMap: make(map[common.Hash]*attestation.Attestation)}
+	return &Round{
+		ID:               ID,
+		voterSet:         voterSet,
+		attestationMap:   make(map[common.Hash]*attestation.Attestation),
+		bitVoteCheckList: make(map[common.Address]*bitvotes.WeightedBitVote),
+	}
 }
 
 // AddAttestation checks whether an attestation with such request is already in the round.

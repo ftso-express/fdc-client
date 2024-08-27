@@ -53,7 +53,7 @@ func TestPrepareChooseTrigger(t *testing.T) {
 	now := uint64(time.Now().Unix())
 
 	state := database.State{
-		Name: "state", Index: 12, BlockTimestamp: now, Updated: time.Now()}
+		Name: "last_database_block", Index: 12, BlockTimestamp: now, Updated: time.Now()}
 
 	err := db.AutoMigrate(&database.State{})
 
@@ -63,13 +63,13 @@ func TestPrepareChooseTrigger(t *testing.T) {
 
 	trigger := make(chan uint32)
 
-	go collector.PrepareChooseTriggers(ctx, trigger, db)
+	go collector.PrepareChooseTrigger(ctx, trigger, db)
 
 	time.Sleep(time.Second)
-	state2 := database.State{
-		Name: "state", Index: 12, BlockTimestamp: uint64(time.Now().Unix()) + 90, Updated: time.Now()}
+	state.Index = 13
+	state.BlockTimestamp += 90
 
-	db.Create(&state2)
+	db.Save(&state)
 
 	expectedID, _ := timing.NextChooseEnd(now)
 
@@ -153,7 +153,7 @@ func TestAttestationRequestListener(t *testing.T) {
 	now := uint64(time.Now().Unix())
 
 	state := database.State{
-		Name: "state", Index: 205597800, BlockTimestamp: now, Updated: time.Now()}
+		Name: "last_database_block", Index: 205597800, BlockTimestamp: now, Updated: time.Now()}
 
 	err := db.AutoMigrate(&database.State{})
 

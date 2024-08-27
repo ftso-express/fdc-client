@@ -81,8 +81,8 @@ func BitVoteListener(
 
 }
 
-// PrepareChooseTriggers tracks chain timestamps and passes roundID of the round whose choose phase has just ended to the trigger channel.
-func PrepareChooseTriggers(ctx context.Context, trigger chan uint32, db *gorm.DB) {
+// PrepareChooseTrigger tracks chain timestamps and passes roundID of the round whose choose phase has just ended to the trigger channel.
+func PrepareChooseTrigger(ctx context.Context, trigger chan uint32, db *gorm.DB) {
 	state, err := database.FetchState(ctx, db)
 	if err != nil {
 		log.Panic("database error:", err)
@@ -101,6 +101,7 @@ func PrepareChooseTriggers(ctx context.Context, trigger chan uint32, db *gorm.DB
 
 		for {
 			state, err := database.FetchState(ctx, db)
+
 			if err != nil {
 				log.Error("database error:", err)
 			} else {

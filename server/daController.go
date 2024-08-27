@@ -11,7 +11,7 @@ import (
 )
 
 type DAController struct {
-	Rounds *storage.Cyclic[*round.Round, uint32]
+	Rounds *storage.Cyclic[uint32, *round.Round]
 }
 
 type RequestsResponse struct {

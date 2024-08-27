@@ -9,8 +9,8 @@ import (
 )
 
 type FDCProtocolProviderController struct {
-	rounds     *storage.Cyclic[*round.Round, uint32]
-	storage    storage.Cyclic[merkleRootStorageObject, uint32]
+	rounds     *storage.Cyclic[uint32, *round.Round]
+	storage    *storage.Cyclic[uint32, merkleRootStorageObject]
 	protocolID uint8
 }
 
@@ -21,10 +21,10 @@ type submitXParams struct {
 
 const storageSize = 10
 
-func newFDCProtocolProviderController(rounds *storage.Cyclic[*round.Round, uint32], protocolID uint8) *FDCProtocolProviderController {
-	storage := storage.NewCyclic[merkleRootStorageObject, uint32](storageSize)
+func newFDCProtocolProviderController(rounds *storage.Cyclic[uint32, *round.Round], protocolID uint8) *FDCProtocolProviderController {
+	storage := storage.NewCyclic[uint32, merkleRootStorageObject](storageSize)
 
-	return &FDCProtocolProviderController{rounds: rounds, storage: storage, protocolID: protocolID}
+	return &FDCProtocolProviderController{rounds: rounds, storage: &storage, protocolID: protocolID}
 }
 
 func validateSubmitXParams(params map[string]string) (submitXParams, error) {

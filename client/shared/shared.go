@@ -23,7 +23,7 @@ type VotersData struct {
 }
 
 type DataPipes struct {
-	Rounds   storage.Cyclic[*round.Round, uint32] // cyclically cached rounds with buffer roundBuffer.
+	Rounds   storage.Cyclic[uint32, *round.Round] // cyclically cached rounds with buffer roundBuffer.
 	Requests chan []database.Log
 	BitVotes chan payload.Round
 	Voters   chan []VotersData
@@ -31,7 +31,7 @@ type DataPipes struct {
 
 func NewDataPipes() *DataPipes {
 	return &DataPipes{
-		Rounds:   storage.NewCyclic[*round.Round, uint32](roundBuffer),
+		Rounds:   storage.NewCyclic[uint32, *round.Round](roundBuffer),
 		Voters:   make(chan []VotersData, signingPolicyBufferSize),
 		BitVotes: make(chan payload.Round, bitVoteBufferSize),
 		Requests: make(chan []database.Log, requestsBufferSize),

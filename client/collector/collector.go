@@ -133,5 +133,5 @@ func (c *Collector) Run(ctx context.Context) {
 
 	chooseTrigger := make(chan uint32)
 	go BitVoteListener(ctx, c.DB, c.SubmitContractAddress, Submit1FuncSel, c.ProtocolID, chooseTrigger, c.BitVotes)
-	PrepareChooseTriggers(ctx, chooseTrigger, c.DB)
+	PrepareChooseTrigger(ctx, chooseTrigger, c.DB)
 }
