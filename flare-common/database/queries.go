@@ -291,6 +291,7 @@ func fetchTransactionsByAddressAndSelectorBlockNumber(
 	return transactions, nil
 }
 
+// FetchState returns the state of the indexer database
 func FetchState(ctx context.Context, db *gorm.DB) (State, error) {
 	var state State
 
@@ -312,7 +313,10 @@ func FetchState(ctx context.Context, db *gorm.DB) (State, error) {
 func fetchState(ctx context.Context, db *gorm.DB) (State, error) {
 	var states []State
 
-	err := db.WithContext(ctx).Order("block_timestamp DESC").Find(&states).Error
+	err := db.WithContext(ctx).Where(
+		"name = ?",
+		"last_database_block",
+	).Find(&states).Error
 
 	if err != nil {
 		var state State
