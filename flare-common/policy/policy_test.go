@@ -117,53 +117,42 @@ func TestNewSiginigPolicyLogs(t *testing.T) {
 }
 
 func TestStorage(t *testing.T) {
-
 	storage := policy.NewStorage()
 
 	event2, err := policy.ParseSigningPolicyInitializedEvent(log2)
-
 	require.NoError(t, err)
 
 	siginingPolicy2 := policy.NewSigningPolicy(event2, nil)
 
 	err = storage.Add(siginingPolicy2)
-
 	require.NoError(t, err)
 
 	event1, err := policy.ParseSigningPolicyInitializedEvent(log1)
-
 	require.NoError(t, err)
 
 	siginingPolicy1 := policy.NewSigningPolicy(event1, nil)
 
 	err = storage.Add(siginingPolicy1)
-
 	require.NoError(t, err)
 
 	policyFromStorage, ok := storage.ForVotingRound(663845)
-
 	require.True(t, !ok)
-
+	require.Equal(t, int64(2766), policyFromStorage.RewardEpochID)
 	require.Equal(t, uint16(65528), policyFromStorage.Voters.TotalWeight)
 
 	policyFromStorage, ok = storage.ForVotingRound(663445)
-
 	require.True(t, !ok)
-
 	require.Nil(t, policyFromStorage)
 
 	policyFromStorage, ok = storage.ForVotingRound(673445)
-
 	require.True(t, ok)
-
+	require.Equal(t, int64(2767), policyFromStorage.RewardEpochID)
 	require.Equal(t, uint16(65529), policyFromStorage.Voters.TotalWeight)
 
 	removeEmpty := storage.RemoveBefore(12)
-
 	require.Len(t, removeEmpty, 0)
 
 	removeOne := storage.RemoveBefore(667080)
-
 	require.Len(t, removeOne, 1)
 
 }

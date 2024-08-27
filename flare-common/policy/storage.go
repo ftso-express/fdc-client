@@ -34,7 +34,7 @@ func (s *SigningPolicyStorage) findByVotingRoundID(votingRoundID uint32) *Signin
 	if i == 0 {
 		return nil
 	}
-	return s.spList[len(s.spList)-1]
+	return s.spList[i-1]
 }
 
 func (s *SigningPolicyStorage) Add(sp *SigningPolicy) error {
@@ -43,13 +43,13 @@ func (s *SigningPolicyStorage) Add(sp *SigningPolicy) error {
 
 	if len(s.spList) > 0 {
 		// check consistency, previous epoch should be already added
-		if s.spList[len(s.spList)-1].rewardEpochID != sp.rewardEpochID-1 {
-			return fmt.Errorf("missing signing policy for reward epoch ID %d", sp.rewardEpochID-1)
+		if s.spList[len(s.spList)-1].RewardEpochID != sp.RewardEpochID-1 {
+			return fmt.Errorf("missing signing policy for reward epoch ID %d", sp.RewardEpochID-1)
 		}
 		// should be sorted by voting round ID, should not happen
 		if sp.startVotingRoundID < s.spList[len(s.spList)-1].startVotingRoundID {
 			return fmt.Errorf("signing policy for reward epoch ID %d has larger start voting round ID than previous policy",
-				sp.rewardEpochID)
+				sp.RewardEpochID)
 		}
 	}
 
@@ -67,7 +67,7 @@ func (s *SigningPolicyStorage) ForVotingRound(votingRoundID uint32) (*SigningPol
 	if sp == nil {
 		return nil, false
 	}
-	return sp, sp.rewardEpochID == s.spList[len(s.spList)-1].rewardEpochID
+	return sp, sp.RewardEpochID == s.spList[len(s.spList)-1].RewardEpochID
 }
 
 // RemoveBefore removes all signing policies that ended strictly before votingRoundID.
@@ -78,7 +78,7 @@ func (s *SigningPolicyStorage) RemoveBefore(votingRoundID uint32) []uint32 {
 
 	var removedRewardEpochIDs []uint32
 	for len(s.spList) > 1 && s.spList[1].startVotingRoundID < votingRoundID {
-		removedRewardEpochIDs = append(removedRewardEpochIDs, uint32(s.spList[0].rewardEpochID))
+		removedRewardEpochIDs = append(removedRewardEpochIDs, uint32(s.spList[0].RewardEpochID))
 		s.spList[0] = nil
 		s.spList = s.spList[1:]
 	}

@@ -8,7 +8,7 @@ import (
 )
 
 type SigningPolicy struct {
-	rewardEpochID      int64
+	RewardEpochID      int64
 	startVotingRoundID uint32
 	threshold          uint16
 	seed               *big.Int
@@ -21,7 +21,7 @@ type SigningPolicy struct {
 
 func NewSigningPolicy(r *relayContract.RelaySigningPolicyInitialized, submitToSigning map[common.Address]common.Address) *SigningPolicy {
 	return &SigningPolicy{
-		rewardEpochID:      r.RewardEpochId.Int64(),
+		RewardEpochID:      r.RewardEpochId.Int64(),
 		startVotingRoundID: r.StartVotingRoundId,
 		threshold:          r.Threshold,
 		seed:               r.Seed,
