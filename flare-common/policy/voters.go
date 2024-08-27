@@ -1,10 +1,6 @@
 package policy
 
 import (
-	relayContract "flare-common/contracts/relay"
-	"math/big"
-	"sync"
-
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -50,43 +46,4 @@ func NewVoterSet(voters []common.Address, weights []uint16, SubmitToSigningAddre
 
 	vs.SubmitToSigningAddress = SubmitToSigningAddress
 	return &vs
-}
-
-type SigningPolicy struct {
-	rewardEpochID      int64
-	startVotingRoundID uint32
-	threshold          uint16
-	seed               *big.Int
-	rawBytes           []byte
-	blockTimestamp     uint64
-
-	// The set of all Voters and their weights
-	Voters *VoterSet
-}
-
-func NewSigningPolicy(r *relayContract.RelaySigningPolicyInitialized, submitToSigning map[common.Address]common.Address) *SigningPolicy {
-	return &SigningPolicy{
-		rewardEpochID:      r.RewardEpochId.Int64(),
-		startVotingRoundID: r.StartVotingRoundId,
-		threshold:          r.Threshold,
-		seed:               r.Seed,
-		rawBytes:           r.SigningPolicyBytes,
-		blockTimestamp:     r.Timestamp,
-		Voters:             NewVoterSet(r.Voters, r.Weights, submitToSigning),
-	}
-}
-
-type SigningPolicyStorage struct {
-
-	// sorted list of signing policies, sorted by rewardEpochID (and also by startVotingRoundID)
-	spList []*SigningPolicy
-
-	// mutex
-	sync.Mutex
-}
-
-func NewStorage() *SigningPolicyStorage {
-	return &SigningPolicyStorage{
-		spList: make([]*SigningPolicy, 0, 10),
-	}
 }

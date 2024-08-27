@@ -4,7 +4,23 @@ import (
 	"cmp"
 	"fmt"
 	"sort"
+	"sync"
 )
+
+type SigningPolicyStorage struct {
+
+	// sorted list of signing policies, sorted by rewardEpochID (and also by startVotingRoundID)
+	spList []*SigningPolicy
+
+	// mutex
+	sync.Mutex
+}
+
+func NewStorage() *SigningPolicyStorage {
+	return &SigningPolicyStorage{
+		spList: make([]*SigningPolicy, 0, 10),
+	}
+}
 
 // Does not lock the structure, should be called from a function that does lock.
 // We assume that the list is sorted by rewardEpochID and also by startVotingRoundID.
@@ -18,7 +34,7 @@ func (s *SigningPolicyStorage) findByVotingRoundID(votingRoundID uint32) *Signin
 	if i == 0 {
 		return nil
 	}
-	return s.spList[i-1]
+	return s.spList[len(s.spList)-1]
 }
 
 func (s *SigningPolicyStorage) Add(sp *SigningPolicy) error {
@@ -52,21 +68,6 @@ func (s *SigningPolicyStorage) ForVotingRound(votingRoundID uint32) (*SigningPol
 		return nil, false
 	}
 	return sp, sp.rewardEpochID == s.spList[len(s.spList)-1].rewardEpochID
-}
-
-// Removes all signing policies with start voting round ID <= than the provided one.
-// Returns the list of removed reward epoch ids.
-func (s *SigningPolicyStorage) RemoveByVotingRound(votingRoundID uint32) []uint32 {
-	s.Lock()
-	defer s.Unlock()
-
-	var removedRewardEpochIDs []uint32
-	for len(s.spList) > 0 && s.spList[0].startVotingRoundID <= votingRoundID {
-		removedRewardEpochIDs = append(removedRewardEpochIDs, uint32(s.spList[0].rewardEpochID))
-		s.spList[0] = nil
-		s.spList = s.spList[1:]
-	}
-	return removedRewardEpochIDs
 }
 
 // RemoveBefore removes all signing policies that ended strictly before votingRoundID.

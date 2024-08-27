@@ -146,7 +146,7 @@ func (m *Manager) GetOrCreateRound(roundID uint32) (*round.Round, error) {
 		return roundForID, nil
 	}
 
-	policy, _ := m.signingPolicyStorage.ForVotingRound(uint32(roundID))
+	policy, _ := m.signingPolicyStorage.ForVotingRound(roundID)
 	if policy == nil {
 		return nil, fmt.Errorf("creating round: no signing policy for round %d", roundID)
 	}
