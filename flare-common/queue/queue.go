@@ -22,7 +22,7 @@ type PriorityQueue[T any] struct {
 	lastDequeue     time.Time
 	workersSem      chan struct{}
 	maxAttempts     uint64
-	deadLetterQueue chan T
+	DeadLetterQueue chan T
 	backoff         func() backoff.BackOff
 	timeOff         time.Duration
 }
@@ -77,14 +77,10 @@ func NewPriority[T any](input *PriorityQueueParams) PriorityQueue[T] {
 			q.maxAttempts = defaultMaxAttempts
 		}
 
-		q.deadLetterQueue = make(chan T, input.Size)
+		q.DeadLetterQueue = make(chan T, input.Size)
 	}
 
 	return q
-}
-
-func (q PriorityQueue[T]) DeadLetterQueue() <-chan T {
-	return q.deadLetterQueue
 }
 
 // Enqueue adds an item to the queue with regular priority.
@@ -102,6 +98,11 @@ func (q *PriorityQueue[T]) enqueue(ctx context.Context, item priorityQueueItem[T
 	}
 }
 
+// EnqueuePriority adds an item to the queue with high priority.
+func (q *PriorityQueue[T]) EnqueuePriority(ctx context.Context, item T) error {
+	return q.enqueuePriority(ctx, priorityQueueItem[T]{value: item, backoff: q.newBackoff(), priority: true})
+}
+
 func (q *PriorityQueue[T]) enqueuePriority(ctx context.Context, item priorityQueueItem[T]) error {
 	select {
 	case q.priority <- item:
@@ -110,12 +111,6 @@ func (q *PriorityQueue[T]) enqueuePriority(ctx context.Context, item priorityQue
 	case <-ctx.Done():
 		return ctx.Err()
 	}
-}
-
-// EnqueuePriority adds an item to the queue with high priority.
-func (q *PriorityQueue[T]) EnqueuePriority(ctx context.Context, item T) error {
-	return q.enqueuePriority(ctx, priorityQueueItem[T]{value: item, backoff: q.newBackoff(), priority: true})
-
 }
 
 func (q *PriorityQueue[T]) newBackoff() (bOff backoff.BackOff) {
@@ -172,7 +167,7 @@ func (q *PriorityQueue[T]) handleError(ctx context.Context, item priorityQueueIt
 		// Attempt to send the item to the dead letter queue, but do not block if it is full -
 		// in that case the item will be discarded.
 		select {
-		case q.deadLetterQueue <- item.value:
+		case q.DeadLetterQueue <- item.value:
 			log.Errorf("max retry attempts reached, sent item to dead letter queue: %v", item.value)
 
 		default:

@@ -5,7 +5,6 @@ import (
 	"flare-common/queue"
 	"local/fdc/client/attestation"
 	"local/fdc/client/config"
-	"sync"
 )
 
 type attestationQueue = queue.PriorityQueue[*attestation.Attestation]
@@ -36,18 +35,11 @@ func handler(ctx context.Context, at *attestation.Attestation) error {
 
 // runQueues runs all queues at once.
 func runQueues(ctx context.Context, queues priorityQueues) {
-	var wg sync.WaitGroup
-
-	wg.Add(len(queues))
-
 	for k := range queues {
 		go func(k string) {
 			run(ctx, queues[k])
-			wg.Done()
 		}(k)
 	}
-
-	wg.Wait()
 }
 
 // run tracks and handles all dequeued attestations from queue.

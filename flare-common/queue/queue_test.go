@@ -256,7 +256,7 @@ func TestMaxAttempts(t *testing.T) {
 
 	q := queue.NewPriority[int](&queue.PriorityQueueParams{Size: size, MaxAttempts: maxAttempts})
 
-	dlq := q.DeadLetterQueue()
+	dlq := q.DeadLetterQueue
 
 	err := q.Enqueue(ctx, 1)
 	require.NoError(t, err)
