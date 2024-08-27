@@ -126,7 +126,7 @@ func (controller *FDCProtocolProviderController) submit2Service(roundID uint32, 
 
 	storeRoot(controller.storage, roundID, payloadMsg, root, random, encodedBitVote)
 
-	log.Debugf("submit2: for round %d and address %s: %s", roundID, address, masked)
+	log.Debugf("submit2: for round %d and address %s: %s", roundID, address, payloadMsg)
 
 	return payloadMsg, true, nil
 }
@@ -145,8 +145,8 @@ func (controller *FDCProtocolProviderController) submitSignaturesService(roundID
 	log.Info("SubmitSignaturesHandler")
 	log.Logf(zapcore.DebugLevel, "round: %s", fmt.Sprint(roundID))
 	log.Logf(zapcore.DebugLevel, "address: %s", address)
-	log.Logf(zapcore.DebugLevel, "root: %s", savedRoot.merkleRoot.Hex())
-	log.Logf(zapcore.DebugLevel, "random: %s", savedRoot.randomNum.String())
+	log.Logf(zapcore.DebugLevel, "root: %v", savedRoot.merkleRoot)
+	log.Logf(zapcore.DebugLevel, "random: %v", savedRoot.randomNum)
 	log.Logf(zapcore.DebugLevel, "consensus: %s", "0x"+hex.EncodeToString(savedRoot.consensusBitVote))
 
 	additionalData := savedRoot.randomNum.Hex() + hex.EncodeToString(savedRoot.consensusBitVote)
