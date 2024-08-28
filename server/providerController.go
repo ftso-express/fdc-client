@@ -68,7 +68,7 @@ func submitXController(
 	_ interface{},
 	_ interface{},
 	service func(uint32, string) (string, bool, error),
-	timelock func(uint32) uint64) (PDPResponse, *restserver.ErrorHandler) {
+	timeLock func(uint32) uint64) (PDPResponse, *restserver.ErrorHandler) {
 	pathParams, err := validateSubmitXParams(params)
 
 	if err != nil {
@@ -76,10 +76,10 @@ func submitXController(
 		return PDPResponse{}, restserver.BadParamsErrorHandler(err)
 	}
 
-	atTheEarliest := timelock(pathParams.votingRoundID)
-	if atTheEarliest > uint64(time.Now().Unix()) {
-		log.Error(err)
-		return PDPResponse{}, restserver.ToEarlyErrorHandler(err)
+	atTheEarliest := timeLock(pathParams.votingRoundID)
+	now := uint64(time.Now().Unix())
+	if atTheEarliest > now {
+		return PDPResponse{}, restserver.ToEarlyErrorHandler(fmt.Errorf("to early %v before %d", atTheEarliest-now, atTheEarliest))
 	}
 
 	rsp, exists, err := service(pathParams.votingRoundID, pathParams.submitAddress)
@@ -88,13 +88,12 @@ func submitXController(
 		return PDPResponse{}, restserver.InternalServerErrorHandler(err)
 	}
 	if !exists {
-		return PDPResponse{Data: rsp, Status: NotAvailable}, nil
+		return PDPResponse{}, restserver.NotAvailableErrorHandler(fmt.Errorf("commit data for round id %d not available", pathParams.votingRoundID))
 	}
-
 	response := PDPResponse{Data: rsp, Status: Ok}
-
 	return response, nil
 }
+
 func (controller *FDCProtocolProviderController) submit1Controller(
 	params map[string]string,
 	queryParams interface{},
@@ -120,7 +119,7 @@ func (controller *FDCProtocolProviderController) submitSignaturesController(
 	}
 	message, addData, exists := controller.submitSignaturesService(pathParams.votingRoundID, pathParams.submitAddress)
 	if !exists {
-		return PDPResponse{Status: NotAvailable}, nil
+		return PDPResponse{}, restserver.NotAvailableErrorHandler(fmt.Errorf("round id %d not available", pathParams.votingRoundID))
 	}
 	response := PDPResponse{Data: message, AdditionalData: addData, Status: Ok}
 

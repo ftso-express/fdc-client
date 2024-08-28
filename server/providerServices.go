@@ -77,26 +77,27 @@ func (controller *FDCProtocolProviderController) submit1Service(roundID uint32, 
 // commit data is a hash of merkleRoot, roundID, address, and encodedBitVote.
 // The data is stored to be used in the reveal.
 func (controller *FDCProtocolProviderController) submit2Service(roundID uint32, address string) (string, bool, error) {
-
 	commit, exists := controller.storage.Get(roundID)
-
 	if exists {
+		log.Infof("submit2: for round %d already computed, returning stored commit message %v", roundID, commit.message)
 		return commit.message, true, nil
 	}
 
 	votingRound, exists := controller.rounds.Get(roundID)
-
 	if !exists {
 		log.Infof("submit2: round %d not stored", roundID)
-
 		return "", false, nil
 	}
 
-	consensusBitVote, err := votingRound.GetConsensusBitVote()
+	consensusBitVote, exists, computed := votingRound.GetConsensusBitVote()
 
-	if err != nil {
-		log.Infof("submit2: consensus bitVote for round %d not available: %s", roundID, err)
+	if !computed {
+		log.Infof("submit2: consensus bitVote for round %d not computed", roundID)
+		return "", false, nil
+	}
 
+	if !exists {
+		log.Infof("submit2: consensus bitVote for round %d not available: %s", roundID)
 		return "", false, nil
 	}
 
@@ -166,7 +167,7 @@ func buildMessageForSigning(protocolID uint8, roundID uint32, merkleRoot common.
 
 	data[0] = uint8(protocolID)
 	binary.BigEndian.PutUint32(data[1:5], uint32(roundID))
-	data[5] = 1
+	data[5] = 0 // is secure random not used in FDC protocol
 	copy(data[6:38], merkleRoot[:])
 
 	return "0x" + hex.EncodeToString(data)

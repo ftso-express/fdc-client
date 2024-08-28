@@ -28,23 +28,25 @@ const (
 )
 
 type Round struct {
-	ID               uint32
-	Attestations     []*attestation.Attestation
-	attestationMap   map[common.Hash]*attestation.Attestation
-	bitVotes         []*bitvotes.WeightedBitVote
-	bitVoteCheckList map[common.Address]*bitvotes.WeightedBitVote
-	ConsensusBitVote bitvotes.BitVote
-	voterSet         *policy.VoterSet
-	merkleTree       merkle.Tree
+	ID                           uint32
+	Attestations                 []*attestation.Attestation
+	attestationMap               map[common.Hash]*attestation.Attestation
+	bitVotes                     []*bitvotes.WeightedBitVote
+	bitVoteCheckList             map[common.Address]*bitvotes.WeightedBitVote
+	ConsensusCalculationFinished bool
+	ConsensusBitVote             bitvotes.BitVote
+	voterSet                     *policy.VoterSet
+	merkleTree                   merkle.Tree
 }
 
 // New returns a pointer to a new round with ID and voterSet.
 func New(ID uint32, voterSet *policy.VoterSet) *Round {
 	return &Round{
-		ID:               ID,
-		voterSet:         voterSet,
-		attestationMap:   make(map[common.Hash]*attestation.Attestation),
-		bitVoteCheckList: make(map[common.Address]*bitvotes.WeightedBitVote),
+		ID:                           ID,
+		voterSet:                     voterSet,
+		attestationMap:               make(map[common.Hash]*attestation.Attestation),
+		bitVoteCheckList:             make(map[common.Address]*bitvotes.WeightedBitVote),
+		ConsensusCalculationFinished: false,
 	}
 }
 
@@ -105,6 +107,7 @@ func (r *Round) BitVoteBytes() ([]byte, error) {
 
 // ComputeConsensusBitVote computes the consensus BitVote according to the collected bitVotes and sets consensus status to the attestations.
 func (r *Round) ComputeConsensusBitVote() error {
+	defer func() { r.ConsensusCalculationFinished = true }()
 	r.sortBitVotes()
 	r.sortAttestations()
 
@@ -123,13 +126,15 @@ func (r *Round) ComputeConsensusBitVote() error {
 	return r.setConsensusStatus(consensus)
 }
 
-// GetConsensusBitVote returns consensus BitVote if it is already computed.
-func (r *Round) GetConsensusBitVote() (bitvotes.BitVote, error) {
+// GetConsensusBitVote returns triplet
+// - consensus BitVote
+// - bool indicating whether the consensus BitVote is successfully computed
+// - bool indicating whether the consensus BitVote computation took place
+func (r *Round) GetConsensusBitVote() (bitvotes.BitVote, bool, bool) {
 	if r.ConsensusBitVote.BitVector == nil {
-		return bitvotes.BitVote{}, errors.New("no consensus bitVote")
+		return bitvotes.BitVote{}, false, r.ConsensusCalculationFinished
 	}
-
-	return r.ConsensusBitVote, nil
+	return r.ConsensusBitVote, true, r.ConsensusCalculationFinished
 }
 
 // ConsensusBitVoteHex returns hex string encoded consensus BitVote if it is already computed.

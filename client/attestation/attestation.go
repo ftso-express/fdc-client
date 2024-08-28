@@ -244,6 +244,7 @@ func (a *Attestation) Index() IndexLog {
 func BitVoteFromAttestations(attestations []*Attestation) (bitvotes.BitVote, error) {
 	bitVector := big.NewInt(0)
 
+	// Max bitvector size for bitvote is 2 bytes (65536 bits)
 	if len(attestations) > 65535 {
 		return bitvotes.BitVote{}, errors.New("more than 65536 attestations")
 	}

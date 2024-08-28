@@ -84,7 +84,7 @@ func TestServer(t *testing.T) {
 	bitVote := bitvotes.BitVote{Length: 1, BitVector: big.NewInt(1)}
 
 	round.ConsensusBitVote = bitVote
-
+	round.ConsensusCalculationFinished = true
 	//Wait for the server to be ready.
 	u := url.URL{Scheme: "http", Host: "localhost:8080", Path: "/health"}
 	healthURL := u.String()
@@ -134,7 +134,7 @@ func TestServer(t *testing.T) {
 		t.Log(rspData)
 		require.Equal(t, server.Ok, rspData.Status)
 
-		require.Equal(t, "0xc80000000101", rspData.Data[:14])
+		require.Equal(t, "0xc80000000100", rspData.Data[:14])
 
 		require.Equal(t, hash.Hex()[2:], rspData.Data[14:])
 

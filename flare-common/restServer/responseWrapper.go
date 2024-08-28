@@ -109,3 +109,11 @@ func ToEarlyErrorHandler(err error) *ErrorHandler {
 		},
 	}
 }
+
+func NotAvailableErrorHandler(err error) *ErrorHandler {
+	return &ErrorHandler{
+		Handler: func(w http.ResponseWriter) {
+			WriteAPIResponseError(w, "Data not available yet", err.Error())
+		},
+	}
+}
