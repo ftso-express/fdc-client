@@ -4,7 +4,7 @@ package server
 
 import (
 	"errors"
-	"flare-common/restServer"
+	"flare-common/restserver"
 	"flare-common/storage"
 	"local/fdc/client/round"
 	"strconv"
@@ -46,12 +46,12 @@ func (controller *DAController) getRequestController(
 	params map[string]string,
 	_ interface{},
 	_ interface{},
-) (RequestsResponse, *restServer.ErrorHandler) {
+) (RequestsResponse, *restserver.ErrorHandler) {
 	votingRoundID, err := validateRoundIDParam(params)
 
 	if err != nil {
 		log.Error(err)
-		return RequestsResponse{}, restServer.BadParamsErrorHandler(err)
+		return RequestsResponse{}, restserver.BadParamsErrorHandler(err)
 	}
 
 	requests, exists := controller.GetRequests(votingRoundID)
@@ -66,12 +66,12 @@ func (controller *DAController) getRequestController(
 func (controller *DAController) getAttestationController(
 	params map[string]string,
 	_ interface{},
-	_ interface{}) (AttestationResponse, *restServer.ErrorHandler) {
+	_ interface{}) (AttestationResponse, *restserver.ErrorHandler) {
 	votingRoundID, err := validateRoundIDParam(params)
 
 	if err != nil {
 		log.Error(err)
-		return AttestationResponse{}, restServer.BadParamsErrorHandler(err)
+		return AttestationResponse{}, restserver.BadParamsErrorHandler(err)
 	}
 
 	attestations, exists := controller.GetAttestations(votingRoundID)

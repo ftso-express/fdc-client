@@ -1,4 +1,4 @@
-package restServer
+package restserver
 
 import (
 	"net/http"
@@ -11,7 +11,7 @@ type ExcludeEndpointStruct struct {
 	Method      string
 }
 
-type AipKeyAuthMiddleware struct {
+type APIKeyAuthMiddleware struct {
 	KeyName          string
 	Keys             []string
 	ExcludeEndpoints []ExcludeEndpointStruct
@@ -19,7 +19,7 @@ type AipKeyAuthMiddleware struct {
 	excludeMap       map[string]map[string]bool
 }
 
-func (keyMiddleware *AipKeyAuthMiddleware) Init() {
+func (keyMiddleware *APIKeyAuthMiddleware) Init() {
 	keyMiddleware.keyMap = make(map[string]bool)
 	keyMiddleware.excludeMap = make(map[string]map[string]bool)
 	for _, key := range keyMiddleware.Keys {
@@ -36,7 +36,7 @@ func (keyMiddleware *AipKeyAuthMiddleware) Init() {
 }
 
 // Middleware function, which will be called for each request
-func (keyMiddleware *AipKeyAuthMiddleware) Middleware(next http.Handler) http.Handler {
+func (keyMiddleware *APIKeyAuthMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check if path and method combination are in exclude list
 		if _, found := keyMiddleware.excludeMap[r.URL.Path][r.Method]; found {
@@ -54,12 +54,12 @@ func (keyMiddleware *AipKeyAuthMiddleware) Middleware(next http.Handler) http.Ha
 		}
 
 		// Access denied
-		errorString := "Forbidden, provide valid " + keyMiddleware.KeyName + " api key"
-		http.Error(w, errorString, http.StatusForbidden)
+		errorString := "Unauthorized, provide valid " + keyMiddleware.KeyName + " api key"
+		http.Error(w, errorString, http.StatusUnauthorized)
 	})
 }
 
-func (keyMiddleware *AipKeyAuthMiddleware) SecuritySchemes() openapi3.SecuritySchemes {
+func (keyMiddleware *APIKeyAuthMiddleware) SecuritySchemes() openapi3.SecuritySchemes {
 	return openapi3.SecuritySchemes{
 		keyMiddleware.KeyName: &openapi3.SecuritySchemeRef{
 			Value: &openapi3.SecurityScheme{

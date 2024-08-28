@@ -1,11 +1,15 @@
 package server
 
 import (
-	"flare-common/restServer"
+	"encoding/hex"
+	"flare-common/restserver"
 	"flare-common/storage"
 	"fmt"
 	"local/fdc/client/round"
+	"local/fdc/client/timing"
 	"strconv"
+	"strings"
+	"time"
 )
 
 type FDCProtocolProviderController struct {
@@ -27,6 +31,20 @@ func newFDCProtocolProviderController(rounds *storage.Cyclic[uint32, *round.Roun
 	return &FDCProtocolProviderController{rounds: rounds, storage: &storage, protocolID: protocolID}
 }
 
+const hexPrefix = "0x"
+
+func validateEVMAddressString(address string) bool {
+	address = strings.TrimPrefix(address, hexPrefix)
+	dec, err := hex.DecodeString(address)
+	if err != nil {
+		return false
+	}
+	if len(dec) != 20 {
+		return false
+	}
+	return err == nil
+}
+
 func validateSubmitXParams(params map[string]string) (submitXParams, error) {
 	if _, ok := params["votingRoundID"]; !ok {
 		return submitXParams{}, fmt.Errorf("missing votingRound param")
@@ -39,26 +57,35 @@ func validateSubmitXParams(params map[string]string) (submitXParams, error) {
 		return submitXParams{}, fmt.Errorf("missing submitAddress param")
 	}
 	submitAddress := params["submitAddress"]
-	if !restServer.ValidateEVMAddressString(submitAddress) {
+	if !validateEVMAddressString(submitAddress) {
 		return submitXParams{}, fmt.Errorf("submitAddress param is not a valid EVM address")
 	}
 	return submitXParams{votingRoundID: uint32(votingRoundID), submitAddress: submitAddress}, nil
 }
 
-func (controller *FDCProtocolProviderController) submit1Controller(
+func submitXController(
 	params map[string]string,
-	queryParams interface{},
-	body interface{}) (PDPResponse, *restServer.ErrorHandler) {
+	_ interface{},
+	_ interface{},
+	service func(uint32, string) (string, bool, error),
+	timelock func(uint32) uint64) (PDPResponse, *restserver.ErrorHandler) {
 	pathParams, err := validateSubmitXParams(params)
 
 	if err != nil {
 		log.Error(err)
-		return PDPResponse{}, restServer.BadParamsErrorHandler(err)
+		return PDPResponse{}, restserver.BadParamsErrorHandler(err)
 	}
-	rsp, exists, err := controller.submit1Service(pathParams.votingRoundID, pathParams.submitAddress)
+
+	atTheEarliest := timelock(pathParams.votingRoundID)
+	if atTheEarliest > uint64(time.Now().Unix()) {
+		log.Error(err)
+		return PDPResponse{}, restserver.ToEarlyErrorHandler(err)
+	}
+
+	rsp, exists, err := service(pathParams.votingRoundID, pathParams.submitAddress)
 	if err != nil {
 		log.Error(err)
-		return PDPResponse{}, restServer.InternalServerErrorHandler(err)
+		return PDPResponse{}, restserver.InternalServerErrorHandler(err)
 	}
 	if !exists {
 		return PDPResponse{Data: rsp, Status: NotAvailable}, nil
@@ -67,40 +94,29 @@ func (controller *FDCProtocolProviderController) submit1Controller(
 	response := PDPResponse{Data: rsp, Status: Ok}
 
 	return response, nil
+}
+func (controller *FDCProtocolProviderController) submit1Controller(
+	params map[string]string,
+	queryParams interface{},
+	body interface{}) (PDPResponse, *restserver.ErrorHandler) {
+	return submitXController(params, queryParams, body, controller.submit1Service, timing.ChooseStartTimestamp)
 }
 
 func (controller *FDCProtocolProviderController) submit2Controller(
 	params map[string]string,
 	queryParams interface{},
-	body interface{}) (PDPResponse, *restServer.ErrorHandler) {
-	pathParams, err := validateSubmitXParams(params)
-	if err != nil {
-		log.Error(err)
-		return PDPResponse{}, restServer.BadParamsErrorHandler(err)
-	}
-	rsp, exists, err := controller.submit2Service(pathParams.votingRoundID, pathParams.submitAddress)
-	if err != nil {
-		log.Error(err)
-		return PDPResponse{}, restServer.InternalServerErrorHandler(err)
-	}
-
-	if !exists {
-		return PDPResponse{Data: rsp, Status: NotAvailable}, nil
-	}
-
-	response := PDPResponse{Data: rsp, Status: Ok}
-
-	return response, nil
+	body interface{}) (PDPResponse, *restserver.ErrorHandler) {
+	return submitXController(params, queryParams, body, controller.submit2Service, timing.ChooseEndTimestamp)
 }
 
 func (controller *FDCProtocolProviderController) submitSignaturesController(
 	params map[string]string,
 	queryParams interface{},
-	body interface{}) (PDPResponse, *restServer.ErrorHandler) {
+	body interface{}) (PDPResponse, *restserver.ErrorHandler) {
 	pathParams, err := validateSubmitXParams(params)
 	if err != nil {
 		log.Error(err)
-		return PDPResponse{}, restServer.BadParamsErrorHandler(err)
+		return PDPResponse{}, restserver.BadParamsErrorHandler(err)
 	}
 	message, addData, exists := controller.submitSignaturesService(pathParams.votingRoundID, pathParams.submitAddress)
 	if !exists {

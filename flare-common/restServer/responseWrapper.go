@@ -1,4 +1,4 @@
-package restServer
+package restserver
 
 import (
 	"encoding/json"
@@ -9,43 +9,6 @@ import (
 	"github.com/gorilla/schema"
 	"gorm.io/gorm"
 )
-
-// type ApiResStatusEnum string
-
-// const (
-// 	ApiResStatusOk                ApiResStatusEnum = "OK"
-// 	ApiResStatusError             ApiResStatusEnum = "ERROR"
-// 	ApiResStatusRequestBodyError  ApiResStatusEnum = "REQUEST_BODY_ERROR"
-// 	ApiResStatusValidationError   ApiResStatusEnum = "VALIDATION_ERROR"
-// 	ApiResStatusTooManyRequests   ApiResStatusEnum = "TOO_MANY_REQUESTS"
-// 	ApiResStatusUnauthorized      ApiResStatusEnum = "UNAUTHORIZED"
-// 	ApiResStatusAuthError         ApiResStatusEnum = "AUTH_ERROR"
-// 	ApiResStatusUpstreamHttpError ApiResStatusEnum = "UPSTREAM_HTTP_ERROR"
-// 	ApiResStatusInvalidRequest    ApiResStatusEnum = "INVALID_REQUEST"
-// 	ApiResStatusNotImplemented    ApiResStatusEnum = "NOT_IMPLEMENTED"
-// 	ApiResStatusPending           ApiResStatusEnum = "PENDING"
-// )
-
-// // All api responses should be wrapped in this struct.
-// type ApiResponseWrapper[T any] struct {
-// 	Data T `json:"data"`
-
-// 	// Optional details for unexpected error responses.
-// 	ErrorDetails string `json:"errorDetails"`
-
-// 	// Simple message to explain client developers the reason for error.
-// 	ErrorMessage string `json:"errorMessage"`
-
-// 	// Response status. OK for successful responses.
-// 	Status ApiResStatusEnum `json:"status"`
-
-// 	ValidationErrorDetails *ApiValidationErrorDetails `json:"validationErrorDetails"`
-// }
-
-// type ApiValidationErrorDetails struct {
-// 	ClassName   string            `json:"className"`
-// 	FieldErrors map[string]string `json:"fieldErrors"`
-// }
 
 // writeResponse writes a value to the response writer as a JSON object
 // Returns an error if the value could not be written
@@ -79,8 +42,8 @@ func WriteAPIResponseError(
 	errorDetails string,
 ) {
 	writeResponseError(w, errorMessage)
-	fmt.Println(errorMessage)
-	fmt.Println(errorDetails)
+	log.Info(errorMessage)
+	log.Info(errorDetails)
 }
 
 // Decode body from the request into value.
@@ -91,13 +54,13 @@ func DecodeBody(w http.ResponseWriter, r *http.Request, value interface{}) bool 
 	err := decoder.Decode(&value)
 	if err != nil {
 		WriteAPIResponseError(w,
-			"error parsing request body", err.Error())
+			fmt.Sprintf("error parsing request body on endpoint: %v", r.URL.Path), err.Error())
 		return false
 	}
 	err = validate.Struct(value)
 	if err != nil {
 		WriteAPIResponseError(w,
-			"error validating request body", err.Error())
+			fmt.Sprintf("error validating request body on endpoint: %v", r.URL.Path), err.Error())
 		return false
 	}
 	return true
@@ -108,13 +71,13 @@ func DecodeQueryParams(w http.ResponseWriter, r *http.Request, value interface{}
 	err := decoder.Decode(value, r.URL.Query())
 	if err != nil {
 		WriteAPIResponseError(w,
-			"error parsing query params", err.Error())
+			fmt.Sprintf("error parsing query params on endpoint: %v", r.URL.Path), err.Error())
 		return false
 	}
 	err = validate.Struct(value)
 	if err != nil {
 		WriteAPIResponseError(w,
-			"error validating query params", err.Error())
+			fmt.Sprintf("error validating query params on endpoint: %v", r.URL.Path), err.Error())
 		return false
 	}
 	return true
@@ -126,7 +89,7 @@ func BadParamsErrorHandler(err error) *ErrorHandler {
 	}
 	return &ErrorHandler{
 		Handler: func(w http.ResponseWriter) {
-			WriteAPIResponseError(w, err.Error(), err.Error())
+			WriteAPIResponseError(w, "Error with params", err.Error())
 		},
 	}
 }
@@ -135,6 +98,14 @@ func InternalServerErrorHandler(err error) *ErrorHandler {
 	return &ErrorHandler{
 		Handler: func(w http.ResponseWriter) {
 			WriteAPIResponseError(w, "internal server error", err.Error())
+		},
+	}
+}
+
+func ToEarlyErrorHandler(err error) *ErrorHandler {
+	return &ErrorHandler{
+		Handler: func(w http.ResponseWriter) {
+			WriteAPIResponseError(w, "Request to early", err.Error())
 		},
 	}
 }

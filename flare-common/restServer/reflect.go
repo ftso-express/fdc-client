@@ -1,4 +1,4 @@
-package restServer
+package restserver
 
 import "reflect"
 
