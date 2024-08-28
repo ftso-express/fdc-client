@@ -119,7 +119,7 @@ func New(user *config.UserRaw, system *config.System, sharedDataPipes *shared.Da
 // Run starts SigningPolicyInitializedListener, BitVoteListener, and AttestationRequestListener,
 // assigns their channels to the RoundManager, and starts the RoundManager.
 func (c *Collector) Run(ctx context.Context) {
-	state, err := database.FetchState(ctx, c.DB)
+	state, err := database.FetchState(ctx, c.DB, nil)
 	if err != nil {
 		log.Panic("database error:", err)
 	}

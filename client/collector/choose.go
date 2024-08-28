@@ -34,13 +34,18 @@ func BitVoteListener(
 			log.Info("BitVoteListener exiting:", ctx.Err())
 			return
 		}
+
+		params := database.TxParams{
+			ToAddress:   submitContractAddress,
+			FunctionSel: funcSel,
+			From:        int64(timing.ChooseStartTimestamp(roundID)) - 1, // -1 to include first second of the choose phase and its bitVotes
+			To:          int64(timing.ChooseEndTimestamp(roundID)) - 1,   // bitVotes that happen on the deadline are not considered valid
+		}
+
 		txs, err := database.FetchTransactionsByAddressAndSelectorTimestamp(
 			ctx,
 			db,
-			submitContractAddress,
-			funcSel,
-			int64(timing.ChooseStartTimestamp(roundID))-1, // -1 to include first second of the choose phase and its bitVotes
-			int64(timing.ChooseEndTimestamp(roundID))-1,   // bitVotes that happen on the deadline are not considered valid
+			params,
 		)
 		if err != nil {
 			log.Error("fetch txs error:", err)
@@ -83,7 +88,7 @@ func BitVoteListener(
 
 // PrepareChooseTrigger tracks chain timestamps and passes roundID of the round whose choose phase has just ended to the trigger channel.
 func PrepareChooseTrigger(ctx context.Context, trigger chan uint32, db *gorm.DB) {
-	state, err := database.FetchState(ctx, db)
+	state, err := database.FetchState(ctx, db, nil)
 	if err != nil {
 		log.Panic("database error:", err)
 	}
@@ -100,7 +105,7 @@ func PrepareChooseTrigger(ctx context.Context, trigger chan uint32, db *gorm.DB)
 		ticker := time.NewTicker(databasePollTime)
 
 		for {
-			state, err := database.FetchState(ctx, db)
+			state, err := database.FetchState(ctx, db, nil)
 
 			if err != nil {
 				log.Error("database error:", err)

@@ -25,15 +25,22 @@ func AttestationRequestListener(
 		log.Panic("time:", err)
 	}
 
-	state, err := database.FetchState(ctx, db)
+	state, err := database.FetchState(ctx, db, nil)
 	if err != nil {
 		log.Panic("fetch initial state error:", err)
 	}
 
 	lastQueriedBlock := state.Index
 
+	params := database.LogsParams{
+		Address: fdcContractAddress,
+		Topic0:  AttestationRequestEventSel,
+		From:    int64(startTimestamp),
+		To:      int64(state.Index),
+	}
+
 	logs, err := database.FetchLogsByAddressAndTopic0FromTimestampToBlockNumber(
-		ctx, db, fdcContractAddress, AttestationRequestEventSel, int64(startTimestamp), int64(state.Index),
+		ctx, db, params,
 	)
 	if err != nil {
 		log.Panic("fetch initial logs error")
@@ -56,14 +63,21 @@ func AttestationRequestListener(
 			return
 		}
 
-		state, err = database.FetchState(ctx, db)
+		state, err = database.FetchState(ctx, db, nil)
 		if err != nil {
 			log.Error("fetch state error:", err)
 			continue
 		}
 
+		params := database.LogsParams{
+			Address: fdcContractAddress,
+			Topic0:  AttestationRequestEventSel,
+			From:    int64(lastQueriedBlock),
+			To:      int64(state.Index),
+		}
+
 		logs, err := database.FetchLogsByAddressAndTopic0BlockNumber(
-			ctx, db, fdcContractAddress, AttestationRequestEventSel, int64(lastQueriedBlock), int64(state.Index),
+			ctx, db, params,
 		)
 		if err != nil {
 			log.Error("fetch logs error:", err)

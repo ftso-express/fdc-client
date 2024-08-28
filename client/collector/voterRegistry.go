@@ -10,47 +10,35 @@ import (
 
 	"fmt"
 
-	"time"
-
-	"github.com/cenkalti/backoff/v4"
 	"github.com/ethereum/go-ethereum/common"
 	"gorm.io/gorm"
 )
 
-func fetchVoterRegisteredEventsForRewardEpoch(ctx context.Context, db *gorm.DB, registryContractAddress common.Address, rewardEpochID uint64) ([]database.Log, error) {
+type VoterRegisteredParams struct {
+	Address       common.Address
+	RewardEpochID uint64
+}
+
+// FetchVoterRegisteredEventsForRewardEpoch gets all VoterRegisteredEvents emitted for rewardEpochID.
+func FetchVoterRegisteredEventsForRewardEpoch(ctx context.Context, db *gorm.DB, params VoterRegisteredParams) ([]database.Log, error) {
+	return database.RetryWrapper(fetchVoterRegisteredEventsForRewardEpoch, "fetching voterRegistered logs")(ctx, db, params)
+}
+
+func fetchVoterRegisteredEventsForRewardEpoch(ctx context.Context, db *gorm.DB, params VoterRegisteredParams) ([]database.Log, error) {
 	var logs []database.Log
 
-	epochIDBig := new(big.Int).SetUint64(rewardEpochID)
+	epochIDBig := new(big.Int).SetUint64(params.RewardEpochID)
 
 	epochID := common.BigToHash(epochIDBig)
 	err := db.WithContext(ctx).Where(
 		"address = ? AND topic0 = ? AND topic2 = ?",
-		hex.EncodeToString(registryContractAddress[:]), // encodes without 0x prefix and without checksum
+		hex.EncodeToString(params.Address[:]), // encodes without 0x prefix and without checksum
 		hex.EncodeToString(voterRegisteredEventSel[:]),
 		hex.EncodeToString(epochID[:]),
 	).Find(&logs).Error
 
 	return logs, err
 
-}
-
-// FetchVoterRegisteredEventsForRewardEpoch gets all VoterRegisteredEvents emitted for rewardEpochID.
-func FetchVoterRegisteredEventsForRewardEpoch(ctx context.Context, db *gorm.DB, registryContractAddress common.Address, rewardEpochID uint64) ([]database.Log, error) {
-	var logs []database.Log
-
-	err := backoff.RetryNotify(
-		func() error {
-			var err error
-			logs, err = fetchVoterRegisteredEventsForRewardEpoch(ctx, db, registryContractAddress, rewardEpochID)
-			return err
-		},
-		backoff.WithContext(backoff.NewExponentialBackOff(), ctx),
-		func(err error, duration time.Duration) {
-			log.Errorf("error fetching logs: %v, retrying after %v", err, duration)
-		},
-	)
-
-	return logs, err
 }
 
 func BuildSubmitToSigningPolicyAddress(registryEvents []database.Log) (map[common.Address]common.Address, error) {
@@ -71,7 +59,7 @@ func BuildSubmitToSigningPolicyAddress(registryEvents []database.Log) (map[commo
 }
 
 func SubmitToSigningPolicyAddress(ctx context.Context, db *gorm.DB, registryContractAddress common.Address, rewardEpochID uint64) (map[common.Address]common.Address, error) {
-	logs, err := FetchVoterRegisteredEventsForRewardEpoch(ctx, db, registryContractAddress, rewardEpochID)
+	logs, err := FetchVoterRegisteredEventsForRewardEpoch(ctx, db, VoterRegisteredParams{registryContractAddress, rewardEpochID})
 	if err != nil {
 		return nil, fmt.Errorf("error fetching registered events: %s", err)
 	}

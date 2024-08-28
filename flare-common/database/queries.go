@@ -14,79 +14,50 @@ import (
 
 var log = logger.GetLogger()
 
+type LatestLogsParams struct {
+	Address common.Address
+	Topic0  common.Hash
+	Number  int
+}
+
 func FetchLatestLogsByAddressAndTopic0(
-	ctx context.Context, db *gorm.DB, address common.Address, topic0 common.Hash, number int,
+	ctx context.Context, db *gorm.DB, params LatestLogsParams,
 ) ([]Log, error) {
-	var logs []Log
-
-	err := backoff.RetryNotify(
-		func() error {
-			var err error
-			logs, err = fetchLatestLogsByAddressAndTopic0(ctx, db, address, topic0, number)
-			return err
-		},
-		backoff.WithContext(backoff.NewExponentialBackOff(), ctx),
-		func(err error, duration time.Duration) {
-			log.Errorf("error fetching logs: %v, retrying after %v", err, duration)
-		},
-	)
-
-	return logs, err
+	return RetryWrapper(fetchLatestLogsByAddressAndTopic0, "fetching logs")(ctx, db, params)
 }
 
 func fetchLatestLogsByAddressAndTopic0(
-	ctx context.Context, db *gorm.DB, address common.Address, topic0 common.Hash, number int,
+	ctx context.Context, db *gorm.DB, params LatestLogsParams,
 ) ([]Log, error) {
 	var logs []Log
 
 	err := db.WithContext(ctx).Where("address = ? AND topic0 = ?",
-		hex.EncodeToString(address[:]), // encodes without 0x prefix and without checksum
-		hex.EncodeToString(topic0[:]),
-	).Order("timestamp DESC").Limit(number).Find(&logs).Error
+		hex.EncodeToString(params.Address[:]), // encodes without 0x prefix and without checksum
+		hex.EncodeToString(params.Topic0[:]),
+	).Order("timestamp DESC").Limit(params.Number).Find(&logs).Error
 
 	return logs, err
+}
+
+type LogsParams struct {
+	Address  common.Address
+	Topic0   common.Hash
+	From, To int64 //blockNumber or timestamp depending on the function
 }
 
 // Fetch all logs matching address and topic0 from timestamp range (from, to], order by timestamp
-func FetchLogsByAddressAndTopic0Timestamp(
-	ctx context.Context,
-	db *gorm.DB,
-	address common.Address,
-	topic0 common.Hash,
-	from, to int64,
-) ([]Log, error) {
-	var logs []Log
-
-	err := backoff.RetryNotify(
-		func() error {
-			var err error
-			logs, err = fetchLogsByAddressAndTopic0Timestamp(
-				ctx, db, address, topic0, from, to,
-			)
-			return err
-		},
-		backoff.WithContext(backoff.NewExponentialBackOff(), ctx),
-		func(err error, duration time.Duration) {
-			log.Errorf("error fetching logs: %v, retrying after %v", err, duration)
-		},
-	)
-
-	return logs, err
+func FetchLogsByAddressAndTopic0Timestamp(ctx context.Context, db *gorm.DB, params LogsParams) ([]Log, error) {
+	return RetryWrapper(fetchLogsByAddressAndTopic0Timestamp, "fetching logs")(ctx, db, params)
 }
 
-func fetchLogsByAddressAndTopic0Timestamp(
-	ctx context.Context,
-	db *gorm.DB,
-	address common.Address,
-	topic0 common.Hash,
-	from, to int64,
-) ([]Log, error) {
+func fetchLogsByAddressAndTopic0Timestamp(ctx context.Context, db *gorm.DB, params LogsParams) ([]Log, error) {
 	var logs []Log
 	err := db.WithContext(ctx).Where(
 		"address = ? AND topic0 = ? AND timestamp > ? AND timestamp <= ?",
-		hex.EncodeToString(address[:]), // encodes without 0x prefix and without checksum
-		hex.EncodeToString(topic0[:]),
-		from, to,
+		hex.EncodeToString(params.Address[:]), // encodes without 0x prefix and without checksum
+		hex.EncodeToString(params.Topic0[:]),
+		params.From,
+		params.To,
 	).Order("timestamp").Find(&logs).Error
 	if err != nil {
 		return nil, err
@@ -95,46 +66,19 @@ func fetchLogsByAddressAndTopic0Timestamp(
 }
 
 // Fetch all logs matching address and topic0 from timestamp (included) to block number (included), order by timestamp
-func FetchLogsByAddressAndTopic0FromTimestampToBlockNumber(
-	ctx context.Context,
-	db *gorm.DB,
-	address common.Address,
-	topic0 common.Hash,
-	from, to int64,
-) ([]Log, error) {
-	var logs []Log
-
-	err := backoff.RetryNotify(
-		func() error {
-			var err error
-			logs, err = fetchLogsByAddressAndTopic0FromTimestampToBlockNumber(
-				ctx, db, address, topic0, from, to,
-			)
-			return err
-		},
-		backoff.WithContext(backoff.NewExponentialBackOff(), ctx),
-		func(err error, duration time.Duration) {
-			log.Errorf("error fetching logs: %v, retrying after %v", err, duration)
-		},
-	)
-
-	return logs, err
+func FetchLogsByAddressAndTopic0FromTimestampToBlockNumber(ctx context.Context, db *gorm.DB, params LogsParams) ([]Log, error) {
+	return RetryWrapper(fetchLogsByAddressAndTopic0FromTimestampToBlockNumber, "fetching logs")(ctx, db, params)
 }
 
-func fetchLogsByAddressAndTopic0FromTimestampToBlockNumber(
-	ctx context.Context,
-	db *gorm.DB,
-	address common.Address,
-	topic0 common.Hash,
-	from, to int64,
-) ([]Log, error) {
+func fetchLogsByAddressAndTopic0FromTimestampToBlockNumber(ctx context.Context, db *gorm.DB, params LogsParams) ([]Log, error) {
 	var logs []Log
 
 	err := db.WithContext(ctx).Where(
 		"address = ? AND topic0 = ? AND timestamp >= ? AND block_number <= ?",
-		hex.EncodeToString(address[:]), // encodes without 0x prefix and without checksum
-		hex.EncodeToString(topic0[:]),
-		from, to,
+		hex.EncodeToString(params.Address[:]), // encodes without 0x prefix and without checksum
+		hex.EncodeToString(params.Topic0[:]),
+		params.From,
+		params.To,
 	).Order("timestamp").Find(&logs).Error
 	if err != nil {
 		return nil, err
@@ -144,46 +88,19 @@ func fetchLogsByAddressAndTopic0FromTimestampToBlockNumber(
 }
 
 // Fetch all logs matching address and topic0 from block range (from, to], order by timestamp
-func FetchLogsByAddressAndTopic0BlockNumber(
-	ctx context.Context,
-	db *gorm.DB,
-	address common.Address,
-	topic0 common.Hash,
-	from, to int64,
-) ([]Log, error) {
-	var logs []Log
-
-	err := backoff.RetryNotify(
-		func() error {
-			var err error
-			logs, err = fetchLogsByAddressAndTopic0BlockNumber(
-				ctx, db, address, topic0, from, to,
-			)
-			return err
-		},
-		backoff.WithContext(backoff.NewExponentialBackOff(), ctx),
-		func(err error, duration time.Duration) {
-			log.Errorf("error fetching logs: %v, retrying after %v", err, duration)
-		},
-	)
-
-	return logs, err
+func FetchLogsByAddressAndTopic0BlockNumber(ctx context.Context, db *gorm.DB, params LogsParams) ([]Log, error) {
+	return RetryWrapper(fetchLogsByAddressAndTopic0BlockNumber, "fetching logs")(ctx, db, params)
 }
 
-func fetchLogsByAddressAndTopic0BlockNumber(
-	ctx context.Context,
-	db *gorm.DB,
-	address common.Address,
-	topic0 common.Hash,
-	from, to int64,
-) ([]Log, error) {
+func fetchLogsByAddressAndTopic0BlockNumber(ctx context.Context, db *gorm.DB, params LogsParams) ([]Log, error) {
 	var logs []Log
 
 	err := db.WithContext(ctx).Where(
 		"address = ? AND topic0 = ? AND block_number > ? AND block_number <= ?",
-		hex.EncodeToString(address[:]), // encodes without 0x prefix and without checksum
-		hex.EncodeToString(topic0[:]),
-		from, to,
+		hex.EncodeToString(params.Address[:]), // encodes without 0x prefix and without checksum
+		hex.EncodeToString(params.Topic0[:]),
+		params.From,
+		params.To,
 	).Order("timestamp").Find(&logs).Error
 	if err != nil {
 		return nil, err
@@ -192,48 +109,26 @@ func fetchLogsByAddressAndTopic0BlockNumber(
 	return logs, nil
 }
 
-// Fetch all transactions matching toAddress and functionSel from timestamp range (from, to], order by timestamp
-func FetchTransactionsByAddressAndSelectorTimestamp(
-	ctx context.Context,
-	db *gorm.DB,
-	toAddress common.Address,
-	functionSel [4]byte,
-	from, to int64,
-) ([]Transaction, error) {
-	var txs []Transaction
-
-	err := backoff.RetryNotify(
-		func() error {
-			var err error
-			txs, err = fetchTransactionsByAddressAndSelectorTimestamp(
-				ctx, db, toAddress, functionSel, from, to,
-			)
-			return err
-		},
-		backoff.WithContext(backoff.NewExponentialBackOff(), ctx),
-		func(err error, duration time.Duration) {
-			log.Errorf("error fetching transactions: %v, retrying after %v", err, duration)
-		},
-	)
-
-	return txs, err
+type TxParams struct {
+	ToAddress   common.Address
+	FunctionSel [4]byte
+	From, To    int64 //blockNumber or timestamp depending on the function
 }
 
-func fetchTransactionsByAddressAndSelectorTimestamp(
-	ctx context.Context,
-	db *gorm.DB,
-	toAddress common.Address,
-	functionSel [4]byte,
-	from, to int64,
-) ([]Transaction, error) {
+// Fetch all transactions matching toAddress and functionSel from timestamp range (from, to], order by timestamp
+func FetchTransactionsByAddressAndSelectorTimestamp(ctx context.Context, db *gorm.DB, params TxParams) ([]Transaction, error) {
+	return RetryWrapper(fetchTransactionsByAddressAndSelectorTimestamp, "fetching transactions")(ctx, db, params)
+}
+
+func fetchTransactionsByAddressAndSelectorTimestamp(ctx context.Context, db *gorm.DB, params TxParams) ([]Transaction, error) {
 	var transactions []Transaction
 
 	err := db.WithContext(ctx).Where(
 		"to_address = ? AND function_sig = ? AND timestamp > ? AND timestamp <= ?",
-		hex.EncodeToString(toAddress[:]), // encodes without 0x prefix and without checksum
-		hex.EncodeToString(functionSel[:]),
-		from,
-		to,
+		hex.EncodeToString(params.ToAddress[:]), // encodes without 0x prefix and without checksum
+		hex.EncodeToString(params.FunctionSel[:]),
+		params.From,
+		params.To,
 	).Order("timestamp").Find(&transactions).Error
 	if err != nil {
 		return nil, err
@@ -243,46 +138,19 @@ func fetchTransactionsByAddressAndSelectorTimestamp(
 }
 
 // Fetch all transactions matching toAddress and functionSel from block number range (from, to], order by timestamp
-func FetchTransactionsByAddressAndSelectorBlockNumber(
-	ctx context.Context,
-	db *gorm.DB,
-	toAddress common.Address,
-	functionSel [4]byte,
-	from, to int64,
-) ([]Transaction, error) {
-	var txs []Transaction
-
-	err := backoff.RetryNotify(
-		func() error {
-			var err error
-			txs, err = fetchTransactionsByAddressAndSelectorBlockNumber(
-				ctx, db, toAddress, functionSel, from, to,
-			)
-			return err
-		},
-		backoff.WithContext(backoff.NewExponentialBackOff(), ctx),
-		func(err error, duration time.Duration) {
-			log.Errorf("error fetching transactions: %v, retrying after %v", err, duration)
-		},
-	)
-
-	return txs, err
+func FetchTransactionsByAddressAndSelectorBlockNumber(ctx context.Context, db *gorm.DB, params TxParams) ([]Transaction, error) {
+	return RetryWrapper(fetchTransactionsByAddressAndSelectorBlockNumber, "fetching transactions")(ctx, db, params)
 }
 
-func fetchTransactionsByAddressAndSelectorBlockNumber(
-	ctx context.Context,
-	db *gorm.DB,
-	toAddress common.Address,
-	functionSel [4]byte,
-	from, to int64,
-) ([]Transaction, error) {
+func fetchTransactionsByAddressAndSelectorBlockNumber(ctx context.Context, db *gorm.DB, params TxParams) ([]Transaction, error) {
 	var transactions []Transaction
 
 	err := db.WithContext(ctx).Where(
 		"to_address = ? AND function_sig = ? AND block_number > ? AND block_number <= ?",
-		hex.EncodeToString(toAddress[:]), // encodes without 0x prefix and without checksum
-		hex.EncodeToString(functionSel[:]),
-		from, to,
+		hex.EncodeToString(params.ToAddress[:]), // encodes without 0x prefix and without checksum
+		hex.EncodeToString(params.FunctionSel[:]),
+		params.From,
+		params.To,
 	).Order("timestamp").Find(&transactions).Error
 	if err != nil {
 		return nil, err
@@ -292,25 +160,12 @@ func fetchTransactionsByAddressAndSelectorBlockNumber(
 }
 
 // FetchState returns the state of the indexer database
-func FetchState(ctx context.Context, db *gorm.DB) (State, error) {
-	var state State
+func FetchState(ctx context.Context, db *gorm.DB, _ any) (State, error) {
+	return RetryWrapper(fetchState, "fetching, state")(ctx, db, nil)
 
-	err := backoff.RetryNotify(
-		func() error {
-			var err error
-			state, err = fetchState(ctx, db)
-			return err
-		},
-		backoff.WithContext(backoff.NewExponentialBackOff(), ctx),
-		func(err error, duration time.Duration) {
-			log.Errorf("error fetching state: %v, retrying after %v", err, duration)
-		},
-	)
-
-	return state, err
 }
 
-func fetchState(ctx context.Context, db *gorm.DB) (State, error) {
+func fetchState(ctx context.Context, db *gorm.DB, _ any) (State, error) {
 	var states []State
 
 	err := db.WithContext(ctx).Where(
@@ -330,4 +185,26 @@ func fetchState(ctx context.Context, db *gorm.DB) (State, error) {
 	}
 
 	return states[0], nil
+}
+
+func RetryWrapper[F any, P any](query func(context.Context, *gorm.DB, P) (F, error), errorMsg string) func(context.Context, *gorm.DB, P) (F, error) {
+	wrappedFunc := func(ctx context.Context, db *gorm.DB, params P) (F, error) {
+		var returnValue F
+
+		err := backoff.RetryNotify(
+			func() error {
+				var err error
+				returnValue, err = query(ctx, db, params)
+				return err
+			},
+			backoff.WithContext(backoff.NewExponentialBackOff(), ctx),
+			func(err error, duration time.Duration) {
+				log.Errorf("error %s: %v, retrying after %v", errorMsg, err, duration)
+			},
+		)
+
+		return returnValue, err
+	}
+
+	return wrappedFunc
 }

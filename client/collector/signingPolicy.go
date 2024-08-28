@@ -21,8 +21,15 @@ func SigningPolicyInitializedListener(
 	registryContractAddress common.Address,
 	votersDataChan chan<- []shared.VotersData,
 ) {
+
+	params := database.LatestLogsParams{
+		Address: relayContractAddress,
+		Topic0:  signingPolicyInitializedEventSel,
+		Number:  3,
+	}
+
 	logs, err := database.FetchLatestLogsByAddressAndTopic0(
-		ctx, db, relayContractAddress, signingPolicyInitializedEventSel, 3,
+		ctx, db, params,
 	)
 	if err != nil {
 		log.Panic("error fetching initial logs:", err)
@@ -125,8 +132,15 @@ func queryNextSPI(
 	for {
 		now := time.Now()
 
+		params := database.LogsParams{
+			Address: relayContractAddress,
+			Topic0:  signingPolicyInitializedEventSel,
+			From:    latestQuery.Unix(),
+			To:      now.Unix(),
+		}
+
 		logs, err := database.FetchLogsByAddressAndTopic0Timestamp(
-			ctx, db, relayContractAddress, signingPolicyInitializedEventSel, latestQuery.Unix(), now.Unix(),
+			ctx, db, params,
 		)
 		if err != nil {
 			return nil, err
