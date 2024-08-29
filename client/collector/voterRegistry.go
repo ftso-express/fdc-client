@@ -19,7 +19,7 @@ type VoterRegisteredParams struct {
 	RewardEpochID uint64
 }
 
-// FetchVoterRegisteredEventsForRewardEpoch gets all VoterRegisteredEvents emitted for rewardEpochID.
+// FetchVoterRegisteredEventsForRewardEpoch fetches all VoterRegisteredEvents emitted by Address for RewardEpochID.
 func FetchVoterRegisteredEventsForRewardEpoch(ctx context.Context, db *gorm.DB, params VoterRegisteredParams) ([]database.Log, error) {
 	return database.RetryWrapper(fetchVoterRegisteredEventsForRewardEpoch, "fetching voterRegistered logs")(ctx, db, params)
 }
@@ -41,12 +41,12 @@ func fetchVoterRegisteredEventsForRewardEpoch(ctx context.Context, db *gorm.DB, 
 
 }
 
+// BuildSubmitToSigningPolicyAddress builds a map from VoterRegisteredEvents mapping submit addresses to signingPolicy addresses.
 func BuildSubmitToSigningPolicyAddress(registryEvents []database.Log) (map[common.Address]common.Address, error) {
 	submitToSigning := make(map[common.Address]common.Address)
 
 	for i := range registryEvents {
 		event, err := policy.ParseVoterRegisteredEvent(registryEvents[i])
-
 		if err != nil {
 			return nil, err
 		}
@@ -58,6 +58,7 @@ func BuildSubmitToSigningPolicyAddress(registryEvents []database.Log) (map[commo
 
 }
 
+// SubmitToSigningPolicyAddress builds a map for rewardEpochID mapping submit addresses to signingPolicy addresses.
 func SubmitToSigningPolicyAddress(ctx context.Context, db *gorm.DB, registryContractAddress common.Address, rewardEpochID uint64) (map[common.Address]common.Address, error) {
 	logs, err := FetchVoterRegisteredEventsForRewardEpoch(ctx, db, VoterRegisteredParams{registryContractAddress, rewardEpochID})
 	if err != nil {
@@ -72,6 +73,7 @@ func SubmitToSigningPolicyAddress(ctx context.Context, db *gorm.DB, registryCont
 	return submitToSigning, nil
 }
 
+// AddSubmitAddressesToSigningPolicy parses SigningPolicyInitialized event and appends map from submit addresses to signingPolicy addresses.
 func AddSubmitAddressesToSigningPolicy(ctx context.Context, db *gorm.DB, registryContractAddress common.Address, signingPolicyLog database.Log) (shared.VotersData, error) {
 	data, err := policy.ParseSigningPolicyInitializedEvent(signingPolicyLog)
 	if err != nil {
@@ -79,14 +81,13 @@ func AddSubmitAddressesToSigningPolicy(ctx context.Context, db *gorm.DB, registr
 	}
 
 	ok := data.RewardEpochId.IsUint64()
-
 	if !ok {
 		return shared.VotersData{}, fmt.Errorf("reward epoch %v too high", data.RewardEpochId)
 	}
 
 	rewardEpochID := data.RewardEpochId.Uint64()
-	submitToSigning, err := SubmitToSigningPolicyAddress(ctx, db, registryContractAddress, rewardEpochID)
 
+	submitToSigning, err := SubmitToSigningPolicyAddress(ctx, db, registryContractAddress, rewardEpochID)
 	if err != nil {
 		return shared.VotersData{}, fmt.Errorf("error adding submit addresses: %s", err)
 	}
