@@ -83,13 +83,9 @@ func TestResponse(t *testing.T) {
 		require.Equal(t, test.lut, lut, fmt.Sprintf("error lut in test %d", i))
 
 		// add round
-
-		fmt.Printf("resp: %v\n", resp[:128])
-
 		err = resp.AddRound(1)
-
-		fmt.Printf("resp: %v\n", resp[:128])
 		require.NoError(t, err)
+
 		err = resp.AddRound(test.round)
 		require.NoError(t, err)
 
