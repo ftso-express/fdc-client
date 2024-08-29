@@ -19,13 +19,13 @@ func TestEmptyTree(t *testing.T) {
 	treeSlice := tree
 	assert.Len(t, treeSlice, 0)
 
-	numLeaves := tree.HashCount()
+	numLeaves := tree.LeavesCount()
 	assert.Equal(t, numLeaves, 0)
 
-	sortedHashes := tree.SortedHashes()
+	sortedHashes := tree.Leaves()
 	assert.Len(t, sortedHashes, 0)
 
-	_, err = tree.GetHash(0)
+	_, err = tree.GetLeaf(0)
 	assert.Equal(t, err, merkle.ErrInvalidIndex)
 
 	_, err = tree.GetProof(0)
@@ -72,14 +72,14 @@ func TestSingleLeafTree(t *testing.T) {
 	assert.Len(t, treeSlice, 1)
 	assert.Equal(t, treeSlice[0], val)
 
-	numLeaves := tree.HashCount()
+	numLeaves := tree.LeavesCount()
 	assert.Equal(t, numLeaves, 1)
 
-	sortedHashes := tree.SortedHashes()
+	sortedHashes := tree.Leaves()
 	assert.Len(t, sortedHashes, 1)
 	assert.Equal(t, sortedHashes[0], val)
 
-	hash, err := tree.GetHash(0)
+	hash, err := tree.GetLeaf(0)
 	require.NoError(t, err)
 	assert.Equal(t, hash, val)
 
@@ -115,17 +115,17 @@ func TestMultiLeafTree(t *testing.T) {
 		cupaloy.SnapshotT(t, treeSlice)
 	})
 
-	numLeaves := tree.HashCount()
+	numLeaves := tree.LeavesCount()
 	assert.Equal(t, numLeaves, 5)
 
-	sortedHashes := tree.SortedHashes()
+	sortedHashes := tree.Leaves()
 	t.Run("SortedHashes", func(t *testing.T) {
 		assert.Len(t, sortedHashes, 5)
 		cupaloy.SnapshotT(t, sortedHashes)
 	})
 
 	for i := range sortedHashes {
-		hash, err := tree.GetHash(i)
+		hash, err := tree.GetLeaf(i)
 		require.NoError(t, err)
 		assert.Equal(t, hash, sortedHashes[i])
 	}

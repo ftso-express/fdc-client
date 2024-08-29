@@ -96,8 +96,8 @@ func (t Tree) Root() (common.Hash, error) {
 	return t[0], nil
 }
 
-// HashCount returns the number of leaves in the tree.
-func (t Tree) HashCount() int {
+// LeavesCount returns the number of leaves in the tree.
+func (t Tree) LeavesCount() int {
 	if len(t) == 0 {
 		return 0
 	}
@@ -105,9 +105,9 @@ func (t Tree) HashCount() int {
 	return (len(t) + 1) / 2
 }
 
-// SortedHashes returns all leaves in a slice.
-func (t Tree) SortedHashes() []common.Hash {
-	numLeaves := t.HashCount()
+// Leaves returns all leaves in a slice.
+func (t Tree) Leaves() []common.Hash {
+	numLeaves := t.LeavesCount()
 	if numLeaves == 0 {
 		return nil
 	}
@@ -115,9 +115,9 @@ func (t Tree) SortedHashes() []common.Hash {
 	return t[numLeaves-1:]
 }
 
-// GetHash returns the hash of the `i`th leaf.
-func (t Tree) GetHash(i int) (common.Hash, error) {
-	numLeaves := t.HashCount()
+// GetLeaf returns the `i`th leaf.
+func (t Tree) GetLeaf(i int) (common.Hash, error) {
+	numLeaves := t.LeavesCount()
 	if numLeaves == 0 || i < 0 || i >= numLeaves {
 		return common.Hash{}, ErrInvalidIndex
 	}
@@ -128,7 +128,7 @@ func (t Tree) GetHash(i int) (common.Hash, error) {
 
 // GetProof returns the Merkle proof for the `i`th leaf.
 func (t Tree) GetProof(i int) ([]common.Hash, error) {
-	numLeaves := t.HashCount()
+	numLeaves := t.LeavesCount()
 	if numLeaves == 0 || i < 0 || i >= numLeaves {
 		return nil, ErrInvalidIndex
 	}
@@ -158,7 +158,7 @@ func (t Tree) GetProofFromHash(hash common.Hash) ([]common.Hash, error) {
 }
 
 func (t Tree) binarySearch(hash common.Hash) (int, error) {
-	leaves := t.SortedHashes()
+	leaves := t.Leaves()
 	i := sort.Search(len(leaves), func(i int) bool {
 		return leaves[i].Hex() >= hash.Hex()
 	})
