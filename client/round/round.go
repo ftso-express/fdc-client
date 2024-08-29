@@ -1,7 +1,6 @@
 package round
 
 import (
-	"errors"
 	"flare-common/merkle"
 	"flare-common/payload"
 	"flare-common/policy"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/pkg/errors"
 )
 
 type RoundStatus int
@@ -173,11 +173,10 @@ func (r *Round) MerkleTree() (merkle.Tree, error) {
 	for i := range r.Attestations {
 		if r.Attestations[i].Consensus {
 			if r.Attestations[i].Status != attestation.Success {
-				return merkle.Tree{}, errors.New("cannot build merkle tree")
+				return merkle.Tree{}, errors.Errorf("attestation %d in consensus but not confirmed", i)
 			}
 
 			hashes = append(hashes, r.Attestations[i].Hash)
-
 		}
 	}
 
@@ -185,7 +184,6 @@ func (r *Round) MerkleTree() (merkle.Tree, error) {
 	r.merkleTree = merkleTree
 
 	return merkleTree, nil
-
 }
 
 // MerkleTreeCached gets Merkle tree from cache if it is already computed or computes it.
