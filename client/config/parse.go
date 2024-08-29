@@ -26,22 +26,18 @@ func ParseAttestationTypes(attTypesConfigUnparsed AttestationTypesUnparsed) (Att
 	}
 
 	return attTypesConfig, nil
-
 }
 
 // ArgumentsFromABI convert byte encoded json abi into abu.Arguments.
 func ArgumentsFromABI(abiBytes []byte) (abi.Arguments, error) {
-
 	var arg abi.Argument
 
 	err := arg.UnmarshalJSON(abiBytes)
-
 	if err != nil {
 		return abi.Arguments{}, err
 	}
 
 	return abi.Arguments{arg}, nil
-
 }
 
 // parseSource takes sourceBig and converts LUTLimit from big.int to uint64.
@@ -54,7 +50,6 @@ func parseSource(sourceConfigBig sourceBig) (Source, error) {
 				QueueName: sourceConfigBig.QueueName,
 			},
 			errors.New("lutLimit does not fit in uint64")
-
 	}
 
 	return Source{

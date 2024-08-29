@@ -93,7 +93,7 @@ func AttestationFromDatabaseLog(request database.Log) (Attestation, error) {
 		return Attestation{}, fmt.Errorf("parsing log: %s", err)
 	}
 
-	roundD, err := timing.RoundIDForTimestamp(request.Timestamp)
+	roundID, err := timing.RoundIDForTimestamp(request.Timestamp)
 	if err != nil {
 		return Attestation{}, fmt.Errorf("parsing log, roundID: %s", err)
 	}
@@ -102,7 +102,7 @@ func AttestationFromDatabaseLog(request database.Log) (Attestation, error) {
 
 	attestation := Attestation{
 		Indexes: indexes,
-		RoundID: roundD,
+		RoundID: roundID,
 		Request: requestLog.Data,
 		Fee:     requestLog.Fee,
 		Status:  Waiting,
@@ -153,8 +153,8 @@ func (a *Attestation) PrepareRequest(attestationTypesConfigs config.AttestationT
 		a.Status = UnsupportedPair
 		return fmt.Errorf("prepare request: no configs for: %s", string(bytes.Trim(attType[:], "\x00")))
 	}
-	a.ResponseABI = &attestationTypeConfig.ResponseArguments
 
+	a.ResponseABI = &attestationTypeConfig.ResponseArguments
 	a.ResponseABIString = &attestationTypeConfig.ResponseABIString
 
 	sourceConfig, ok := attestationTypeConfig.SourcesConfig[source]
@@ -164,11 +164,9 @@ func (a *Attestation) PrepareRequest(attestationTypesConfigs config.AttestationT
 	}
 
 	a.LUTLimit = sourceConfig.LUTLimit
-	a.Status = Processing
-	a.Credentials = new(VerifierCredentials)
-	a.Credentials.URL = sourceConfig.URL
-	a.Credentials.apiKey = sourceConfig.APIKey
+	a.Credentials = &VerifierCredentials{sourceConfig.URL, sourceConfig.APIKey}
 	a.QueueName = sourceConfig.QueueName
+	a.Status = Processing
 
 	return nil
 
@@ -177,13 +175,13 @@ func (a *Attestation) PrepareRequest(attestationTypesConfigs config.AttestationT
 // validateResponse checks the MIC and LUT of the attestation. If both conditions pass, hash is computed and added to the attestation.
 func (a *Attestation) validateResponse() error {
 	// MIC
-	micReq, err := a.Request.Mic()
+	micReq, err := a.Request.MIC()
 	if err != nil {
 		a.Status = ProcessError
 		return fmt.Errorf("reading mic in request: %s, %s ", hex.EncodeToString(a.Request), err)
 	}
 
-	micRes, err := a.Response.ComputeMic(a.ResponseABI)
+	micRes, err := a.Response.ComputeMIC(a.ResponseABI)
 	if err != nil {
 		a.Status = ProcessError
 		return fmt.Errorf("cannot compute mic for request: %s, %s", hex.EncodeToString(a.Request), err)
@@ -191,7 +189,7 @@ func (a *Attestation) validateResponse() error {
 
 	if micReq != micRes {
 		a.Status = WrongMIC
-		return fmt.Errorf("wrong mic in request: %s", hex.EncodeToString(a.Request))
+		return nil
 	}
 
 	// LUT
@@ -204,7 +202,7 @@ func (a *Attestation) validateResponse() error {
 	roundStart := timing.ChooseStartTimestamp(a.RoundID)
 	if !validLUT(lut, a.LUTLimit, roundStart) {
 		a.Status = InvalidLUT
-		return fmt.Errorf("lot too old in request: %s", hex.EncodeToString(a.Request))
+		return nil
 	}
 
 	// HASH

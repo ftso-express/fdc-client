@@ -71,7 +71,7 @@ func TestResponse(t *testing.T) {
 		require.Equal(t, test.isStaticType, isStaticType, fmt.Sprintf("error isStaticError in test %d", i))
 
 		//MIC
-		mic, err := resp.ComputeMic(&abi)
+		mic, err := resp.ComputeMIC(&abi)
 		require.NoError(t, err)
 		expectedMic, err := hex.DecodeString(test.mic)
 		require.NoError(t, err)
@@ -83,9 +83,14 @@ func TestResponse(t *testing.T) {
 		require.Equal(t, test.lut, lut, fmt.Sprintf("error lut in test %d", i))
 
 		// add round
-		_, err = resp.AddRound(1)
+
+		fmt.Printf("resp: %v\n", resp[:128])
+
+		err = resp.AddRound(1)
+
+		fmt.Printf("resp: %v\n", resp[:128])
 		require.NoError(t, err)
-		_, err = resp.AddRound(test.round)
+		err = resp.AddRound(test.round)
 		require.NoError(t, err)
 
 		roundStart := 2 * 32
@@ -148,13 +153,10 @@ func TestRequest(t *testing.T) {
 		expectedAttTypeAndSource := [64]byte{}
 		copy(expectedAttTypeAndSource[:], []byte(test.attType))
 		copy(expectedAttTypeAndSource[32:], []byte(test.source))
-		attTypeAndSource, err := req.AttestationTypeAndSource()
-		require.NoError(t, err)
-		require.Equal(t, expectedAttTypeAndSource, attTypeAndSource, fmt.Sprintf("error attTypeAndSource in test %d", i))
 
 		// mic
 		expectedMic := common.HexToHash(test.mic)
-		mic, err := req.Mic()
+		mic, err := req.MIC()
 		require.NoError(t, err)
 		require.Equal(t, expectedMic, mic, fmt.Sprintf("error mic in test %d", i))
 	}

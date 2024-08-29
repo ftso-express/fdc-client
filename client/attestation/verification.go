@@ -14,9 +14,7 @@ import (
 var stringArgument abi.Argument
 
 func init() {
-
 	stringType, err := abi.NewType("string", "string", []abi.ArgumentMarshaling{})
-
 	if err != nil {
 		log.Panic("cannot build string Solidity type:", err)
 	}
@@ -68,20 +66,8 @@ func (r Request) Source() ([32]byte, error) {
 	return res, nil
 }
 
-// AttestationTypeAndSource returns byte encoded AttestationType and Source (the first 64 bytes).
-func (r Request) AttestationTypeAndSource() ([64]byte, error) {
-	res := [64]byte{}
-	if len(r) < 96 {
-		return [64]byte{}, errors.New("request is to short")
-	}
-
-	copy(res[:], r[0:64])
-
-	return res, nil
-}
-
-// Mic returns Message Integrity code of the request (the third 32 bytes).
-func (r Request) Mic() (common.Hash, error) {
+// MIC returns Message Integrity code of the request (the third 32 bytes).
+func (r Request) MIC() (common.Hash, error) {
 	if len(r) < 96 {
 		return common.Hash{}, errors.New("request is to short")
 	}
@@ -92,10 +78,10 @@ func (r Request) Mic() (common.Hash, error) {
 	return mic, nil
 }
 
-// ComputeMic computes Mic from the response.
+// ComputeMIC computes Mic from the response.
 // Mic is defined by solidity code abi.encode(response,"Flare") where response is a instance of a struct defined by the attestation type.
 // It is assumed that roundID in the response is set to 0.
-func (r Response) ComputeMic(args *abi.Arguments) (common.Hash, error) {
+func (r Response) ComputeMIC(args *abi.Arguments) (common.Hash, error) {
 	decoded, err := args.Unpack(r)
 	if err != nil {
 		return common.Hash{}, err
@@ -110,7 +96,6 @@ func (r Response) ComputeMic(args *abi.Arguments) (common.Hash, error) {
 	mic := crypto.Keccak256Hash(withSalt)
 
 	return mic, nil
-
 }
 
 // LUT returns the fourth slot in response. Solidity type of LUT is uint64.
@@ -139,7 +124,6 @@ func (r Response) LUT() (uint64, error) {
 	} else {
 		return 0, errors.New("lut too big")
 	}
-
 }
 
 // validLUT safely checks whether roundStart - lut < lutLimit.
@@ -156,10 +140,10 @@ func validLUT(lut, lutLimit, roundStart uint64) bool {
 }
 
 // AddRound sets the roundID in the response (third 32 bytes).
-func (r Response) AddRound(roundID uint32) (Response, error) {
+func (r Response) AddRound(roundID uint32) error {
 	static, err := IsStaticType(r)
 	if err != nil {
-		return Response{}, err
+		return err
 	}
 
 	// roundID is encoded in the third slot
@@ -175,16 +159,16 @@ func (r Response) AddRound(roundID uint32) (Response, error) {
 	}
 
 	if len(r) < commonFieldsLength {
-		return Response{}, errors.New("response is to short")
+		return errors.New("response is to short")
 	}
 
+	// encode roundID (uint32) to []byte of length 32 prepended with 0
 	roundIDEncoded := binary.BigEndian.AppendUint32(make([]byte, 0), roundID)
 	roundIDSlot := append(make([]byte, 32-len(roundIDEncoded)), roundIDEncoded...)
 
-	r = slices.Replace(r, roundIDStartByte, roundIDEndByte, roundIDSlot...)
+	_ = slices.Replace(r, roundIDStartByte, roundIDEndByte, roundIDSlot...)
 
-	return r, nil
-
+	return nil
 }
 
 // Hash computes hash of the response.
@@ -193,7 +177,7 @@ func (r Response) Hash(roundID uint32) (common.Hash, error) {
 		return common.Hash{}, errors.New("response is to short")
 	}
 
-	_, err := r.AddRound(roundID)
+	err := r.AddRound(roundID)
 	if err != nil {
 		return common.Hash{}, err
 	}

@@ -8,8 +8,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-// DBLogToChainLog converts a database log to a chain log for use in the log decoder
-// It only converts the fields used by the log decoder (Topics and Data)
+// DBLogToChainLog converts a database event log to a chain event log for use in the log decoder.
+// It only converts the fields used by the abigen log decoder (Topics and Data).
 func ConvertDatabaseLogToChainLog(dbLog database.Log) (*types.Log, error) {
 	data, err := hex.DecodeString(dbLog.Data)
 	if err != nil {

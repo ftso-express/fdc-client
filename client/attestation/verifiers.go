@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
-// Function used to resolve attestation requests
+const timeout = 5 * time.Second // maximal duration for the verifier to resolve the query
+const ValidResponseStatus = "VALID"
 
 type ABIEncodedRequestBody struct {
 	ABIEncodedRequest string `json:"abiEncodedRequest"`
@@ -29,7 +31,7 @@ type VerifierCredentials struct {
 // ResolveAttestationRequest sends the attestation request to the verifier server with verifierCred and stores the response.
 // Returns true if the response is "VALID" and false otherwise.
 func ResolveAttestationRequest(ctx context.Context, att *Attestation) ([]byte, bool, error) {
-	client := &http.Client{}
+	client := &http.Client{Timeout: timeout}
 	requestBytes := att.Request
 	encoded := hex.EncodeToString(requestBytes)
 	payload := ABIEncodedRequestBody{ABIEncodedRequest: "0x" + encoded}
@@ -45,7 +47,7 @@ func ResolveAttestationRequest(ctx context.Context, att *Attestation) ([]byte, b
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("X-API-KEY", att.Credentials.apiKey)
 
-	resp, err := client.Do(request) // todo: add timeout to the request?
+	resp, err := client.Do(request)
 	if err != nil {
 		return nil, false, err
 	}
@@ -63,7 +65,7 @@ func ResolveAttestationRequest(ctx context.Context, att *Attestation) ([]byte, b
 	if err != nil {
 		return nil, false, err
 	}
-	if responseBody.Status != "VALID" {
+	if responseBody.Status != ValidResponseStatus {
 		return nil, false, nil
 	}
 	responseBytes, err := hex.DecodeString(strings.TrimPrefix(responseBody.ABIEncodedResponse, "0x"))
