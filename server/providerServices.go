@@ -15,15 +15,9 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-var maxRandom *big.Int // max uint256
+var maxRandom *big.Int = new(big.Int).Sub(new(big.Int).Exp(big.NewInt(2), big.NewInt(256), nil), big.NewInt(1)) // (2**256) - 1:  max uint256, the biggest number that can fit into common.Hash ([32]byte)
 
 var log = logger.GetLogger()
-
-func init() {
-	// set maxRandom to max uint256
-	maxUint256Plus1 := new(big.Int).Exp(big.NewInt(2), big.NewInt(256), nil)
-	maxRandom = new(big.Int).Sub(maxUint256Plus1, big.NewInt(1))
-}
 
 // calculateMaskedRoot masks the root with random number and address.
 func calculateMaskedRoot(root common.Hash, random common.Hash, address common.Address, bitVote []byte) []byte {
