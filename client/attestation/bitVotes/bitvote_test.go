@@ -85,7 +85,7 @@ func TestEncodeDecodeBitVote(t *testing.T) {
 	bitVote := setBitVoteFromRules(5, []int{2, 3})
 
 	encoded := bitVote.BitVote.EncodeBitVoteHex()
-	require.Equal(t, "0100051d", encoded)
+	require.Equal(t, "00051d", encoded)
 
 	byteEncoded, err := hex.DecodeString(encoded)
 	require.NoError(t, err)
@@ -99,7 +99,7 @@ func TestEncodeDecodeZero(t *testing.T) {
 	bitVote := setBitVoteFromRules(5, []int{})
 
 	encoded := bitVote.BitVote.EncodeBitVoteHex()
-	require.Equal(t, "010005", encoded)
+	require.Equal(t, "0005", encoded)
 	byteEncoded, err := hex.DecodeString(encoded)
 	require.NoError(t, err)
 
@@ -111,7 +111,7 @@ func TestEncodeDecodeZero(t *testing.T) {
 func TestEncodeDecodeNoAttestations(t *testing.T) {
 	bitVote := setBitVoteFromRules(0, []int{})
 	encoded := bitVote.BitVote.EncodeBitVoteHex()
-	require.Equal(t, "010000", encoded)
+	require.Equal(t, "0000", encoded)
 
 	byteEncoded, err := hex.DecodeString(encoded)
 	require.NoError(t, err)
@@ -126,13 +126,13 @@ func TestDecodeFail(t *testing.T) {
 	_, err := bitvotes.DecodeBitVoteBytes([]byte{})
 	require.Error(t, err)
 
-	byteEncoded, err := hex.DecodeString("0100")
+	byteEncoded, err := hex.DecodeString("00")
 	require.NoError(t, err)
 
 	_, err = bitvotes.DecodeBitVoteBytes(byteEncoded)
 	require.Error(t, err)
 
-	byteEncoded, err = hex.DecodeString("01000000aa")
+	byteEncoded, err = hex.DecodeString("000000aa")
 	require.NoError(t, err)
 
 	_, err = bitvotes.DecodeBitVoteBytes(byteEncoded)

@@ -56,7 +56,7 @@ var bitVoteMessageTooSoon = payload.Message{
 	Timestamp:        1718192013,
 	BlockNumber:      16542630,
 	TransactionIndex: 10,
-	Payload:          []byte{664082 % 256, 0, 10, 2, 93},
+	Payload:          []byte{0, 10, 2, 93},
 }
 
 var bitVoteMessageTooLate = payload.Message{
@@ -66,17 +66,7 @@ var bitVoteMessageTooLate = payload.Message{
 	Timestamp:        1718197455,
 	BlockNumber:      16542630,
 	TransactionIndex: 10,
-	Payload:          []byte{664082 % 256, 0, 10, 2, 93},
-}
-
-var bitVoteMessageWrongRoundCheck = payload.Message{
-	From:             common.HexToAddress("0x8fe15e1048f90bc028a60007c7d5b55d9d20de66"),
-	Selector:         "6c532fae",
-	VotingRound:      664082,
-	Timestamp:        1718197455,
-	BlockNumber:      16542630,
-	TransactionIndex: 10,
-	Payload:          []byte{664081 % 256, 0, 10, 2, 93},
+	Payload:          []byte{0, 10, 2, 93},
 }
 
 var bitVoteMessageBadVoter = payload.Message{
@@ -86,7 +76,7 @@ var bitVoteMessageBadVoter = payload.Message{
 	Timestamp:        1718197405,
 	BlockNumber:      16542630,
 	TransactionIndex: 10,
-	Payload:          []byte{664082 % 256, 0, 10, 2, 93},
+	Payload:          []byte{0, 10, 2, 93},
 }
 
 var bitVoteMessageWrongLength = payload.Message{
@@ -96,7 +86,7 @@ var bitVoteMessageWrongLength = payload.Message{
 	Timestamp:        1718200006,
 	BlockNumber:      16542630,
 	TransactionIndex: 10,
-	Payload:          []byte{664111 % 256, 0, 10, 2, 93},
+	Payload:          []byte{0, 10, 2, 93},
 }
 var bitVoteMessage = payload.Message{
 	From:             common.HexToAddress("0x8fe15e1048f90bc028a60007c7d5b55d9d20de66"),
@@ -105,7 +95,7 @@ var bitVoteMessage = payload.Message{
 	Timestamp:        1718200006,
 	BlockNumber:      16542630,
 	TransactionIndex: 10,
-	Payload:          []byte{664111 % 256, 0, 3, 5},
+	Payload:          []byte{0, 3, 5},
 }
 
 func TestManagerMethods(t *testing.T) {
@@ -135,7 +125,6 @@ func TestManagerMethods(t *testing.T) {
 	for i, badBitVote := range []payload.Message{
 		bitVoteMessageTooLate,
 		bitVoteMessageTooSoon,
-		bitVoteMessageWrongRoundCheck,
 		bitVoteMessageBadVoter,
 		bitVoteMessageWrongLength,
 	} {
@@ -143,7 +132,7 @@ func TestManagerMethods(t *testing.T) {
 		require.Error(t, err, fmt.Sprintf("error in bad bitVote %d", i))
 	}
 	bitVoteMessageCorrect := bitVoteMessage
-	bitVoteMessageCorrect.Payload = []byte{664111 % 256, 0, 0}
+	bitVoteMessageCorrect.Payload = []byte{0, 0}
 	err = mngr.OnBitVote(bitVoteMessageCorrect)
 	require.NoError(t, err)
 

@@ -124,7 +124,6 @@ func TestServer(t *testing.T) {
 		submitString = rspData.Data
 
 		require.Equal(t, "0x", submitString[0:2])
-
 	})
 
 	t.Run("submitSignatures", func(t *testing.T) {
