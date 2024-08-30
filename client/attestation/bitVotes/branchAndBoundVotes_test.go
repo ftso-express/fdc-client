@@ -237,9 +237,9 @@ func TestMaximizeVotes(t *testing.T) {
 			aggVotes[i].Indexes = test.indexesVotes[i]
 		}
 
-		aggFees := make([]*bitvotes.AggregatedFee, len(test.fees))
+		aggFees := make([]*bitvotes.AggregatedBit, len(test.fees))
 		for i := range test.fees {
-			aggFees[i] = new(bitvotes.AggregatedFee)
+			aggFees[i] = new(bitvotes.AggregatedBit)
 			aggFees[i].Fee = test.fees[i]
 			aggFees[i].Indexes = test.indexesFees[i]
 		}

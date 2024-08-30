@@ -145,7 +145,7 @@ func sendRequest(i int, client *ethclient.Client, fdcHub *fdchub.FdcHub, fromAdd
 
 func sendBitvote(round uint32, client *ethclient.Client, toAddress, fromAddress common.Address, privateKeyECDSA *ecdsa.PrivateKey, gasPrice *big.Int) error {
 	bitvote := bitvotes.BitVote{Length: 1, BitVector: big.NewInt(1)}
-	data := bitvote.EncodeBitVoteHex(round)
+	data := bitvote.EncodeBitVoteHex()
 	bitvotesBytes, _ := hex.DecodeString(data)
 	dataBytes := append(collector.Submit1FuncSel[:], 200)
 

@@ -80,35 +80,25 @@ func (r *Round) sortAttestations() {
 	})
 }
 
-// sortBitVotes sorts round's bitVotes according to the signingPolicy Index of their providers.
-func (r *Round) sortBitVotes() {
-	sort.Slice(r.bitVotes, func(i, j int) bool {
-		return r.bitVotes[i].Index < r.bitVotes[j].Index
-	})
-}
-
 // BitVote returns the BitVote for the round according to the current status of Attestations.
 func (r *Round) BitVote() (bitvotes.BitVote, error) {
-
 	r.sortAttestations()
 	return attestation.BitVoteFromAttestations(r.Attestations)
 }
 
 // BitVoteHex returns the 0x prefixed hex string encoded BitVote for the round according to the current status of Attestations.
 func (r *Round) BitVoteBytes() ([]byte, error) {
-
 	bitVote, err := r.BitVote()
 	if err != nil {
 		return nil, fmt.Errorf("cannot get bitVote for round %d: %s", r.ID, err)
 	}
 
-	return bitVote.EncodeBitVote(r.ID), nil
+	return bitVote.EncodeBitVote(), nil
 }
 
 // ComputeConsensusBitVote computes the consensus BitVote according to the collected bitVotes and sets consensus status to the attestations.
 func (r *Round) ComputeConsensusBitVote() error {
 	defer func() { r.ConsensusCalculationFinished = true }()
-	r.sortBitVotes()
 	r.sortAttestations()
 
 	fees := make([]*big.Int, len(r.Attestations))
@@ -117,10 +107,10 @@ func (r *Round) ComputeConsensusBitVote() error {
 	}
 
 	consensus, err := bitvotes.EnsembleConsensusBitVote(r.bitVotes, fees, r.voterSet.TotalWeight, 20000000)
-
 	if err != nil {
 		return err
 	}
+
 	r.ConsensusBitVote = consensus
 
 	return r.setConsensusStatus(consensus)
@@ -144,7 +134,7 @@ func (r *Round) ConsensusBitVoteHex() (string, error) {
 		return "", errors.New("no consensus bitVote")
 	}
 
-	return r.ConsensusBitVote.EncodeBitVoteHex(r.ID), nil
+	return r.ConsensusBitVote.EncodeBitVoteHex(), nil
 }
 
 // setConsensusStatus sets consensus status of the attestations.
@@ -153,7 +143,7 @@ func (r *Round) ConsensusBitVoteHex() (string, error) {
 func (r *Round) setConsensusStatus(consensusBitVote bitvotes.BitVote) error {
 	// sanity check
 	if consensusBitVote.BitVector.BitLen() > len(r.Attestations) {
-		return fmt.Errorf("missing attestation for round %d", r.ID)
+		return fmt.Errorf("consensus bitVector too long %d", r.ID)
 	}
 
 	for i := range r.Attestations {
@@ -167,8 +157,6 @@ func (r *Round) setConsensusStatus(consensusBitVote bitvotes.BitVote) error {
 // The computed tree is stored in the round.
 // If any of the hash of the chosen attestations is not successfully verified, the tree is not computed.
 func (r *Round) MerkleTree() (merkle.Tree, error) {
-	r.sortAttestations()
-
 	var hashes []common.Hash
 	for i := range r.Attestations {
 		if r.Attestations[i].Consensus {
@@ -206,34 +194,24 @@ func (r *Round) MerkleRoot() (common.Hash, error) {
 	return tree.Root()
 }
 
-// MerkleRootHex returns Merkle root for a round as a hex string.
-func (r *Round) MerkleRootHex() (string, error) {
-	root, err := r.MerkleRoot()
-	if err != nil {
-		return "", err
-	}
-
-	return root.Hex(), nil
-}
-
 // ProcessBitVote decodes bitVote message, checks roundCheck, adds voter weight and index, and stores bitVote to the round.
 // If the voter is invalid, or has zero weight, the bitVote is ignored.
 // If a voter already submitted a valid bitVote for the round, the bitVote is overwritten.
 func (r *Round) ProcessBitVote(message payload.Message) error {
-	bitVote, roundCheck, err := bitvotes.DecodeBitVoteBytes(message.Payload)
+	bitVote, err := bitvotes.DecodeBitVoteBytes(message.Payload)
 	if err != nil {
 		return err
-	}
-
-	if roundCheck != uint8(message.VotingRound%256) {
-		return fmt.Errorf("wrong round check from: expected %d, got %d", message.VotingRound%256, roundCheck)
 	}
 
 	if int(bitVote.Length) != len(r.Attestations) {
 		return fmt.Errorf("got bits %d, have %d attestations", int(bitVote.Length), len(r.Attestations))
 	}
 
-	signingAddress, exists := r.voterSet.SubmitToSigningAddress[message.From]
+	if bitVote.BitVector.BitLen() > len(r.Attestations) {
+		return fmt.Errorf("bitVector too long")
+	}
+
+	signingAddress, exists := r.voterSet.SubmitToSigningAddress[message.From] //message.From = submit address
 	if !exists {
 		return fmt.Errorf("no signing address")
 	}
@@ -252,13 +230,14 @@ func (r *Round) ProcessBitVote(message payload.Message) error {
 	weightedBitVote, exists := r.bitVoteCheckList[message.From]
 	if !exists {
 		// first submission
-		weightedBitVote = &bitvotes.WeightedBitVote{}
-		weightedBitVote.BitVote = bitVote
-		weightedBitVote.Weight = weight
-		weightedBitVote.Index = voter.Index
-		weightedBitVote.IndexTx = bitvotes.IndexTx{
-			BlockNumber:      message.BlockNumber,
-			TransactionIndex: message.TransactionIndex,
+		weightedBitVote = &bitvotes.WeightedBitVote{
+			BitVote: bitVote,
+			Weight:  weight,
+			Index:   voter.Index,
+			IndexTx: bitvotes.IndexTx{
+				BlockNumber:      message.BlockNumber,
+				TransactionIndex: message.TransactionIndex,
+			},
 		}
 
 		r.bitVotes = append(r.bitVotes, weightedBitVote)

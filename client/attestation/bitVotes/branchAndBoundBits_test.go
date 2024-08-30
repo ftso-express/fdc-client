@@ -24,9 +24,9 @@ func TestBranchAndBoundRandom(t *testing.T) {
 		totalWeight += bitVote.Weight
 	}
 
-	fees := make([]*bitvotes.AggregatedFee, numAttestations)
+	fees := make([]*bitvotes.AggregatedBit, numAttestations)
 	for j := 0; j < numAttestations; j++ {
-		fee := bitvotes.AggregatedFee{Fee: big.NewInt(1), Indexes: []int{j}}
+		fee := bitvotes.AggregatedBit{Fee: big.NewInt(1), Indexes: []int{j}}
 
 		fees[j] = &fee
 	}
@@ -119,9 +119,9 @@ func TestBranchAndBoundFix(t *testing.T) {
 		totalWeight += bitVote.Weight
 	}
 
-	fees := make([]*bitvotes.AggregatedFee, numAttestations)
+	fees := make([]*bitvotes.AggregatedBit, numAttestations)
 	for j := 0; j < numAttestations; j++ {
-		fee := bitvotes.AggregatedFee{Fee: big.NewInt(1), Indexes: []int{j}, Support: 1}
+		fee := bitvotes.AggregatedBit{Fee: big.NewInt(1), Indexes: []int{j}, Support: 1}
 
 		fees[j] = &fee
 	}
@@ -194,39 +194,39 @@ func TestCalcValue(t *testing.T) {
 }
 
 func TestSort(t *testing.T) {
-	fee0 := bitvotes.AggregatedFee{
+	fee0 := bitvotes.AggregatedBit{
 		Fee:     big.NewInt(1),
 		Indexes: []int{0},
 		Support: 10,
 	}
 
-	fee1 := bitvotes.AggregatedFee{
+	fee1 := bitvotes.AggregatedBit{
 		Fee:     big.NewInt(3),
 		Indexes: []int{1},
 		Support: 5,
 	}
 
-	fee2 := bitvotes.AggregatedFee{
+	fee2 := bitvotes.AggregatedBit{
 		Fee:     big.NewInt(1),
 		Indexes: []int{2},
 		Support: 10,
 	}
 
-	fee3 := bitvotes.AggregatedFee{
+	fee3 := bitvotes.AggregatedBit{
 		Fee:     big.NewInt(1),
 		Indexes: []int{2},
 		Support: 8,
 	}
 	tests := []struct {
 		totalWeight uint16
-		fees        []*bitvotes.AggregatedFee
-		asc         []*bitvotes.AggregatedFee
-		dsc         []*bitvotes.AggregatedFee
+		fees        []*bitvotes.AggregatedBit
+		asc         []*bitvotes.AggregatedBit
+		dsc         []*bitvotes.AggregatedBit
 	}{
 		{11,
-			[]*bitvotes.AggregatedFee{&fee0, &fee1, &fee2, &fee3},
-			[]*bitvotes.AggregatedFee{&fee3, &fee0, &fee2, &fee1},
-			[]*bitvotes.AggregatedFee{&fee1, &fee0, &fee2, &fee3},
+			[]*bitvotes.AggregatedBit{&fee0, &fee1, &fee2, &fee3},
+			[]*bitvotes.AggregatedBit{&fee3, &fee0, &fee2, &fee1},
+			[]*bitvotes.AggregatedBit{&fee1, &fee0, &fee2, &fee3},
 		},
 	}
 
@@ -291,9 +291,9 @@ func TestMaximizeBits(t *testing.T) {
 			aggVotes[i].Indexes = test.indexesVotes[i]
 		}
 
-		aggFees := make([]*bitvotes.AggregatedFee, len(test.fees))
+		aggFees := make([]*bitvotes.AggregatedBit, len(test.fees))
 		for i := range test.fees {
-			aggFees[i] = new(bitvotes.AggregatedFee)
+			aggFees[i] = new(bitvotes.AggregatedBit)
 			aggFees[i].Fee = test.fees[i]
 			aggFees[i].Indexes = test.indexesFees[i]
 		}

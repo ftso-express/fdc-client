@@ -374,7 +374,7 @@ func AssembleSolutionFull(filterResults *bitvotes.FilterResults, filteredSolutio
 
 func TestFilterAssemble(t *testing.T) {
 	filteredResult := &bitvotes.FilterResults{AlwaysInBits: []int{1, 2, 5}}
-	filteredSolution := &bitvotes.ConsensusSolution{Bits: []*bitvotes.AggregatedFee{{Indexes: []int{4, 7}}}}
+	filteredSolution := &bitvotes.ConsensusSolution{Bits: []*bitvotes.AggregatedBit{{Indexes: []int{4, 7}}}}
 
 	fullSolution := AssembleSolutionFull(filteredResult, filteredSolution)
 	bits := bitvotes.AssembleSolution(filteredResult, filteredSolution, 10)

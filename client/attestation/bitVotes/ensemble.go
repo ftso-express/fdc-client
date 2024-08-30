@@ -7,9 +7,9 @@ import (
 
 type ConsensusSolution struct {
 	Votes   []*AggregatedVote // set of votes that support the solution
-	Bits    []*AggregatedFee  // set of bits that are confirmed
+	Bits    []*AggregatedBit  // set of bits that are confirmed
 	Value   Value
-	Optimal bool
+	Optimal bool // if true the solution is optimal. If false, it still might be optimal
 }
 
 func ensemble(allBitVotes []*WeightedBitVote, fees []*big.Int, totalWeight uint16, maxOperations int) (*FilterResults, *ConsensusSolution, error) {
@@ -71,10 +71,10 @@ func EnsembleConsensusBitVote(allBitVotes []*WeightedBitVote, fees []*big.Int, t
 	return AssembleSolution(filterResults, filterSolution, uint16(len(fees))), nil
 }
 
-func (solution *branchAndBoundPartialSolution) CalcValueFromFees(allBitVotes []*AggregatedVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) Value {
+func (solution *branchAndBoundPartialSolution) CalcValueFromFees(allBitVotes []*AggregatedVote, bits []*AggregatedBit, assumedFees *big.Int, assumedWeight, totalWeight uint16) Value {
 	feeSum := big.NewInt(0).Set(assumedFees)
 	for i := range solution.Bits {
-		feeSum.Add(feeSum, fees[i].Fee)
+		feeSum.Add(feeSum, bits[i].Fee)
 	}
 
 	weight := assumedWeight

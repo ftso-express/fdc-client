@@ -95,7 +95,7 @@ func (controller *FDCProtocolProviderController) submit2Service(roundID uint32, 
 		return "", false, nil
 	}
 
-	encodedBitVote := consensusBitVote.EncodeBitVote(roundID)
+	encodedBitVote := consensusBitVote.EncodeBitVote()
 
 	root, err := votingRound.MerkleRoot()
 

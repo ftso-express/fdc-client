@@ -36,55 +36,45 @@ func EarlierTx(a, b IndexTx) bool {
 }
 
 type WeightedBitVote struct {
-	Index   int
+	Index   int // signing policy index of the voter
 	IndexTx IndexTx
 	Weight  uint16
 	BitVote BitVote
 }
 
-// EncodeBitVote encodes BitVote with roundCheck
-func (b BitVote) EncodeBitVote(roundID uint32) []byte {
-	var encoding []byte
-	roundCheck := byte(roundID % 256)
+// EncodeBitVote encodes BitVote
+func (b BitVote) EncodeBitVote() []byte {
+	encoding := make([]byte, 2)
+	binary.BigEndian.PutUint16(encoding, b.Length)
 
-	length := make([]byte, 2)
-	binary.BigEndian.PutUint16(length, b.Length)
-
-	encoding = append(encoding, roundCheck)
-	encoding = append(encoding, length...)
 	encoding = append(encoding, b.BitVector.Bytes()...)
 
 	return encoding
-
 }
 
-// EncodeBitVoteHex encodes BitVote with roundCheck prefixed with 0x to be published on chain.
-func (b BitVote) EncodeBitVoteHex(roundID uint32) string {
-	str := hex.EncodeToString(b.EncodeBitVote(roundID))
+// EncodeBitVoteHex encodes BitVote prefixed without 0x to be published on chain.
+func (b BitVote) EncodeBitVoteHex() string {
+	str := hex.EncodeToString(b.EncodeBitVote())
 
 	return str
-
 }
 
-// DecodeBitVoteBytes decodes bytes encoded BitVote and returns roundCheck
-func DecodeBitVoteBytes(bitVoteByte []byte) (BitVote, uint8, error) {
-	if len(bitVoteByte) < 3 {
-		return BitVote{}, 0, errors.New("bitVote too short")
+// DecodeBitVoteBytes decodes bytes encoded BitVote
+func DecodeBitVoteBytes(bitVoteByte []byte) (BitVote, error) {
+	if len(bitVoteByte) < 2 {
+		return BitVote{}, errors.New("bitVote too short")
 	}
 
-	roundCheck := bitVoteByte[0]
-	lengthBytes := bitVoteByte[1:3]
-	bitVector := bitVoteByte[3:]
+	lengthBytes := bitVoteByte[0:2]
+	bitVector := bitVoteByte[2:]
 
 	length := binary.BigEndian.Uint16(lengthBytes)
 
 	bigBitVector := new(big.Int).SetBytes(bitVector)
 
 	if bigBitVector.BitLen() > int(length) {
-		return BitVote{}, 0, errors.New("bad bitvote")
-
+		return BitVote{}, errors.New("bad bitvote")
 	}
 
-	return BitVote{length, bigBitVector}, roundCheck, nil
-
+	return BitVote{length, bigBitVector}, nil
 }

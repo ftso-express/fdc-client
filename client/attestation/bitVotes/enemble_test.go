@@ -31,11 +31,11 @@ func TestEnsembleRandom(t *testing.T) {
 	}
 
 	fees := make([]*big.Int, numAttestations)
-	aggFees := make([]*bitvotes.AggregatedFee, numAttestations)
+	aggFees := make([]*bitvotes.AggregatedBit, numAttestations)
 	for j := 0; j < numAttestations; j++ {
 		fees[j] = big.NewInt(1)
 
-		aggFee := bitvotes.AggregatedFee{Fee: big.NewInt(1), Indexes: []int{j}, Support: 1}
+		aggFee := bitvotes.AggregatedBit{Fee: big.NewInt(1), Indexes: []int{j}, Support: 1}
 
 		aggFees[j] = &aggFee
 

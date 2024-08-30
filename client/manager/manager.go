@@ -13,6 +13,7 @@ import (
 	"local/fdc/client/round"
 	"local/fdc/client/shared"
 	"local/fdc/client/timing"
+	"time"
 )
 
 var log = logger.GetLogger()
@@ -100,11 +101,16 @@ func (m *Manager) Run(ctx context.Context) {
 				break
 			}
 
+			now := time.Now()
+
 			err := r.ComputeConsensusBitVote()
+
+			log.Info("BitVote algorithm finished in %s", time.Since(now))
+
 			if err != nil {
 				log.Warnf("Failed bitVote in round %d: %s", bitVotesForRound.ID, err)
 			} else {
-				log.Debugf("Consensus bitVote %s for round %d computed.", r.ConsensusBitVote.EncodeBitVoteHex(bitVotesForRound.ID), bitVotesForRound.ID)
+				log.Debugf("Consensus bitVote %s for round %d computed.", r.ConsensusBitVote.EncodeBitVoteHex(), bitVotesForRound.ID)
 
 				noOfRetried, err := m.retryUnsuccessfulChosen(ctx, r)
 				if err != nil {
@@ -112,7 +118,6 @@ func (m *Manager) Run(ctx context.Context) {
 				} else if noOfRetried > 0 {
 					log.Debugf("retrying %d attestations in round %d", noOfRetried, r.ID)
 				}
-
 			}
 
 		case requests := <-m.requests:

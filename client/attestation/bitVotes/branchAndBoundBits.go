@@ -15,17 +15,17 @@ type ProcessInfo struct {
 	TotalWeight      uint16
 	LowerBoundWeight uint16
 	BitVotes         []*AggregatedVote
-	Fees             []*AggregatedFee
+	Bits             []*AggregatedBit
 	NumAttestations  int
 	NumProviders     int
 
 	MaxOperations int
-	Strategy      bool
+	ExcludeFirst  bool
 }
 
 type branchAndBoundPartialSolution struct {
 	Votes map[int]bool // set of votes, key k corresponds to ProcessInfo.BitVotes[k]
-	Bits  map[int]bool // set of bits, key k corresponds to ProcessInfo.Fees[k]
+	Bits  map[int]bool // set of bits, key k corresponds to ProcessInfo.Bits[k]
 	Value Value
 }
 
@@ -39,7 +39,7 @@ func (v Value) Copy() Value {
 
 }
 
-// Cmp compares Values lexicographically
+// Cmp compares Values lexicographically.
 //
 //	-1 if v0 <  v1
 //	 0 if v0 == v1
@@ -52,31 +52,31 @@ func (v0 Value) Cmp(v1 Value) int {
 	}
 
 	return v0.UncappedValue.Cmp(v1.UncappedValue)
-
 }
 
 func CalcValue(feeSum *big.Int, weight, totalWeight uint16) Value {
 	weightCaped := min(int64(math.Ceil(float64(totalWeight)*valueCap)), int64(weight))
 
-	return Value{CappedValue: new(big.Int).Mul(feeSum, big.NewInt(weightCaped)),
+	return Value{
+		CappedValue:   new(big.Int).Mul(feeSum, big.NewInt(weightCaped)),
 		UncappedValue: new(big.Int).Mul(feeSum, big.NewInt(int64(weight))),
 	}
 }
 
-func cmpVal(totalWeight uint16, sign int) func(*AggregatedFee, *AggregatedFee) int {
-	return func(fee0, fee1 *AggregatedFee) int {
-		val0 := fee0.Value(totalWeight, true)
-		val1 := fee1.Value(totalWeight, true)
+func cmpVal(totalWeight uint16, sign int) func(*AggregatedBit, *AggregatedBit) int {
+	return func(bit0, bit1 *AggregatedBit) int {
+		val0 := bit0.Value(totalWeight, true)
+		val1 := bit1.Value(totalWeight, true)
 
 		cmp := val0.Cmp(val1)
 
 		if cmp != 0 {
 			return sign * cmp
 		}
-		if fee0.Indexes[0] < fee1.Indexes[0] {
+		if bit0.Indexes[0] < bit1.Indexes[0] {
 			return -1
 		}
-		if fee0.Indexes[0] > fee1.Indexes[0] {
+		if bit0.Indexes[0] > bit1.Indexes[0] {
 			return 1
 		}
 
@@ -84,16 +84,16 @@ func cmpVal(totalWeight uint16, sign int) func(*AggregatedFee, *AggregatedFee) i
 	}
 }
 
-func cmpValAsc(totalWeight uint16) func(*AggregatedFee, *AggregatedFee) int {
+func cmpValAsc(totalWeight uint16) func(*AggregatedBit, *AggregatedBit) int {
 	return cmpVal(totalWeight, 1)
 }
-func cmpValDsc(totalWeight uint16) func(*AggregatedFee, *AggregatedFee) int {
+func cmpValDsc(totalWeight uint16) func(*AggregatedBit, *AggregatedBit) int {
 	return cmpVal(totalWeight, -1)
 }
 
-func sortFees(fees []*AggregatedFee, sortFunc func(*AggregatedFee, *AggregatedFee) int) []*AggregatedFee {
-	sortedFees := make([]*AggregatedFee, len(fees))
-	copy(sortedFees, fees)
+func sortFees(bits []*AggregatedBit, sortFunc func(*AggregatedBit, *AggregatedBit) int) []*AggregatedBit {
+	sortedFees := make([]*AggregatedBit, len(bits))
+	copy(sortedFees, bits)
 	slices.SortStableFunc(sortedFees, sortFunc)
 
 	return sortedFees
@@ -101,22 +101,22 @@ func sortFees(fees []*AggregatedFee, sortFunc func(*AggregatedFee, *AggregatedFe
 
 // BranchAndBoundBitsDouble runs two branch and bound strategies on bits in parallel and returns the better result.
 //
-// The first strategy sorts the aggregated fees by the descending value (cappedSupport * fee) and at depth k the branch in which k-th bit is included is explored first.
-// The second strategy sorts the aggregated fees by the ascending value (cappedSupport * fee) and at depth k the branch in which does not include k-th bit is explored first.
+// The first strategy sorts the aggregated bits by the descending value (cappedSupport * fee) and at depth k the branch in which k-th bit is included is explored first.
+// The second strategy sorts the aggregated bits by the ascending value (cappedSupport * fee) and at depth k the branch in which does not include k-th bit is explored first.
 //
 // If both strategies find an optimal but different solutions, the solution of the first strategy is returned.
-func BranchAndBoundBitsDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, weightVoted, absoluteTotalWeight uint16,
+func BranchAndBoundBitsDouble(bitVotes []*AggregatedVote, bits []*AggregatedBit, assumedWeight, weightVoted, absoluteTotalWeight uint16,
 	assumedFees *big.Int, maxOperations int, initialBound Value) *ConsensusSolution {
 	solutions := make([]*ConsensusSolution, 2)
 
 	firstDone := make(chan bool, 1)
 	secondDone := make(chan bool, 1)
 
-	feesAscVal := sortFees(fees, cmpValAsc(absoluteTotalWeight))
-	feesDscVal := sortFees(fees, cmpValDsc(absoluteTotalWeight))
+	bitsAscVal := sortFees(bits, cmpValAsc(absoluteTotalWeight))
+	bitsDscVal := sortFees(bits, cmpValDsc(absoluteTotalWeight))
 
 	go func() {
-		solution := BranchAndBoundBits(bitVotes, feesDscVal, assumedWeight, weightVoted, absoluteTotalWeight, assumedFees, maxOperations, initialBound, false)
+		solution := BranchAndBoundBits(bitVotes, bitsDscVal, assumedWeight, weightVoted, absoluteTotalWeight, assumedFees, maxOperations, initialBound, false)
 		solutions[0] = solution
 
 		firstDone <- true
@@ -128,7 +128,7 @@ func BranchAndBoundBitsDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee,
 	}()
 
 	go func() {
-		solution := BranchAndBoundBits(bitVotes, feesAscVal, assumedWeight, weightVoted, absoluteTotalWeight, assumedFees, maxOperations, initialBound, true)
+		solution := BranchAndBoundBits(bitVotes, bitsAscVal, assumedWeight, weightVoted, absoluteTotalWeight, assumedFees, maxOperations, initialBound, true)
 
 		solutions[1] = solution // no problem in two processes writing to the same place, since in that case the solution not used
 		secondDone <- true
@@ -151,24 +151,30 @@ func BranchAndBoundBitsDouble(bitVotes []*AggregatedVote, fees []*AggregatedFee,
 	return solutions[0]
 }
 
-// BranchAndBoundBits takes a set of aggregated bitVotes and a list of aggregated fees and
+// BranchAndBoundBits takes a set of aggregated votes and a list of aggregated bits and
 // tries to get an optimal subset of votes with the weight more than the half of the total weight.
 // The algorithm executes a branch and bound strategy on the space of subsets of attestations, hence
 // it is particularly useful when there are not too many attestations. If the algorithm is able search
 // through the entire solution space before reaching the given max operations counter, the algorithm
 // gives an optimal solution. If solution space is too big, the algorithm gives a
 // the best solution it finds. If not solution exceeding initialBound is found, no solution (nil) is returned.
-func BranchAndBoundBits(bitVotes []*AggregatedVote, fees []*AggregatedFee, assumedWeight, weightVoted, absoluteTotalWeight uint16,
-	assumedFees *big.Int, maxOperations int, initialBound Value, strategy bool) *ConsensusSolution {
-
-	votes := make(map[int]bool)
+func BranchAndBoundBits(
+	bitVotes []*AggregatedVote,
+	bits []*AggregatedBit,
+	assumedWeight, weightVoted, absoluteTotalWeight uint16,
+	assumedFees *big.Int,
+	maxOperations int,
+	initialBound Value,
+	excludeBitFirst bool,
+) *ConsensusSolution {
+	includedVotes := make(map[int]bool)
 	for i := range bitVotes {
-		votes[i] = true
+		includedVotes[i] = true
 	}
 
 	totalFee := big.NewInt(0).Set(assumedFees)
-	for _, fee := range fees {
-		totalFee.Add(totalFee, fee.Fee)
+	for _, bit := range bits {
+		totalFee.Add(totalFee, bit.Fee)
 	}
 
 	currentStatus := &SharedStatus{
@@ -180,42 +186,42 @@ func BranchAndBoundBits(bitVotes []*AggregatedVote, fees []*AggregatedFee, assum
 		TotalWeight:      absoluteTotalWeight,
 		LowerBoundWeight: absoluteTotalWeight / 2,
 		BitVotes:         bitVotes,
-		Fees:             fees,
-		NumAttestations:  len(fees),
+		Bits:             bits,
+		NumAttestations:  len(bits),
 		NumProviders:     len(bitVotes),
 		MaxOperations:    maxOperations,
-		Strategy:         strategy,
+		ExcludeFirst:     excludeBitFirst,
 	}
 
-	permResult := BranchBits(processInfo, currentStatus, 0, votes, weightVoted, totalFee)
+	provisionalResult := BranchBits(processInfo, currentStatus, 0, includedVotes, weightVoted, totalFee)
 	isOptimal := currentStatus.NumOperations < maxOperations
 
 	// empty solution
-	if permResult == nil {
+	if provisionalResult == nil {
 		return &ConsensusSolution{
 			Votes:   bitVotes,
-			Bits:    []*AggregatedFee{},
+			Bits:    []*AggregatedBit{},
 			Value:   Value{big.NewInt(0), big.NewInt(0)},
-			Optimal: isOptimal,
+			Optimal: false,
 		}
 	}
 
 	if !isOptimal {
-		permResult.MaximizeBits(bitVotes, fees, assumedFees, assumedWeight, absoluteTotalWeight)
+		provisionalResult.MaximizeBits(bitVotes, bits, assumedFees, assumedWeight, absoluteTotalWeight)
 	}
 
 	result := ConsensusSolution{
 		Votes:   make([]*AggregatedVote, 0),
-		Bits:    make([]*AggregatedFee, 0),
+		Bits:    make([]*AggregatedBit, 0),
 		Optimal: isOptimal,
-		Value:   permResult.Value,
+		Value:   provisionalResult.Value,
 	}
 
-	for key := range permResult.Votes {
+	for key := range provisionalResult.Votes {
 		result.Votes = append(result.Votes, bitVotes[key])
 	}
-	for key := range permResult.Bits {
-		result.Bits = append(result.Bits, fees[key])
+	for key := range provisionalResult.Bits {
+		result.Bits = append(result.Bits, bits[key])
 	}
 
 	return &result
@@ -255,23 +261,27 @@ func BranchBits(processInfo *ProcessInfo, currentStatus *SharedStatus, branch in
 	var result0 *branchAndBoundPartialSolution
 	var result1 *branchAndBoundPartialSolution
 
-	if processInfo.Strategy {
+	if processInfo.ExcludeFirst {
 		currentStatus.NumOperations++
 
-		result0 = BranchBits(processInfo, currentStatus, branch+1, includedVotes, currentWeight, new(big.Int).Sub(feeSum, processInfo.Fees[branch].Fee))
+		// do not include bit on position branch
+		result0 = BranchBits(processInfo, currentStatus, branch+1, includedVotes, currentWeight, new(big.Int).Sub(feeSum, processInfo.Bits[branch].Fee))
 	}
 
+	// include bit on position branch
 	// prepare and check if the branch is possible
 	newIncludedVotes, newCurrentWeight := prepareDataForBranchWithOne(processInfo, currentStatus, includedVotes, currentWeight, branch)
 
 	if newCurrentWeight > processInfo.LowerBoundWeight {
+
 		result1 = BranchBits(processInfo, currentStatus, branch+1, newIncludedVotes, newCurrentWeight, feeSum)
 	}
 
-	if !processInfo.Strategy {
+	if !processInfo.ExcludeFirst {
 		currentStatus.NumOperations++
 
-		result0 = BranchBits(processInfo, currentStatus, branch+1, includedVotes, currentWeight, new(big.Int).Sub(feeSum, processInfo.Fees[branch].Fee))
+		// do not include bit on position branch
+		result0 = BranchBits(processInfo, currentStatus, branch+1, includedVotes, currentWeight, new(big.Int).Sub(feeSum, processInfo.Bits[branch].Fee))
 	}
 
 	// max result
@@ -279,22 +289,22 @@ func BranchBits(processInfo *ProcessInfo, currentStatus *SharedStatus, branch in
 }
 
 // prepareDataForBranchWithOne prepares data for branch in which the bit on bitIndex place is included.
-func prepareDataForBranchWithOne(processInfo *ProcessInfo, currentStatus *SharedStatus, votes map[int]bool, currentWeight uint16, bitIndex int) (map[int]bool, uint16) {
-	bit := processInfo.Fees[bitIndex].Indexes[0]
-	newParticipants := make(map[int]bool)
+func prepareDataForBranchWithOne(processInfo *ProcessInfo, currentStatus *SharedStatus, includedVotes map[int]bool, currentWeight uint16, bitIndex int) (map[int]bool, uint16) {
+	bit := processInfo.Bits[bitIndex].Indexes[0]
+	newIncludedVotes := make(map[int]bool)
 	newCurrentWeight := currentWeight
 
-	for i := range votes {
+	for i := range includedVotes {
 		if processInfo.BitVotes[i].BitVector.Bit(bit) == 1 {
-			newParticipants[i] = true
+			newIncludedVotes[i] = true
 		} else {
 			newCurrentWeight -= processInfo.BitVotes[i].Weight
 		}
 	}
 
-	currentStatus.NumOperations += len(votes) / 2
+	currentStatus.NumOperations += len(includedVotes) / 2
 
-	return newParticipants, newCurrentWeight
+	return newIncludedVotes, newCurrentWeight
 }
 
 // joinResultsAttestations compares two solutions.
@@ -304,26 +314,23 @@ func joinResultsAttestations(result0, result1 *branchAndBoundPartialSolution, br
 	if result0 == nil && result1 == nil {
 		return nil
 	} else if result0 != nil && result1 == nil {
-		delete(result0.Bits, branch)
 		return result0
 	} else if result0 == nil || result0.Value.Cmp(result1.Value) == -1 {
 		result1.Bits[branch] = true
 
 		return result1
 	} else {
-		delete(result0.Bits, branch)
 		return result0
 	}
 }
 
 // MaximizeBits adds all bits that are supported by all the votes in the solution and updates the Value.
-func (solution *branchAndBoundPartialSolution) MaximizeBits(votes []*AggregatedVote, fees []*AggregatedFee, assumedFees *big.Int, assumedWeight, totalWeight uint16) {
-	for i := range fees {
-
+func (solution *branchAndBoundPartialSolution) MaximizeBits(votes []*AggregatedVote, bits []*AggregatedBit, assumedFees *big.Int, assumedWeight, totalWeight uint16) {
+	for i := range bits {
 		if _, isConfirmed := solution.Bits[i]; !isConfirmed {
 			check := true
 			for j := range solution.Votes {
-				if votes[j].BitVector.Bit(fees[i].Indexes[0]) == 0 {
+				if votes[j].BitVector.Bit(bits[i].Indexes[0]) == 0 {
 					check = false
 					break
 				}
@@ -334,5 +341,5 @@ func (solution *branchAndBoundPartialSolution) MaximizeBits(votes []*AggregatedV
 		}
 	}
 
-	solution.Value = solution.CalcValueFromFees(votes, fees, assumedFees, assumedWeight, totalWeight)
+	solution.Value = solution.CalcValueFromFees(votes, bits, assumedFees, assumedWeight, totalWeight)
 }
