@@ -60,8 +60,9 @@ func (r *Round) AddAttestation(attToAdd *attestation.Attestation) bool {
 		att.Fee.Add(att.Fee, attToAdd.Fee)
 		if attestation.EarlierLog(attToAdd.Index(), att.Index()) {
 			att.Indexes = utils.Prepend(att.Indexes, attToAdd.Index())
+		} else {
+			att.Indexes = append(att.Indexes, attToAdd.Index())
 		}
-		att.Indexes = append(att.Indexes, attToAdd.Index())
 
 		return false
 	}
