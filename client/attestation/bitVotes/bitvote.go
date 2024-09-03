@@ -8,9 +8,7 @@ import (
 )
 
 const (
-	NumOfSamples int     = 100000    // the actual number of samples is x2 (one normal and one optimistic for each seed)
-	divOpt       uint16  = 5         // totalWeight/divOpt is the weight of the optimistic samples
-	valueCap     float64 = 4.0 / 5.0 // bitVote support cap in factor of totalWeight
+	valueCap float64 = 4.0 / 5.0 // bitVote support cap in factor of totalWeight
 )
 
 type BitVote struct {
