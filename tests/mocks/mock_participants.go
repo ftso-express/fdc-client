@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"flare-common/contracts/fdchub"
+	"flare-common/logger"
 	"fmt"
 	bitvotes "local/fdc/client/attestation/bitVotes"
 	"local/fdc/client/collector"
@@ -27,18 +28,18 @@ var chainID = int64(31337)
 func MockParticipants(systemConfig *config.System, participants []string, client *ethclient.Client, requestData string) {
 	gasPrice, err := client.SuggestGasPrice(context.Background())
 	if err != nil {
-		log.Fatal("Error: %s", err)
+		logger.Fatal("Error: %s", err)
 	}
 	gasPrice.Mul(gasPrice, big.NewInt(2))
 
 	fdcHub, err := fdchub.NewFdcHub(systemConfig.Addresses.FdcContract, client)
 	if err != nil {
-		log.Fatal("Error: %s", err)
+		logger.Fatal("Error: %s", err)
 	}
 
 	addresses, privateKeys, err := Participants(participants)
 	if err != nil {
-		log.Fatal("Error: %s", err)
+		logger.Fatal("Error: %s", err)
 	}
 
 	first := true
@@ -47,7 +48,7 @@ func MockParticipants(systemConfig *config.System, participants []string, client
 
 		round, err := timing.RoundIDForTimestamp(uint64(now.Unix()))
 		if err != nil {
-			log.Fatal("Error: %s", err)
+			logger.Fatal("Error: %s", err)
 		}
 
 		startTime := timing.RoundStartTime(round + 1)
@@ -55,15 +56,15 @@ func MockParticipants(systemConfig *config.System, participants []string, client
 		timer := time.NewTimer(time.Until(time.Unix(int64(startTime+2), 0)))
 		<-timer.C
 		round++
-		log.Info("start of round ", round)
+		logger.Info("start of round ", round)
 
 		if !first {
 			for j := range participants {
 				err = sendBitvote(round-1, client, systemConfig.Addresses.SubmitContract, addresses[j], privateKeys[j], gasPrice)
 				if err != nil {
-					log.Error("Error: %s", err)
+					logger.Error("Error: %s", err)
 				} else {
-					log.Infof("successfully sent bitvote for round %d by participant %d", round-1, j)
+					logger.Infof("successfully sent bitvote for round %d by participant %d", round-1, j)
 				}
 			}
 		} else {
@@ -75,11 +76,11 @@ func MockParticipants(systemConfig *config.System, participants []string, client
 			if err != nil {
 				continue
 			}
-			log.Info("successfully submitted request in round ", round)
+			logger.Info("successfully submitted request in round ", round)
 			break
 		}
 		if err != nil {
-			log.Error("Error: %s", err)
+			logger.Error("Error: %s", err)
 			continue
 		}
 
@@ -107,7 +108,7 @@ func sendRequest(i int, client *ethclient.Client, fdcHub *fdchub.FdcHub, fromAdd
 
 	opts, err := bind.NewKeyedTransactorWithChainID(privateKeyECDSA, big.NewInt(chainID))
 	if err != nil {
-		log.Fatal("Error: %s", err)
+		logger.Fatal("Error: %s", err)
 	}
 	opts.Value = big.NewInt(int64(1000000))
 	opts.GasLimit = uint64(8000000)

@@ -33,49 +33,47 @@ var voterRegisteredEventSel common.Hash
 
 var Submit1FuncSel [4]byte
 
-var log = logger.GetLogger()
-
 func init() {
 	relayABI, err := relay.RelayMetaData.GetAbi()
 	if err != nil {
-		log.Panic("cannot get relayAby:", err)
+		logger.Panic("cannot get relayAby:", err)
 	}
 
 	signingPolicyEvent, ok := relayABI.Events["SigningPolicyInitialized"]
 	if !ok {
-		log.Panic("cannot get SigningPolicyInitialized event:", err)
+		logger.Panic("cannot get SigningPolicyInitialized event:", err)
 	}
 	signingPolicyInitializedEventSel = signingPolicyEvent.ID
 
 	fdcABI, err := fdchub.FdcHubMetaData.GetAbi()
 
 	if err != nil {
-		log.Panic("cannot get fdcABI:", err)
+		logger.Panic("cannot get fdcABI:", err)
 	}
 
 	requestEvent, ok := fdcABI.Events["AttestationRequest"]
 	if !ok {
-		log.Panic("cannot get AttestationRequest event:", err)
+		logger.Panic("cannot get AttestationRequest event:", err)
 	}
 
 	AttestationRequestEventSel = requestEvent.ID
 
 	registryABI, err := registry.RegistryMetaData.GetAbi()
 	if err != nil {
-		log.Panic("cannot get registryABI:", err)
+		logger.Panic("cannot get registryABI:", err)
 	}
 
 	voterRegisteredEvent, ok := registryABI.Events["VoterRegistered"]
 
 	if !ok {
-		log.Panic("cannot get VoterRegistered event:", err)
+		logger.Panic("cannot get VoterRegistered event:", err)
 	}
 
 	voterRegisteredEventSel = voterRegisteredEvent.ID
 
 	submissionABI, err := submission.SubmissionMetaData.GetAbi()
 	if err != nil {
-		log.Panic("cannot get submission ABI:", err)
+		logger.Panic("cannot get submission ABI:", err)
 	}
 	copy(Submit1FuncSel[:], submissionABI.Methods["submit1"].ID[:4])
 }
@@ -97,7 +95,7 @@ type Collector struct {
 func New(user *config.UserRaw, system *config.System, sharedDataPipes *shared.DataPipes) *Collector {
 	db, err := database.Connect(&user.DB)
 	if err != nil {
-		log.Panic("Could not connect to database:", err)
+		logger.Panic("Could not connect to database:", err)
 	}
 
 	runner := Collector{
@@ -121,11 +119,11 @@ func New(user *config.UserRaw, system *config.System, sharedDataPipes *shared.Da
 func (c *Collector) Run(ctx context.Context) {
 	state, err := database.FetchState(ctx, c.DB, nil)
 	if err != nil {
-		log.Panic("database error:", err)
+		logger.Panic("database error:", err)
 	}
 
 	if k := time.Now().Unix() - int64(state.BlockTimestamp); k > outOfSyncTolerance {
-		log.Panicf("database not up to date. lags for %d minutes", k/60)
+		logger.Panicf("database not up to date. lags for %d minutes", k/60)
 	}
 
 	go SigningPolicyInitializedListener(ctx, c.DB, c.RelayContractAddress, c.VoterRegistryContractAddress, c.SigningPolicies)

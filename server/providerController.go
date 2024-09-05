@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/hex"
+	"flare-common/logger"
 	"flare-common/restserver"
 	"flare-common/storage"
 	"fmt"
@@ -72,7 +73,7 @@ func submitXController(
 	pathParams, err := validateSubmitXParams(params)
 
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return PDPResponse{}, restserver.BadParamsErrorHandler(err)
 	}
 
@@ -84,7 +85,7 @@ func submitXController(
 
 	rsp, exists, err := service(pathParams.votingRoundID, pathParams.submitAddress)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return PDPResponse{}, restserver.InternalServerErrorHandler(err)
 	}
 	if !exists {
@@ -114,7 +115,7 @@ func (controller *FDCProtocolProviderController) submitSignaturesController(
 	body interface{}) (PDPResponse, *restserver.ErrorHandler) {
 	pathParams, err := validateSubmitXParams(params)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return PDPResponse{}, restserver.BadParamsErrorHandler(err)
 	}
 	message, addData, exists := controller.submitSignaturesService(pathParams.votingRoundID, pathParams.submitAddress)

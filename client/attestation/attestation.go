@@ -35,8 +35,6 @@ const (
 	Unconfirmed
 )
 
-var log = logger.GetLogger()
-
 // fdcFilterer is only used for Attestation Requests logs parsing. Set in init().
 var fdcFilterer *fdchub.FdcHubFilterer
 
@@ -48,7 +46,7 @@ func init() {
 	fdcFilterer, err = fdchub.NewFdcHubFilterer(common.Address{}, nil)
 
 	if err != nil {
-		log.Panic("cannot get fdc contract:", err)
+		logger.Panic("cannot get fdc contract:", err)
 	}
 
 }
@@ -121,7 +119,7 @@ func (a *Attestation) Handle(ctx context.Context) error {
 	}
 	if !confirmed {
 		a.Status = Unconfirmed
-		log.Debugf("unconfirmed request: ")
+		logger.Debugf("unconfirmed request: ")
 		return nil
 	}
 
@@ -231,7 +229,7 @@ func (a *Attestation) Index() IndexLog {
 	if len(a.Indexes) > 0 {
 		return a.Indexes[0]
 	}
-	log.Panicf("attestation without index in round %d with request %s", a.RoundID, hex.EncodeToString(a.Request)) // this should never happen
+	logger.Panicf("attestation without index in round %d with request %s", a.RoundID, hex.EncodeToString(a.Request)) // this should never happen
 
 	return IndexLog{math.MaxUint64, math.MaxUint64}
 }

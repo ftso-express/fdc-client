@@ -27,9 +27,9 @@ swagger_path = "/api-doc"
 
 
 [logger]
-file = ""
-prefix = ""
+# file = "simulation.log"
 level = "DEBUG"
+console = true
 
 # EVMTransaction
 [types.EVMTransaction]

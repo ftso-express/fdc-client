@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"flare-common/database"
+	"flare-common/logger"
 	"flare-common/policy"
 	"local/fdc/client/shared"
 	"math/big"
@@ -91,7 +92,7 @@ func AddSubmitAddressesToSigningPolicy(ctx context.Context, db *gorm.DB, registr
 	if err != nil {
 		return shared.VotersData{}, fmt.Errorf("error adding submit addresses: %s", err)
 	}
-	log.Debugf("received %d registered submit addresses", len(submitToSigning))
+	logger.Debugf("received %d registered submit addresses", len(submitToSigning))
 
 	return shared.VotersData{Policy: data, SubmitToSigningAddress: submitToSigning}, nil
 }

@@ -11,8 +11,6 @@ import (
 	v3 "github.com/swaggest/swgui/v3"
 )
 
-var log = logger.GetLogger()
-
 type Router interface {
 	AddRoute(path string, handler RouteHandler, description ...string)
 	AddMiddleware(middleware mux.MiddlewareFunc)
@@ -117,7 +115,7 @@ func (r *swaggerRouter) AddRoute(path string, handler RouteHandler, description 
 
 	_, err := r.router.AddRoute(handler.Method, path, handler.Handler, swaggerDefinitions)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 }
 
@@ -131,7 +129,7 @@ func (r *swaggerRouter) WithPrefix(prefix string, tag string) Router {
 		PathPrefix: prefix,
 	})
 	if err != nil {
-		log.Panic(err)
+		logger.Panic(err)
 	}
 
 	return &swaggerRouter{
@@ -143,7 +141,7 @@ func (r *swaggerRouter) WithPrefix(prefix string, tag string) Router {
 
 func (r *swaggerRouter) Finalize() {
 	if err := r.router.GenerateAndExposeOpenapi(); err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 
 	config := swgui.Config{

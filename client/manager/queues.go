@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"flare-common/logger"
 	"flare-common/queue"
 	"local/fdc/client/attestation"
 	"local/fdc/client/config"
@@ -47,11 +48,11 @@ func run(ctx context.Context, queue *attestationQueue) {
 	for {
 		err := queue.Dequeue(ctx, handler)
 		if err != nil {
-			log.Error(err)
+			logger.Error(err)
 		}
 
 		if err := ctx.Err(); err != nil {
-			log.Infof("queue worker exiting: %v", err)
+			logger.Infof("queue worker exiting: %v", err)
 			return
 		}
 	}

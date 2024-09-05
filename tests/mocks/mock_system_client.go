@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"encoding/json"
+	"flare-common/logger"
 	"io"
 	"local/fdc/client/config"
 	"local/fdc/client/timing"
@@ -26,7 +27,7 @@ func MockSystemClient(systemConfig *config.System, userConfig *config.UserRaw, c
 
 		round, err := timing.RoundIDForTimestamp(uint64(now.Unix()))
 		if err != nil {
-			log.Fatal("Error: %s", err)
+			logger.Fatal("Error: %s", err)
 		}
 		// two processes since the intervals are overlapping
 		go SystemClientIteration(userConfig, submitAddress, submitSigAddress, round)
@@ -48,28 +49,28 @@ func SystemClientIteration(userConfig *config.UserRaw, submitAddress, submitSigA
 
 	rspData, err := MakeGetRequest("submit1", &userConfig.RestServer, round, submitAddress.Hex())
 	if err != nil || rspData.Status != server.Ok {
-		log.Error("error submit1 response ", rspData, err)
+		logger.Error("error submit1 response ", rspData, err)
 		return
 	}
-	log.Info("response submit1 ", rspData.Status)
+	logger.Info("response submit1 ", rspData.Status)
 
 	timer = time.NewTimer(time.Until(time.Unix(int64(submit2Time+6), 0)))
 	<-timer.C
 	rspData, err = MakeGetRequest("submit2", &userConfig.RestServer, round, submitAddress.Hex())
 	if err != nil || rspData.Status != server.Ok {
-		log.Error("error submit2 response ", rspData, err)
+		logger.Error("error submit2 response ", rspData, err)
 		return
 	}
-	log.Info("response submit2 ", rspData.Status)
+	logger.Info("response submit2 ", rspData.Status)
 
 	timer = time.NewTimer(time.Until(time.Unix(int64(submitSignature+5), 0)))
 	<-timer.C
 	rspData, err = MakeGetRequest("submitSignatures", &userConfig.RestServer, round, submitSigAddress.Hex())
 	if err != nil || rspData.Status != server.Ok {
-		log.Error("error submit2 response ", rspData, err)
+		logger.Error("error submit2 response ", rspData, err)
 		return
 	}
-	log.Info("response submitSignatures ", rspData.Status)
+	logger.Info("response submitSignatures ", rspData.Status)
 }
 
 func MakeGetRequest(
@@ -84,7 +85,7 @@ func MakeGetRequest(
 	if err != nil {
 		return nil, err
 	}
-	log.Info("making request to ", p)
+	logger.Info("making request to ", p)
 
 	u := url.URL{
 		Scheme: "http",

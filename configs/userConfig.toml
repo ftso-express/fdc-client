@@ -28,9 +28,8 @@ swagger_path = "/api-doc"
 
 [logger]
 file = ""
-prefix = ""
 level = "INFO"
-
+console = true
 
 # # Payment
 # [types.Payment]

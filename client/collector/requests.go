@@ -3,6 +3,7 @@ package collector
 import (
 	"context"
 	"flare-common/database"
+	"flare-common/logger"
 	"local/fdc/client/timing"
 	"time"
 
@@ -22,12 +23,12 @@ func AttestationRequestListener(
 
 	_, startTimestamp, err := timing.LastCollectPhaseStart(uint64(time.Now().Unix()))
 	if err != nil {
-		log.Panic("time:", err)
+		logger.Panic("time:", err)
 	}
 
 	state, err := database.FetchState(ctx, db, nil)
 	if err != nil {
-		log.Panic("fetch initial state error:", err)
+		logger.Panic("fetch initial state error:", err)
 	}
 
 	lastQueriedBlock := state.Index
@@ -43,14 +44,14 @@ func AttestationRequestListener(
 		ctx, db, params,
 	)
 	if err != nil {
-		log.Panic("fetch initial logs error")
+		logger.Panic("fetch initial logs error")
 	}
 
 	if len(logs) > 0 {
 		select {
 		case logChan <- logs:
 		case <-ctx.Done():
-			log.Info("AttestationRequestListener exiting:", ctx.Err())
+			logger.Info("AttestationRequestListener exiting:", ctx.Err())
 			return
 		}
 	}
@@ -59,13 +60,13 @@ func AttestationRequestListener(
 		select {
 		case <-trigger.C:
 		case <-ctx.Done():
-			log.Info("AttestationRequestListener exiting:", ctx.Err())
+			logger.Info("AttestationRequestListener exiting:", ctx.Err())
 			return
 		}
 
 		state, err = database.FetchState(ctx, db, nil)
 		if err != nil {
-			log.Error("fetch state error:", err)
+			logger.Error("fetch state error:", err)
 			continue
 		}
 
@@ -80,7 +81,7 @@ func AttestationRequestListener(
 			ctx, db, params,
 		)
 		if err != nil {
-			log.Error("fetch logs error:", err)
+			logger.Error("fetch logs error:", err)
 			continue
 		}
 
@@ -90,7 +91,7 @@ func AttestationRequestListener(
 			select {
 			case logChan <- logs:
 			case <-ctx.Done():
-				log.Info("AttestationRequestListener exiting:", ctx.Err())
+				logger.Info("AttestationRequestListener exiting:", ctx.Err())
 				return
 			}
 		}

@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 	"crypto/ecdsa"
+	"flare-common/logger"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -45,12 +46,12 @@ func PrivKeyToAddress(privateKey string) (common.Address, *ecdsa.PrivateKey) {
 	}
 	privateKeyECDSA, err := crypto.HexToECDSA(privateKey)
 	if err != nil {
-		log.Fatal("Error: %s", err)
+		logger.Fatal("Error: %s", err)
 	}
 	publicKey := privateKeyECDSA.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
-		log.Fatal("error casting public key to ECDSA")
+		logger.Fatal("error casting public key to ECDSA")
 	}
 
 	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)

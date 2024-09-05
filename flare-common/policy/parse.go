@@ -14,19 +14,18 @@ var RelayFilterer *relay.RelayFilterer
 
 var RegistryFilterer *registry.RegistryFilterer
 
-var log = logger.GetLogger()
 
 func init() {
 	var err error
 	RelayFilterer, err = relay.NewRelayFilterer(common.Address{}, nil)
 	if err != nil {
-		log.Panic(err)
+		logger.Panic(err)
 	}
 
 	RegistryFilterer, err = registry.NewRegistryFilterer(common.Address{}, nil)
 
 	if err != nil {
-		log.Panic(err)
+		logger.Panic(err)
 	}
 }
 

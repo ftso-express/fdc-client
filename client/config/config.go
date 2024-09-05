@@ -2,6 +2,7 @@ package config
 
 import (
 	"flare-common/database"
+	"flare-common/logger"
 	"flare-common/queue"
 
 	"math/big"
@@ -11,12 +12,12 @@ import (
 )
 
 type userCommon struct {
-	Chain      string            `toml:"chain"`
-	ProtocolID uint8             `toml:"protocol_id"`
-	DB         database.DBConfig `toml:"db"`
-	RestServer RestServer        `toml:"rest_server"`
-	Queues     Queues            `toml:"queues"`
-	Logging    Logger            `toml:"logger"`
+	Chain      string              `toml:"chain"`
+	ProtocolID uint8               `toml:"protocol_id"`
+	DB         database.DBConfig   `toml:"db"`
+	RestServer RestServer          `toml:"rest_server"`
+	Queues     Queues              `toml:"queues"`
+	Logging    logger.LoggerConfig `toml:"logger"`
 }
 
 type UserRaw struct {
@@ -48,12 +49,6 @@ type RestServer struct {
 
 	Version     string `toml:"version"`
 	SwaggerPath string `toml:"swagger_path"`
-}
-
-type Logger struct {
-	File   string `toml:"file"`
-	Prefix string `toml:"prefix"`
-	Level  string `toml:"level"`
 }
 
 type Addresses struct {

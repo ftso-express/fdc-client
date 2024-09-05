@@ -17,8 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var log = logger.GetLogger()
-
 func MockVerifierForTests(t *testing.T, port int, response string, testLog database.Log) {
 	r := mux.NewRouter()
 
@@ -72,7 +70,7 @@ func MockVerifier(port int, response string) {
 	fmt.Println("Mock verifier starting")
 	err := server.ListenAndServe()
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return
 	}
 }
@@ -80,27 +78,27 @@ func MockVerifier(port int, response string) {
 func MockResponse(writer http.ResponseWriter, request *http.Request, response string) {
 	body, err := io.ReadAll(request.Body)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return
 	}
 
 	var requestStruct attestation.ABIEncodedRequestBody
 	err = json.Unmarshal(body, &requestStruct)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return
 	}
 
 	responseStruct := attestation.ABIEncodedResponseBody{Status: "VALID", ABIEncodedResponse: response}
 	responseBytes, err := json.Marshal(responseStruct)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return
 	}
 
 	_, err = writer.Write(responseBytes)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return
 	}
 }

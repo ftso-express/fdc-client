@@ -12,12 +12,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"go.uber.org/zap/zapcore"
 )
 
 var maxRandom *big.Int = new(big.Int).Sub(new(big.Int).Exp(big.NewInt(2), big.NewInt(256), nil), big.NewInt(1)) // (2**256) - 1:  max uint256, the biggest number that can fit into common.Hash ([32]byte)
-
-var log = logger.GetLogger()
 
 // calculateMaskedRoot masks the root with random number and address.
 func calculateMaskedRoot(root common.Hash, random common.Hash, address common.Address, bitVote []byte) []byte {
@@ -31,7 +28,7 @@ func storeRoot(storage *storage.Cyclic[uint32, merkleRootStorageObject], roundID
 	_, exists := storage.Get(roundID)
 
 	if exists {
-		log.Debugf("root for round %d already stored", roundID)
+		logger.Debugf("root for round %d already stored", roundID)
 	}
 	if !exists {
 
@@ -50,19 +47,19 @@ func storeRoot(storage *storage.Cyclic[uint32, merkleRootStorageObject], roundID
 func (controller *FDCProtocolProviderController) submit1Service(roundID uint32, _ string) (string, bool, error) {
 	votingRound, exists := controller.rounds.Get(roundID)
 	if !exists {
-		log.Infof("submit1 round %d not stored", roundID)
+		logger.Infof("submit1 round %d not stored", roundID)
 		return "", false, nil
 	}
 	bitVote, err := votingRound.BitVoteBytes()
 	if err != nil {
-		log.Errorf("submit1: error for bitVote %s", err)
+		logger.Errorf("submit1: error for bitVote %s", err)
 
 		return "", false, err
 	}
 
 	payloadMsg := payload.BuildMessage(controller.protocolID, roundID, bitVote)
 
-	log.Debugf("submit1: for round %d: %s", roundID, payloadMsg)
+	logger.Debugf("submit1: for round %d: %s", roundID, payloadMsg)
 
 	return payloadMsg, true, nil
 }
@@ -73,25 +70,25 @@ func (controller *FDCProtocolProviderController) submit1Service(roundID uint32, 
 func (controller *FDCProtocolProviderController) submit2Service(roundID uint32, address string) (string, bool, error) {
 	commit, exists := controller.storage.Get(roundID)
 	if exists {
-		log.Infof("submit2: for round %d already computed, returning stored commit message %v", roundID, commit.message)
+		logger.Infof("submit2: for round %d already computed, returning stored commit message %v", roundID, commit.message)
 		return commit.message, true, nil
 	}
 
 	votingRound, exists := controller.rounds.Get(roundID)
 	if !exists {
-		log.Infof("submit2: round %d not stored", roundID)
+		logger.Infof("submit2: round %d not stored", roundID)
 		return "", false, nil
 	}
 
 	consensusBitVote, exists, computed := votingRound.GetConsensusBitVote()
 
 	if !computed {
-		log.Infof("submit2: consensus bitVote for round %d not computed", roundID)
+		logger.Infof("submit2: consensus bitVote for round %d not computed", roundID)
 		return "", false, nil
 	}
 
 	if !exists {
-		log.Infof("submit2: consensus bitVote for round %d not available: %s", roundID)
+		logger.Infof("submit2: consensus bitVote for round %d not available: %s", roundID)
 		return "", false, nil
 	}
 
@@ -100,7 +97,7 @@ func (controller *FDCProtocolProviderController) submit2Service(roundID uint32, 
 	root, err := votingRound.MerkleRoot()
 
 	if err != nil {
-		log.Infof("submit2: Merkle root for round %d not available: %s", roundID, err)
+		logger.Infof("submit2: Merkle root for round %d not available: %s", roundID, err)
 
 		return "", false, nil
 	}
@@ -108,7 +105,7 @@ func (controller *FDCProtocolProviderController) submit2Service(roundID uint32, 
 	randomBig, err := rand.Int(rand.Reader, maxRandom)
 
 	if err != nil {
-		log.Errorf("submit2: getting random number for round %d: %s", roundID, err)
+		logger.Errorf("submit2: getting random number for round %d: %s", roundID, err)
 
 		return "", false, nil
 	}
@@ -121,7 +118,7 @@ func (controller *FDCProtocolProviderController) submit2Service(roundID uint32, 
 
 	storeRoot(controller.storage, roundID, payloadMsg, root, random, encodedBitVote)
 
-	log.Debugf("submit2: for round %d and address %s: %s", roundID, address, payloadMsg)
+	logger.Debugf("submit2: for round %d and address %s: %s", roundID, address, payloadMsg)
 
 	return payloadMsg, true, nil
 }
@@ -131,18 +128,18 @@ func (controller *FDCProtocolProviderController) submit2Service(roundID uint32, 
 func (controller *FDCProtocolProviderController) submitSignaturesService(roundID uint32, address string) (string, string, bool) {
 	savedRoot, exists := controller.storage.Get(roundID)
 	if !exists {
-		log.Infof("submitSignatures: data for round %d not stored", roundID)
+		logger.Infof("submitSignatures: data for round %d not stored", roundID)
 		return "", "", false
 	}
 
 	message := buildMessageForSigning(uint8(controller.protocolID), uint32(roundID), savedRoot.merkleRoot)
 
-	log.Info("SubmitSignaturesHandler")
-	log.Logf(zapcore.DebugLevel, "round: %s", fmt.Sprint(roundID))
-	log.Logf(zapcore.DebugLevel, "address: %s", address)
-	log.Logf(zapcore.DebugLevel, "root: %v", savedRoot.merkleRoot)
-	log.Logf(zapcore.DebugLevel, "random: %v", savedRoot.randomNum)
-	log.Logf(zapcore.DebugLevel, "consensus: %s", "0x"+hex.EncodeToString(savedRoot.consensusBitVote))
+	logger.Info("SubmitSignaturesHandler")
+	logger.Debugf("round: %s", fmt.Sprint(roundID))
+	logger.Debugf("address: %s", address)
+	logger.Debugf("root: %v", savedRoot.merkleRoot)
+	logger.Debugf("random: %v", savedRoot.randomNum)
+	logger.Debugf("consensus: %s", "0x"+hex.EncodeToString(savedRoot.consensusBitVote))
 
 	additionalData := savedRoot.randomNum.Hex() + hex.EncodeToString(savedRoot.consensusBitVote)
 

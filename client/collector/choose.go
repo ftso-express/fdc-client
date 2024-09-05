@@ -3,6 +3,7 @@ package collector
 import (
 	"context"
 	"flare-common/database"
+	"flare-common/logger"
 	"flare-common/payload"
 
 	"local/fdc/client/timing"
@@ -28,10 +29,10 @@ func BitVoteListener(
 
 		select {
 		case roundID = <-trigger:
-			log.Debug("starting next BitVoteListener iteration")
+			logger.Debug("starting next BitVoteListener iteration")
 
 		case <-ctx.Done():
-			log.Info("BitVoteListener exiting:", ctx.Err())
+			logger.Info("BitVoteListener exiting:", ctx.Err())
 			return
 		}
 
@@ -48,7 +49,7 @@ func BitVoteListener(
 			params,
 		)
 		if err != nil {
-			log.Error("fetch txs error:", err)
+			logger.Error("fetch txs error:", err)
 			continue
 		}
 
@@ -58,7 +59,7 @@ func BitVoteListener(
 			tx := &txs[i]
 			payloads, err := payload.ExtractPayloads(tx)
 			if err != nil {
-				log.Error("extract payload error:", err)
+				logger.Error("extract payload error:", err)
 				continue
 			}
 
@@ -70,16 +71,16 @@ func BitVoteListener(
 		}
 
 		if len(bitVotes) > 0 {
-			log.Infof("Received %d bitVotes for round %d", len(bitVotes), roundID)
+			logger.Infof("Received %d bitVotes for round %d", len(bitVotes), roundID)
 
 			select {
 			case roundChan <- payload.Round{Messages: bitVotes, ID: roundID}:
 			case <-ctx.Done():
-				log.Info("BitVoteListener exiting")
+				logger.Info("BitVoteListener exiting")
 				return
 			}
 		} else {
-			log.Infof("No bitVotes for round %d", roundID)
+			logger.Infof("No bitVotes for round %d", roundID)
 		}
 
 	}
@@ -90,7 +91,7 @@ func BitVoteListener(
 func PrepareChooseTrigger(ctx context.Context, trigger chan uint32, db *gorm.DB) {
 	state, err := database.FetchState(ctx, db, nil)
 	if err != nil {
-		log.Panic("database error:", err)
+		logger.Panic("database error:", err)
 	}
 
 	nextChoosePhaseRoundIDEnd := new(uint32)
@@ -108,7 +109,7 @@ func PrepareChooseTrigger(ctx context.Context, trigger chan uint32, db *gorm.DB)
 			state, err := database.FetchState(ctx, db, nil)
 
 			if err != nil {
-				log.Error("database error:", err)
+				logger.Error("database error:", err)
 			} else {
 
 				done := tryTriggerBitVote(
@@ -124,7 +125,7 @@ func PrepareChooseTrigger(ctx context.Context, trigger chan uint32, db *gorm.DB)
 			case <-ticker.C:
 
 			case <-ctx.Done():
-				log.Info("prepareChooseTriggers exiting:", ctx.Err())
+				logger.Info("prepareChooseTriggers exiting:", ctx.Err())
 				return
 			}
 
@@ -132,10 +133,10 @@ func PrepareChooseTrigger(ctx context.Context, trigger chan uint32, db *gorm.DB)
 
 		select {
 		case <-bitVoteTicker.C:
-			log.Debug("starting next prepareChooseTriggers outer iteration")
+			logger.Debug("starting next prepareChooseTriggers outer iteration")
 
 		case <-ctx.Done():
-			log.Info("prepareChooseTriggers exiting:", ctx.Err())
+			logger.Info("prepareChooseTriggers exiting:", ctx.Err())
 		}
 	}
 
@@ -177,10 +178,10 @@ func tryTriggerBitVote(
 	if isTriggered {
 		select {
 		case c <- *nextChoosePhaseRoundIDEnd:
-			log.Infof("bitVote for round %d started with %s time", *nextChoosePhaseRoundIDEnd, logMsg)
+			logger.Infof("bitVote for round %d started with %s time", *nextChoosePhaseRoundIDEnd, logMsg)
 
 		case <-ctx.Done():
-			log.Info("tryTriggerBitVote exiting:", ctx.Err())
+			logger.Info("tryTriggerBitVote exiting:", ctx.Err())
 			return false
 		}
 

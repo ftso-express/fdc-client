@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"flare-common/database"
+	"flare-common/logger"
 	"flare-common/policy"
 	"local/fdc/client/shared"
 	"local/fdc/client/timing"
@@ -32,12 +33,12 @@ func SigningPolicyInitializedListener(
 		ctx, db, params,
 	)
 	if err != nil {
-		log.Panic("error fetching initial logs:", err)
+		logger.Panic("error fetching initial logs:", err)
 	}
 	latestQuery := time.Now()
-	log.Debug("Logs length:", len(logs))
+	logger.Debug("Logs length:", len(logs))
 	if len(logs) == 0 {
-		log.Panic("No initial signing policies found:", err)
+		logger.Panic("No initial signing policies found:", err)
 	}
 
 	// signingPolicyStorage expects policies in increasing order
@@ -45,17 +46,17 @@ func SigningPolicyInitializedListener(
 	for i := range logs {
 		votersData, err := AddSubmitAddressesToSigningPolicy(ctx, db, registryContractAddress, logs[len(logs)-i-1])
 		if err != nil {
-			log.Panic("error fetching initial signing policies with submit addresses:", err)
+			logger.Panic("error fetching initial signing policies with submit addresses:", err)
 		}
 
 		sorted = append(sorted, votersData)
-		log.Info("fetched initial policy for round ", votersData.Policy.RewardEpochId)
+		logger.Info("fetched initial policy for round ", votersData.Policy.RewardEpochId)
 	}
 
 	select {
 	case votersDataChan <- sorted:
 	case <-ctx.Done():
-		log.Info("SigningPolicyInitializedListener exiting:", ctx.Err())
+		logger.Info("SigningPolicyInitializedListener exiting:", ctx.Err())
 	}
 
 	spiTargetedListener(ctx, db, relayContractAddress, registryContractAddress, logs[0], latestQuery, votersDataChan)
@@ -75,7 +76,7 @@ func spiTargetedListener(
 ) {
 	lastSigningPolicy, err := policy.ParseSigningPolicyInitializedEvent(lastLog)
 	if err != nil {
-		log.Panic("error parsing initial logs:", err)
+		logger.Panic("error parsing initial logs:", err)
 	}
 
 	lastInitializedRewardEpochID := lastSigningPolicy.RewardEpochId.Uint64()
@@ -89,24 +90,24 @@ func spiTargetedListener(
 		untilStart := time.Until(time.Unix(int64(expectedSPIStart)-int64(timing.Chain.CollectDurationSec)*startOffset, 0)) // head start for querying of signing policy
 		timer := time.NewTimer(untilStart)
 
-		log.Infof("next signing policy expected in %s hours", untilStart)
+		logger.Infof("next signing policy expected in %s hours", untilStart)
 		select {
 		case <-timer.C:
-			log.Debug("querying for next signing policy")
+			logger.Debug("querying for next signing policy")
 
 		case <-ctx.Done():
-			log.Info("spiTargetedListener exiting:", ctx.Err())
+			logger.Info("spiTargetedListener exiting:", ctx.Err())
 			return
 		}
 
 		logsWithSubmitAddresses, err := queryNextSPI(ctx, db, relayContractAddress, registryContractAddress, latestQuery, lastInitializedRewardEpochID)
 		if err != nil {
 			if errors.Is(err, ctx.Err()) {
-				log.Info("spiTargetedListener exiting:", err)
+				logger.Info("spiTargetedListener exiting:", err)
 				return
 			}
 
-			log.Error("error querying next SPI event:", err)
+			logger.Error("error querying next SPI event:", err)
 			continue
 		}
 		votersDataChan <- logsWithSubmitAddresses
@@ -147,11 +148,11 @@ func queryNextSPI(
 		}
 
 		if len(logs) > 0 {
-			log.Debug("Adding signing policy to channel")
+			logger.Debug("Adding signing policy to channel")
 
 			votersDataArray := make([]shared.VotersData, 0)
 			if len(logs) > 1 {
-				log.Warnf("More than one signing policy initialized event found in the same end of reward epoch query window (reward epoch %d)", latestRewardEpoch)
+				logger.Warnf("More than one signing policy initialized event found in the same end of reward epoch query window (reward epoch %d)", latestRewardEpoch)
 			}
 			for i := range logs {
 				votersData, err := AddSubmitAddressesToSigningPolicy(ctx, db, registryContractAddress, logs[i])
@@ -160,7 +161,7 @@ func queryNextSPI(
 				}
 				if votersData.Policy.RewardEpochId.Uint64() > latestRewardEpoch {
 					votersDataArray = append(votersDataArray, votersData)
-					log.Info("fetched policy for round ", votersData.Policy.RewardEpochId)
+					logger.Info("fetched policy for round ", votersData.Policy.RewardEpochId)
 				}
 			}
 			if len(votersDataArray) > 0 {
@@ -171,7 +172,7 @@ func queryNextSPI(
 
 		select {
 		case <-ticker.C:
-			log.Debug("starting next queryNextSPI iteration")
+			logger.Debug("starting next queryNextSPI iteration")
 
 		case <-ctx.Done():
 			return nil, ctx.Err()

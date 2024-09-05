@@ -10,8 +10,6 @@ import (
 
 const defaultMaxAttempts uint64 = 10
 
-var log = logger.GetLogger()
-
 // PriorityQueue is made up of two sub-queues - one regular and one with
 // higher priority. Items can be enqueued in either queue and when dequeueing
 // items from the priority queue are returned first.
@@ -62,7 +60,7 @@ func NewPriority[T any](input *PriorityQueueParams) PriorityQueue[T] {
 
 	if input.MaxDequeuesPerSecond > 0 {
 		q.minDequeueDelta = time.Second / time.Duration(input.MaxDequeuesPerSecond)
-		log.Info("minDequeueDelta:", q.minDequeueDelta)
+		logger.Info("minDequeueDelta:", q.minDequeueDelta)
 	}
 
 	if input.MaxWorkers > 0 {
@@ -168,7 +166,7 @@ func (q *PriorityQueue[T]) handleError(ctx context.Context, item priorityQueueIt
 		// in that case the item will be discarded.
 		select {
 		case q.DeadLetterQueue <- item.value:
-			log.Errorf("max retry attempts reached, sent item to dead letter queue: %v", item.value)
+			logger.Errorf("max retry attempts reached, sent item to dead letter queue: %v", item.value)
 
 		default:
 		}
@@ -176,13 +174,13 @@ func (q *PriorityQueue[T]) handleError(ctx context.Context, item priorityQueueIt
 
 	go func() {
 		if waitDuration > 0 {
-			log.Debugf("sleeping for %v before retrying", waitDuration)
+			logger.Debugf("sleeping for %v before retrying", waitDuration)
 
 			select {
 			case <-time.After(waitDuration):
 
 			case <-ctx.Done():
-				log.Errorf("context cancelled while waiting to retry item %v", item.value)
+				logger.Errorf("context cancelled while waiting to retry item %v", item.value)
 				return
 			}
 		}
@@ -190,11 +188,11 @@ func (q *PriorityQueue[T]) handleError(ctx context.Context, item priorityQueueIt
 		if item.priority {
 			err := q.enqueuePriority(ctx, item)
 			if err != nil {
-				log.Errorf("error enqueing priority item %v for retry: %v", item.value, err)
+				logger.Errorf("error enqueing priority item %v for retry: %v", item.value, err)
 
 			}
 		} else if err := q.enqueue(ctx, item); err != nil {
-			log.Errorf("error enqueing item %v for retry: %v", item.value, err)
+			logger.Errorf("error enqueing item %v for retry: %v", item.value, err)
 		}
 	}()
 
@@ -247,7 +245,7 @@ func (q *PriorityQueue[T]) enforceRateLimit(ctx context.Context) error {
 	}
 
 	sleepDuration := q.minDequeueDelta - delta
-	log.Debugf("enforcing rate limit - sleeping for %s", sleepDuration)
+	logger.Debugf("enforcing rate limit - sleeping for %s", sleepDuration)
 
 	select {
 	case <-time.After(sleepDuration):
@@ -260,7 +258,7 @@ func (q *PriorityQueue[T]) enforceRateLimit(ctx context.Context) error {
 
 // This operation may block until a worker slot is available.
 func (q *PriorityQueue[T]) incrementWorkers(ctx context.Context) error {
-	log.Debugf("incrementing workers")
+	logger.Debugf("incrementing workers")
 
 	select {
 	case q.workersSem <- struct{}{}:
@@ -270,7 +268,7 @@ func (q *PriorityQueue[T]) incrementWorkers(ctx context.Context) error {
 		return ctx.Err()
 
 	default:
-		log.Debug("enforcing workers limit")
+		logger.Debug("enforcing workers limit")
 
 		select {
 		case q.workersSem <- struct{}{}:
@@ -285,13 +283,13 @@ func (q *PriorityQueue[T]) incrementWorkers(ctx context.Context) error {
 // This operation should never block - if it does that indicates that decrement
 // has been called too many times.
 func (q *PriorityQueue[T]) decrementWorkers() {
-	log.Debugf("decrementing workers")
+	logger.Debugf("decrementing workers")
 
 	select {
 	case <-q.workersSem:
 		return
 
 	default:
-		log.Panic("should never block")
+		logger.Panic("should never block")
 	}
 }

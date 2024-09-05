@@ -15,7 +15,6 @@ const (
 )
 
 var (
-	log     = logger.GetLogger()
 	CfgFlag = flag.String("config", "configs/userConfig.toml", "Configuration file (toml format)")
 
 	participantsSubmitSecKeys    = []string{"0x28d1bfbbafe9d1d4f5a11c3c16ab6bf9084de48d99fbac4058bdfa3c80b29088", "0x28d1bfbbafe9d1d4f5a11c3c16ab6bf9084de48d99fbac4058bdfa3c80b2908d", "0xb92dccaac0192f8a886371e56539503cb5f57d2760dd53ab0c62259fb98b7f8c", "0xe054b2f3d170aa427dffe941a52c896b61f642e6cbd3e91ff526034debacebfc"}
@@ -31,18 +30,19 @@ func main() {
 	flag.Parse()
 	userConfig, systemConfig, err := config.ReadConfigs(*CfgFlag, SystemDirectory)
 	if err != nil {
-		log.Panicf("cannot read configs: %s", err)
+		logger.Panicf("cannot read configs: %s", err)
 	}
+	logger.SetLogger(userConfig.Logging)
 	err = timing.Set(systemConfig.Timing)
 	if err != nil {
-		log.Panicf("cannot set timing: %s", err)
+		logger.Panicf("cannot set timing: %s", err)
 	}
 
 	go mocks.MockVerifier(verifierPort, response)
 
 	client, err := ethclient.Dial(chainRpc)
 	if err != nil {
-		log.Fatal("Error: %s", err)
+		logger.Fatal("Error: %s", err)
 	}
 
 	go mocks.MockParticipants(systemConfig, participantsSubmitSecKeys, client, request)

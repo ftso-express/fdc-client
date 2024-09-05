@@ -16,8 +16,6 @@ import (
 	"time"
 )
 
-var log = logger.GetLogger()
-
 type Manager struct {
 	Rounds                storage.Cyclic[uint32, *round.Round] // cyclically cached rounds with buffer roundBuffer.
 	lastRoundCreated      uint32
@@ -57,43 +55,43 @@ func (m *Manager) Run(ctx context.Context) {
 
 	select {
 	case signingPolicies = <-m.signingPolicies:
-		log.Info("Initial signing policies received")
+		logger.Info("Initial signing policies received")
 
 	case <-ctx.Done():
-		log.Info("Manager exiting:", ctx.Err())
+		logger.Info("Manager exiting:", ctx.Err())
 		return
 	}
 
 	for i := range signingPolicies {
 		if err := m.OnSigningPolicy(signingPolicies[i]); err != nil {
-			log.Panic("signing policy error:", err)
+			logger.Panic("signing policy error:", err)
 		}
 	}
 
 	for {
 		select {
 		case signingPolicies := <-m.signingPolicies:
-			log.Debug("New signing policy received")
+			logger.Debug("New signing policy received")
 
 			for i := range signingPolicies {
 				err := m.OnSigningPolicy(signingPolicies[i])
 				if err != nil {
-					log.Error("signing policy error:", err)
+					logger.Error("signing policy error:", err)
 				}
 			}
 			deleted := m.signingPolicyStorage.RemoveBefore(uint32(m.lastRoundCreated)) // delete all signing policies that have already ended
 
 			for j := range deleted {
-				log.Infof("deleted signing policy for epoch %d", deleted[j])
+				logger.Infof("deleted signing policy for epoch %d", deleted[j])
 			}
 
 		case bitVotesForRound := <-m.bitVotes:
-			log.Debugf("Received %d bitVotes for round %d", len(bitVotesForRound.Messages), bitVotesForRound.ID)
+			logger.Debugf("Received %d bitVotes for round %d", len(bitVotesForRound.Messages), bitVotesForRound.ID)
 
 			for i := range bitVotesForRound.Messages {
 				err := m.OnBitVote(bitVotesForRound.Messages[i])
 				if err != nil {
-					log.Errorf("bit vote error: %s", err)
+					logger.Errorf("bit vote error: %s", err)
 				}
 			}
 			r, ok := m.Rounds.Get(bitVotesForRound.ID)
@@ -105,33 +103,33 @@ func (m *Manager) Run(ctx context.Context) {
 
 			err := r.ComputeConsensusBitVote()
 
-			log.Infof("BitVote algorithm finished in %s", time.Since(now))
+			logger.Infof("BitVote algorithm finished in %s", time.Since(now))
 
 			if err != nil {
-				log.Warnf("Failed bitVote in round %d: %s", bitVotesForRound.ID, err)
+				logger.Warnf("Failed bitVote in round %d: %s", bitVotesForRound.ID, err)
 			} else {
-				log.Debugf("Consensus bitVote %s for round %d computed.", r.ConsensusBitVote.EncodeBitVoteHex(), bitVotesForRound.ID)
+				logger.Debugf("Consensus bitVote %s for round %d computed.", r.ConsensusBitVote.EncodeBitVoteHex(), bitVotesForRound.ID)
 
 				noOfRetried, err := m.retryUnsuccessfulChosen(ctx, r)
 				if err != nil {
-					log.Warnf("error retrying round %d: s", r.ID, err)
+					logger.Warnf("error retrying round %d: s", r.ID, err)
 				} else if noOfRetried > 0 {
-					log.Debugf("retrying %d attestations in round %d", noOfRetried, r.ID)
+					logger.Debugf("retrying %d attestations in round %d", noOfRetried, r.ID)
 				}
 			}
 
 		case requests := <-m.requests:
-			log.Debugf("Received %d requests.", len(requests))
+			logger.Debugf("Received %d requests.", len(requests))
 
 			for i := range requests {
 				err := m.OnRequest(ctx, requests[i])
 				if err != nil {
-					log.Error(err)
+					logger.Error(err)
 				}
 			}
 
 		case <-ctx.Done():
-			log.Info("Manager exiting:", ctx.Err())
+			logger.Info("Manager exiting:", ctx.Err())
 			return
 		}
 	}
@@ -151,7 +149,7 @@ func (m *Manager) GetOrCreateRound(roundID uint32) (*round.Round, error) {
 
 	roundForID = round.New(roundID, policy.Voters)
 	m.lastRoundCreated = roundID
-	log.Debugf("Round %d created", roundID)
+	logger.Debugf("Round %d created", roundID)
 
 	m.Rounds.Store(roundID, roundForID)
 	return roundForID, nil
@@ -207,7 +205,7 @@ func (m *Manager) OnRequest(ctx context.Context, request database.Log) error {
 // OnSigningPolicy parses SigningPolicyInitialized log and stores it into the signingPolicyStorage.
 func (m *Manager) OnSigningPolicy(data shared.VotersData) error {
 	parsedPolicy := policy.NewSigningPolicy(data.Policy, data.SubmitToSigningAddress)
-	log.Infof("Processing signing policy for rewardEpoch %s", data.Policy.RewardEpochId.String())
+	logger.Infof("Processing signing policy for rewardEpoch %s", data.Policy.RewardEpochId.String())
 
 	err := m.signingPolicyStorage.Add(parsedPolicy)
 

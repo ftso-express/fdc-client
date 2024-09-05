@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"flare-common/logger"
 	"flare-common/restserver"
 	"flare-common/storage"
 	"local/fdc/client/config"
@@ -105,11 +106,11 @@ func RegisterDARoutes(router restserver.Router, rounds *storage.Cyclic[uint32, *
 }
 
 func (s *Server) Run(ctx context.Context) {
-	log.Infof("Starting server on %s", s.srv.Addr)
+	logger.Infof("Starting server on %s", s.srv.Addr)
 
 	err := s.srv.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {
-		log.Panicf("Server error: %v", err)
+		logger.Panicf("Server error: %v", err)
 	}
 }
 
@@ -120,8 +121,8 @@ func (s *Server) Shutdown() {
 	defer cancel()
 
 	if err := s.srv.Shutdown(ctx); err != nil {
-		log.Error("Server shutdown failed:", err)
+		logger.Error("Server shutdown failed:", err)
 	} else {
-		log.Info("Server gracefully stopped")
+		logger.Info("Server gracefully stopped")
 	}
 }

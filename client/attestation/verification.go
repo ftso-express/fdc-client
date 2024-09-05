@@ -3,6 +3,7 @@ package attestation
 import (
 	"encoding/binary"
 	"errors"
+	"flare-common/logger"
 	"math/big"
 	"slices"
 
@@ -16,7 +17,7 @@ var stringArgument abi.Argument
 func init() {
 	stringType, err := abi.NewType("string", "string", []abi.ArgumentMarshaling{})
 	if err != nil {
-		log.Panic("cannot build string Solidity type:", err)
+		logger.Panic("cannot build string Solidity type:", err)
 	}
 
 	stringArgument = abi.Argument{Name: "string", Indexed: false, Type: stringType}

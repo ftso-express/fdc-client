@@ -4,6 +4,7 @@ package server
 
 import (
 	"errors"
+	"flare-common/logger"
 	"flare-common/restserver"
 	"flare-common/storage"
 	"local/fdc/client/round"
@@ -50,7 +51,7 @@ func (controller *DAController) getRequestController(
 	votingRoundID, err := validateRoundIDParam(params)
 
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return RequestsResponse{}, restserver.BadParamsErrorHandler(err)
 	}
 
@@ -70,7 +71,7 @@ func (controller *DAController) getAttestationController(
 	votingRoundID, err := validateRoundIDParam(params)
 
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return AttestationResponse{}, restserver.BadParamsErrorHandler(err)
 	}
 

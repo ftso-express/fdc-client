@@ -3,6 +3,7 @@ package restserver
 import (
 	"encoding/json"
 	"errors"
+	"flare-common/logger"
 	"fmt"
 	"net/http"
 
@@ -42,8 +43,8 @@ func WriteAPIResponseError(
 	errorDetails string,
 ) {
 	writeResponseError(w, errorMessage)
-	log.Info(errorMessage)
-	log.Info(errorDetails)
+	logger.Info(errorMessage)
+	logger.Info(errorDetails)
 }
 
 // Decode body from the request into value.
