@@ -15,7 +15,6 @@ import (
 
 type FDCProtocolProviderController struct {
 	rounds     *storage.Cyclic[uint32, *round.Round]
-	storage    *storage.Cyclic[uint32, merkleRootStorageObject]
 	protocolID uint8
 }
 
@@ -24,12 +23,8 @@ type submitXParams struct {
 	submitAddress string
 }
 
-const storageSize = 10
-
 func newFDCProtocolProviderController(rounds *storage.Cyclic[uint32, *round.Round], protocolID uint8) *FDCProtocolProviderController {
-	storage := storage.NewCyclic[uint32, merkleRootStorageObject](storageSize)
-
-	return &FDCProtocolProviderController{rounds: rounds, storage: &storage, protocolID: protocolID}
+	return &FDCProtocolProviderController{rounds: rounds, protocolID: protocolID}
 }
 
 const hexPrefix = "0x"

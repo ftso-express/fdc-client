@@ -27,15 +27,6 @@ type PDPResponse struct {
 	AdditionalData string         `json:"additionalData"`
 }
 
-type merkleRootStorageObject struct {
-	message          string
-	merkleRoot       common.Hash
-	randomNum        common.Hash
-	consensusBitVote []byte
-}
-
-type RootsByAddress map[string]merkleRootStorageObject
-
 type DARequest struct {
 	Request   string                 `json:"request"`
 	Response  string                 `json:"response"`
