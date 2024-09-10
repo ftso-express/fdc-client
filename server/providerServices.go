@@ -12,7 +12,7 @@ import (
 
 // submit1Service returns an empty response.
 func (controller *FDCProtocolProviderController) submit1Service(_ uint32, _ string) (string, bool, error) {
-	return "", false, nil
+	return "0x", true, nil
 }
 
 // submit2Service returns 0x prefixed hex encoded bitVote for roundID and a boolean indicating its existence.
