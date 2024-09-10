@@ -103,27 +103,13 @@ func TestServer(t *testing.T) {
 		100*time.Millisecond,
 	)
 
-	t.Run("submit1", func(t *testing.T) {
-		rspData, err := mocks.MakeGetRequest("submit1", &serverConfig, votingRoundID, submitAddress)
-		require.NoError(t, err)
-
-		t.Log(rspData)
-		require.Equal(t, server.Ok, rspData.Status)
-		cupaloy.SnapshotT(t, rspData)
-	})
-
-	var submitString string
-
 	t.Run("submit2", func(t *testing.T) {
 		rspData, err := mocks.MakeGetRequest("submit2", &serverConfig, votingRoundID, submitAddress)
 		require.NoError(t, err)
 
 		t.Log(rspData)
 		require.Equal(t, server.Ok, rspData.Status)
-
-		submitString = rspData.Data
-
-		require.Equal(t, "0x", submitString[0:2])
+		cupaloy.SnapshotT(t, rspData)
 	})
 
 	t.Run("submitSignatures", func(t *testing.T) {
@@ -137,18 +123,6 @@ func TestServer(t *testing.T) {
 
 		require.Equal(t, hash.Hex()[2:], rspData.Data[14:])
 
-		random := rspData.AdditionalData[2:66]
-
-		consensusBitVote := rspData.AdditionalData[66:]
-
-		consensusBitVoteBytes, err := hex.DecodeString(consensusBitVote)
-		require.NoError(t, err)
-
-		commitCheckBytes := server.CalculateMaskedRoot(common.HexToHash(rspData.Data), common.HexToHash(random), common.HexToAddress(submitAddress), consensusBitVoteBytes)
-
-		commitCheck := hex.EncodeToString(commitCheckBytes)
-
-		require.Equal(t, submitString[16:], commitCheck)
-
+		require.Equal(t, rspData.AdditionalData, "0x"+round.ConsensusBitVote.EncodeBitVoteHex())
 	})
 }

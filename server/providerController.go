@@ -69,7 +69,8 @@ func submitXController(
 	_ interface{},
 	_ interface{},
 	service func(uint32, string) (string, bool, error),
-	timeLock func(uint32) uint64) (PDPResponse, *restserver.ErrorHandler) {
+	timeLock func(uint32) uint64,
+) (PDPResponse, *restserver.ErrorHandler) {
 	pathParams, err := validateSubmitXParams(params)
 
 	if err != nil {
@@ -98,31 +99,33 @@ func submitXController(
 func (controller *FDCProtocolProviderController) submit1Controller(
 	params map[string]string,
 	queryParams interface{},
-	body interface{}) (PDPResponse, *restserver.ErrorHandler) {
+	body interface{},
+) (PDPResponse, *restserver.ErrorHandler) {
 	return submitXController(params, queryParams, body, controller.submit1Service, timing.ChooseStartTimestamp)
 }
 
 func (controller *FDCProtocolProviderController) submit2Controller(
 	params map[string]string,
 	queryParams interface{},
-	body interface{}) (PDPResponse, *restserver.ErrorHandler) {
+	body interface{},
+) (PDPResponse, *restserver.ErrorHandler) {
 	return submitXController(params, queryParams, body, controller.submit2Service, timing.ChooseEndTimestamp)
 }
 
 func (controller *FDCProtocolProviderController) submitSignaturesController(
 	params map[string]string,
 	queryParams interface{},
-	body interface{}) (PDPResponse, *restserver.ErrorHandler) {
+	body interface{},
+) (PDPResponse, *restserver.ErrorHandler) {
 	pathParams, err := validateSubmitXParams(params)
 	if err != nil {
 		logger.Error(err)
 		return PDPResponse{}, restserver.BadParamsErrorHandler(err)
 	}
-	message, addData, exists := controller.submitSignaturesService(pathParams.votingRoundID, pathParams.submitAddress)
-	if !exists {
+	response, exists, err := controller.submitSignaturesService(pathParams.votingRoundID, pathParams.submitAddress)
+	if err != nil || !exists {
 		return PDPResponse{}, restserver.NotAvailableErrorHandler(fmt.Errorf("round id %d not available", pathParams.votingRoundID))
-	}
-	response := PDPResponse{Data: message, AdditionalData: addData, Status: Ok}
 
+	}
 	return response, nil
 }
