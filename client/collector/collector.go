@@ -31,7 +31,7 @@ var signingPolicyInitializedEventSel common.Hash
 var AttestationRequestEventSel common.Hash
 var voterRegisteredEventSel common.Hash
 
-var Submit1FuncSel [4]byte
+var Submit2FuncSel [4]byte
 
 func init() {
 	relayABI, err := relay.RelayMetaData.GetAbi()
@@ -75,7 +75,7 @@ func init() {
 	if err != nil {
 		logger.Panic("cannot get submission ABI:", err)
 	}
-	copy(Submit1FuncSel[:], submissionABI.Methods["submit1"].ID[:4])
+	copy(Submit2FuncSel[:], submissionABI.Methods["submit2"].ID[:4])
 }
 
 type Collector struct {
@@ -130,6 +130,6 @@ func (c *Collector) Run(ctx context.Context) {
 	go AttestationRequestListener(ctx, c.DB, c.FdcContractAddress, requestListenerInterval, c.Requests)
 
 	chooseTrigger := make(chan uint32)
-	go BitVoteListener(ctx, c.DB, c.SubmitContractAddress, Submit1FuncSel, c.ProtocolID, chooseTrigger, c.BitVotes)
+	go BitVoteListener(ctx, c.DB, c.SubmitContractAddress, Submit2FuncSel, c.ProtocolID, chooseTrigger, c.BitVotes)
 	PrepareChooseTrigger(ctx, chooseTrigger, c.DB)
 }
