@@ -96,7 +96,7 @@ func (controller *FDCProtocolProviderController) submit1Controller(
 	queryParams interface{},
 	body interface{},
 ) (PDPResponse, *restserver.ErrorHandler) {
-	return submitXController(params, queryParams, body, controller.submit1Service, timing.ChooseStartTimestamp)
+	return submitXController(params, queryParams, body, controller.submit1Service, timing.RoundStartTime)
 }
 
 func (controller *FDCProtocolProviderController) submit2Controller(
@@ -104,7 +104,7 @@ func (controller *FDCProtocolProviderController) submit2Controller(
 	queryParams interface{},
 	body interface{},
 ) (PDPResponse, *restserver.ErrorHandler) {
-	return submitXController(params, queryParams, body, controller.submit2Service, timing.ChooseEndTimestamp)
+	return submitXController(params, queryParams, body, controller.submit2Service, timing.ChooseStartTimestamp)
 }
 
 func (controller *FDCProtocolProviderController) submitSignaturesController(
