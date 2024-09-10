@@ -19,19 +19,19 @@ func (controller *FDCProtocolProviderController) submit1Service(_ uint32, _ stri
 func (controller *FDCProtocolProviderController) submit2Service(roundID uint32, _ string) (string, bool, error) {
 	votingRound, exists := controller.rounds.Get(roundID)
 	if !exists {
-		logger.Infof("submit1 round %d not stored", roundID)
+		logger.Infof("submit2: round %d not stored", roundID)
 		return "", false, nil
 	}
 	bitVote, err := votingRound.BitVoteBytes()
 	if err != nil {
-		logger.Errorf("submit1: error for bitVote %s", err)
+		logger.Errorf("submit2: error for bitVote %s", err)
 
 		return "", false, err
 	}
 
 	payloadMsg := payload.BuildMessage(controller.protocolID, roundID, bitVote)
 
-	logger.Debugf("submit1: for round %d: %s", roundID, payloadMsg)
+	logger.Debugf("submit2: for round %d: %s", roundID, payloadMsg)
 
 	return payloadMsg, true, nil
 }
@@ -41,16 +41,16 @@ func (controller *FDCProtocolProviderController) submit2Service(roundID uint32, 
 func (controller *FDCProtocolProviderController) submitSignaturesService(roundID uint32, address string) (PDPResponse, bool, error) {
 	votingRound, exists := controller.rounds.Get(roundID)
 	if !exists {
-		logger.Infof("submit2: round %d not stored", roundID)
+		logger.Infof("submitSignatures: round %d not stored", roundID)
 		return PDPResponse{Status: NotAvailable}, false, nil
 	}
 
 	consensusBitVote, exists, computed := votingRound.GetConsensusBitVote()
 	if !computed {
-		logger.Infof("submit2: consensus bitVote for round %d not computed", roundID)
+		logger.Infof("submitSignatures: consensus bitVote for round %d not computed", roundID)
 		return PDPResponse{Status: NotAvailable}, false, nil
 	} else if !exists {
-		logger.Infof("submit2: consensus bitVote for round %d not available: %s", roundID)
+		logger.Infof("submitSignatures: consensus bitVote for round %d not available: %s", roundID)
 		return PDPResponse{Status: Ok}, false, nil
 	}
 
@@ -58,7 +58,7 @@ func (controller *FDCProtocolProviderController) submitSignaturesService(roundID
 
 	root, err := votingRound.MerkleRoot()
 	if err != nil {
-		logger.Infof("submit2: Merkle root for round %d not available: %s", roundID, err)
+		logger.Infof("submitSignatures: Merkle root for round %d not available: %s", roundID, err)
 
 		return PDPResponse{Status: NotAvailable}, false, nil
 	}
