@@ -81,13 +81,10 @@ func (controller *FDCProtocolProviderController) submit2Service(roundID uint32, 
 	}
 
 	consensusBitVote, exists, computed := votingRound.GetConsensusBitVote()
-
 	if !computed {
 		logger.Infof("submit2: consensus bitVote for round %d not computed", roundID)
 		return "", false, nil
-	}
-
-	if !exists {
+	} else if !exists {
 		logger.Infof("submit2: consensus bitVote for round %d not available: %s", roundID)
 		return "", false, nil
 	}
@@ -95,7 +92,6 @@ func (controller *FDCProtocolProviderController) submit2Service(roundID uint32, 
 	encodedBitVote := consensusBitVote.EncodeBitVote()
 
 	root, err := votingRound.MerkleRoot()
-
 	if err != nil {
 		logger.Infof("submit2: Merkle root for round %d not available: %s", roundID, err)
 
@@ -103,7 +99,6 @@ func (controller *FDCProtocolProviderController) submit2Service(roundID uint32, 
 	}
 
 	randomBig, err := rand.Int(rand.Reader, maxRandom)
-
 	if err != nil {
 		logger.Errorf("submit2: getting random number for round %d: %s", roundID, err)
 

@@ -26,21 +26,17 @@ type AttestationResponse struct {
 }
 
 func validateRoundIDParam(params map[string]string) (uint32, error) {
-
 	votingRoundIDStr, exists := params["votingRoundID"]
-
 	if !exists {
 		return 0, errors.New("missing votingRound param")
 	}
 
 	votingRoundID, err := strconv.ParseUint(votingRoundIDStr, 10, 32)
-
 	if err != nil {
 		return 0, errors.New("votingRound param is not a 32 bit number")
 	}
 
 	return uint32(votingRoundID), nil
-
 }
 
 func (controller *DAController) getRequestController(

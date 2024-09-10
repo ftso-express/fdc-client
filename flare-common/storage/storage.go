@@ -11,7 +11,7 @@ type cyclicItem[K constraints.Integer, T any] struct {
 	value T
 }
 
-// Cyclic is a limited size storage. Keys are nonnegative integers. Item with key n is stored to n (mod size) together with the key.
+// Cyclic is a limited size storage. Keys are of type K. Item with key n is stored to n (mod size) together with the key.
 type Cyclic[K constraints.Integer, T any] struct {
 	values []*cyclicItem[K, T]
 	mu     *sync.RWMutex
