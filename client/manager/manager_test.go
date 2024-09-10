@@ -92,7 +92,7 @@ var bitVoteMessage = payload.Message{
 	From:             common.HexToAddress("0x8fe15e1048f90bc028a60007c7d5b55d9d20de66"),
 	Selector:         "6c532fae",
 	VotingRound:      664111,
-	Timestamp:        1718200006,
+	Timestamp:        1718200036,
 	BlockNumber:      16542630,
 	TransactionIndex: 10,
 	Payload:          []byte{0, 3, 5},
@@ -136,7 +136,7 @@ func TestManagerMethods(t *testing.T) {
 	err = mngr.OnBitVote(bitVoteMessageCorrect)
 	require.NoError(t, err)
 
-	_, ok := mngr.Rounds.Get(664082)
+	_, ok := mngr.Rounds.Get(664111)
 	require.True(t, ok)
 }
 

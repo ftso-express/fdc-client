@@ -148,7 +148,7 @@ func sendBitvote(round uint32, client *ethclient.Client, toAddress, fromAddress 
 	bitvote := bitvotes.BitVote{Length: 1, BitVector: big.NewInt(1)}
 	data := bitvote.EncodeBitVoteHex()
 	bitvotesBytes, _ := hex.DecodeString(data)
-	dataBytes := append(collector.Submit1FuncSel[:], 200)
+	dataBytes := append(collector.Submit2FuncSel[:], 200)
 
 	votingRound := make([]byte, 4)
 	binary.BigEndian.PutUint32(votingRound, uint32(round)) // todo
