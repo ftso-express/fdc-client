@@ -93,8 +93,6 @@ type Timing struct {
 	RewardEpochLength  uint64 `toml:"reward_epoch_length"`
 	CollectDurationSec uint64 `toml:"collect_duration_sec"`
 	ChooseDurationSec  uint64 `toml:"choose_duration_sec"`
-	CommitDurationSec  uint64 `toml:"commit_duration_sec"`
-	OffsetSec          uint64 `toml:"offset_sec"`
 }
 
 type Queues map[string]queue.PriorityQueueParams

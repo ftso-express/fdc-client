@@ -42,7 +42,7 @@ func MockSystemClient(systemConfig *config.System, userConfig *config.UserRaw, c
 func SystemClientIteration(userConfig *config.UserRaw, submitAddress, submitSigAddress common.Address, round uint32) {
 	submit1Time := timing.ChooseStartTimestamp(round)
 	submit2Time := submit1Time + timing.Chain.ChooseDurationSec
-	submitSignature := submit2Time + timing.Chain.CommitDurationSec
+	submitSignature := submit2Time + 45
 
 	timer := time.NewTimer(time.Until(time.Unix(int64(submit1Time+2), 0)))
 	<-timer.C

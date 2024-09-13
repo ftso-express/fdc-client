@@ -10,8 +10,6 @@ const (
 	defaultRewardEpochLength  = 240 //Coston
 	defaultCollectDurationSec = 90
 	defaultChooseDurationSec  = 30
-	defaultCommitDurationSec  = 45
-	// defaultOffsetSec          = 30
 )
 
 var Chain config.Timing = config.Timing{
@@ -20,8 +18,6 @@ var Chain config.Timing = config.Timing{
 	RewardEpochLength:  defaultRewardEpochLength,
 	CollectDurationSec: defaultCollectDurationSec,
 	ChooseDurationSec:  defaultChooseDurationSec,
-	CommitDurationSec:  defaultCommitDurationSec,
-	OffsetSec:          defaultChooseDurationSec, // Always equal to ChooseDurationSec
 }
 
 func Set(chainTiming config.Timing) error {
@@ -39,10 +35,6 @@ func Set(chainTiming config.Timing) error {
 	}
 	if chainTiming.ChooseDurationSec != 0 {
 		Chain.ChooseDurationSec = chainTiming.ChooseDurationSec
-		Chain.OffsetSec = chainTiming.ChooseDurationSec
-	}
-	if chainTiming.CommitDurationSec != 0 {
-		Chain.CommitDurationSec = chainTiming.CommitDurationSec
 	}
 
 	return nil
