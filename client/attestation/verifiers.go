@@ -6,12 +6,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
 )
 
-const timeout = 5 * time.Second // maximal duration for the verifier to resolve the query
+const timeout = 5 * time.Second    // maximal duration for the verifier to resolve the query
+const maxRespSize = 10 * (1 << 20) // 10 MB for maximal response size of the verifier
 const ValidResponseStatus = "VALID"
 
 type ABIEncodedRequestBody struct {
@@ -54,11 +56,13 @@ func ResolveAttestationRequest(ctx context.Context, att *Attestation) ([]byte, b
 	if resp.StatusCode != 200 {
 		return nil, false, fmt.Errorf("request responded with code %d", resp.StatusCode)
 	}
+	respLimited := &io.LimitedReader{R: resp.Body, N: maxRespSize}
 	// close response body after function ends
 	defer resp.Body.Close()
 
 	responseBody := ABIEncodedResponseBody{}
-	decoder := json.NewDecoder(resp.Body)
+
+	decoder := json.NewDecoder(respLimited)
 	decoder.DisallowUnknownFields()
 
 	err = decoder.Decode(&responseBody)
