@@ -62,6 +62,7 @@ func BranchAndBoundVotesDouble(
 
 	firstDone := make(chan bool, 1)
 	secondDone := make(chan bool, 1)
+	ignoreSecondSolution := false
 
 	votesAscVal := sortVotes(bitVotes, cmpValVoteAsc())
 	votesDscVal := sortVotes(bitVotes, cmpValVoteDsc())
@@ -84,7 +85,7 @@ func BranchAndBoundVotesDouble(
 		firstDone <- true
 
 		if solution.Optimal {
-			solutions[1] = nil
+			ignoreSecondSolution = true
 			secondDone <- true // do not wait on the other solution
 		}
 	}()
@@ -103,25 +104,26 @@ func BranchAndBoundVotesDouble(
 		)
 
 		solutions[1] = solution
-
 		secondDone <- true
 	}()
 
 	<-firstDone
 	<-secondDone
 
-	if solutions[0] == nil {
-		return solutions[1]
-	}
-	if solutions[1] == nil {
+	if ignoreSecondSolution || solutions[1] == nil {
 		return solutions[0]
 	}
 
-	if solutions[0].Value.Cmp(solutions[1].Value) == -1 {
+	if solutions[0] == nil {
 		return solutions[1]
 	}
 
-	return solutions[0]
+	// if nether of the above conditions was met, both solutions are not nil
+	if solutions[0].Value.Cmp(solutions[1].Value) == -1 {
+		return solutions[1]
+	} else {
+		return solutions[0]
+	}
 }
 
 // BranchAndBoundVotes is similar to BranchAndBound, the difference is that it
