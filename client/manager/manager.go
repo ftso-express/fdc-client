@@ -13,7 +13,10 @@ import (
 	"local/fdc/client/round"
 	"local/fdc/client/shared"
 	"local/fdc/client/timing"
+	"local/fdc/client/utils"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type Manager struct {
@@ -204,12 +207,31 @@ func (m *Manager) OnRequest(ctx context.Context, request database.Log) error {
 
 // OnSigningPolicy parses SigningPolicyInitialized log and stores it into the signingPolicyStorage.
 func (m *Manager) OnSigningPolicy(data shared.VotersData) error {
+	err := VotersDataCheck(data)
+	if err != nil {
+		return err
+	}
+
 	parsedPolicy := policy.NewSigningPolicy(data.Policy, data.SubmitToSigningAddress)
 	logger.Infof("Processing signing policy for rewardEpoch %s", data.Policy.RewardEpochId.String())
 
-	err := m.signingPolicyStorage.Add(parsedPolicy)
+	err = m.signingPolicyStorage.Add(parsedPolicy)
 
 	return err
+}
+
+func VotersDataCheck(data shared.VotersData) error {
+	if len(data.Policy.Voters) != len(data.Policy.Weights) {
+		return errors.New("policy error: signing addresses and weights do not match")
+	}
+	if len(data.SubmitToSigningAddress) != len(data.Policy.Voters) {
+		logger.Error("policy error: submit to signing addresses map incomplete or matching submission addresses")
+	}
+	if len(utils.Invert(data.SubmitToSigningAddress)) != len(data.Policy.Voters) {
+		logger.Error("policy error: matching signing policy addresses")
+	}
+
+	return nil
 }
 
 // retryUnsuccessfulChosen adds the request that were chosen by the consensus bitVote but were not confirmed to the priority verifier queues.
