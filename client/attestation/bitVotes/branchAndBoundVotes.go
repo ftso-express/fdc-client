@@ -82,12 +82,14 @@ func BranchAndBoundVotesDouble(
 
 		solutions[0] = solution
 
-		firstDone <- true
-
 		if solution.Optimal {
 			ignoreSecondSolution = true
-			secondDone <- true // do not wait on the other solution, because the first one is optimal
+			firstDone <- true
+			secondDone <- true // do not wait on the other solution
+		} else {
+			firstDone <- true // wait on the other solution
 		}
+
 	}()
 
 	go func() {

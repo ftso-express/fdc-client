@@ -120,10 +120,12 @@ func BranchAndBoundBitsDouble(bitVotes []*AggregatedVote, bits []*AggregatedBit,
 		solution := BranchAndBoundBits(bitVotes, bitsDscVal, assumedWeight, weightVoted, absoluteTotalWeight, assumedFees, maxOperations, initialBound, false)
 		solutions[0] = solution
 
-		firstDone <- true
 		if solution.Optimal {
 			ignoreSecondSolution = true
+			firstDone <- true
 			secondDone <- true // do not wait on the other solution
+		} else {
+			firstDone <- true // wait on the other solution
 		}
 	}()
 
