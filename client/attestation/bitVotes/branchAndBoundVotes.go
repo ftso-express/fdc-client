@@ -86,7 +86,7 @@ func BranchAndBoundVotesDouble(
 
 		if solution.Optimal {
 			ignoreSecondSolution = true
-			secondDone <- true // do not wait on the other solution
+			secondDone <- true // do not wait on the other solution, because the first one is optimal
 		}
 	}()
 
@@ -110,15 +110,12 @@ func BranchAndBoundVotesDouble(
 	<-firstDone
 	<-secondDone
 
-	if ignoreSecondSolution || solutions[1] == nil {
+	// the first solution is optimal, hance never worse then the second solution
+	if ignoreSecondSolution {
 		return solutions[0]
 	}
 
-	if solutions[0] == nil {
-		return solutions[1]
-	}
-
-	// if nether of the above conditions was met, both solutions are not nil
+	// if the above conditions was not met, both solutions are not nil
 	if solutions[0].Value.Cmp(solutions[1].Value) == -1 {
 		return solutions[1]
 	} else {
