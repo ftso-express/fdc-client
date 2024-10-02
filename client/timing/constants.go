@@ -9,7 +9,7 @@ const (
 	defaultT0RewardDelay      = 0
 	defaultRewardEpochLength  = 240 //Coston
 	defaultCollectDurationSec = 90
-	defaultChooseDurationSec  = 30
+	defaultChooseDurationSec  = 45
 )
 
 var Chain config.Timing = config.Timing{

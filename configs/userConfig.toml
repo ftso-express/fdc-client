@@ -25,64 +25,200 @@ da_sub_router_path = "/da"
 version = "0.0.0"
 swagger_path = "/api-doc"
 
-
 [logger]
 file = ""
 level = "INFO"
 console = true
 
-# # Payment
-# [types.Payment]
-# abi_path = ""
+# Payment
+[types.Payment]
+abi_path = "configs/abis/Payment.json"
 
-# ## BTC
-# [types.Payment.Sources.BTC]
-# url = ""
-# api_key = "12345"
-# lut_limit = "18446744073709551615"
+## BTC
+[types.Payment.Sources.testBTC]
+url = ""
+api_key = ""
+lut_limit = "1209600"
+queue = "btc"
 
-# ## DOGE
-# [types.Payment.Sources.DOGE]
-# url = ""
-# api_key = ""
-# lut_limit = "18446744073709551615"
+## DOGE
+[types.Payment.Sources.testDOGE]
+url = ""
+api_key = ""
+lut_limit = "1209600"
+queue = "doge"
 
-# ## XRP
-# [types.Payment.Sources.XRP]
-# url = ""
-# api_key = ""
-# lut_limit = "18446744073709551615"
+## XRP
+[types.Payment.Sources.testXRP]
+url = ""
+api_key = ""
+lut_limit = "1209600"
+queue = "xrp"
 
+# BalanceDecreasingTransaction
+[types.BalanceDecreasingTransaction]
+abi_path = "configs/abis/BalanceDecreasingTransaction.json"
+
+## BTC
+[types.BalanceDecreasingTransaction.Sources.testBTC]
+url = ""
+api_key = ""
+lut_limit = "1209600"
+queue = "btc"
+
+## DOGE
+[types.BalanceDecreasingTransaction.Sources.testDOGE]
+url = ""
+api_key = ""
+lut_limit = "1209600"
+queue = "doge"
+
+## XRP
+[types.BalanceDecreasingTransaction.Sources.testXRP]
+url = ""
+api_key = ""
+lut_limit = "1209600"
+queue = "xrp"
+
+# ConfirmedBlockHeightExists
+[types.ConfirmedBlockHeightExists]
+abi_path = "configs/abis/ConfirmedBlockHeightExists.json"
+
+## BTC
+[types.ConfirmedBlockHeightExists.Sources.testBTC]
+url = ""
+api_key = ""
+lut_limit = "1209600"
+queue = "btc"
+
+## DOGE
+[types.ConfirmedBlockHeightExists.Sources.testDOGE]
+url = ""
+api_key = ""
+lut_limit = "1209600"
+queue = "doge"
+
+## XRP
+[types.ConfirmedBlockHeightExists.Sources.testXRP]
+url = ""
+api_key = ""
+lut_limit = "1209600"
+queue = "xrp"
+
+# ReferencedPaymentNonexistence
+[types.ReferencedPaymentNonexistence]
+abi_path = "configs/abis/ReferencedPaymentNonexistence.json"
+
+## BTC
+[types.ReferencedPaymentNonexistence.Sources.testBTC]
+url = ""
+api_key = ""
+lut_limit = "1209600"
+queue = "btc"
+
+## DOGE
+[types.ReferencedPaymentNonexistence.Sources.testDOGE]
+url = ""
+api_key = ""
+lut_limit = "1209600"
+queue = "doge"
+
+## XRP
+[types.ReferencedPaymentNonexistence.Sources.testXRP]
+url = ""
+api_key = ""
+lut_limit = "1209600"
+queue = "xrp"
+
+
+# AddressValidity
+[types.AddressValidity]
+abi_path = "configs/abis/AddressValidity.json"
+
+## BTC
+[types.AddressValidity.Sources.testBTC]
+url = ""
+api_key = ""
+lut_limit = "18446744073709551615"
+queue = "btc"
+
+## DOGE
+[types.AddressValidity.Sources.testDOGE]
+url = ""
+api_key = ""
+lut_limit = "18446744073709551615"
+queue = "doge"
+
+## XRP
+[types.AddressValidity.Sources.testXRP]
+url = ""
+api_key = ""
+lut_limit = "18446744073709551615"
+queue = "xrp"
 
 # EVMTransaction
 [types.EVMTransaction]
 abi_path = "configs/abis/EVMTransaction.json"
 
 ## ETH
-[types.EVMTransaction.Sources.ETH]
-url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
-api_key = "12345"
+[types.EVMTransaction.Sources.testETH]
+url = ""
+api_key = ""
 lut_limit = "18446744073709551615"
-queue = "evmETH"
+queue = "eth"
 
 ##SGB
 [types.EVMTransaction.Sources.testSGB]
-url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
-api_key = "12345"
+url = ""
+api_key = ""
 lut_limit = "18446744073709551615"
-queue = "evmETH"
-
+queue = "sgb"
 
 ##FLR
 [types.EVMTransaction.Sources.testFLR]
-url = "http://localhost:4500/eth/EVMTransaction/verifyFDC"
-api_key = "12345"
+url = ""
+api_key = ""
 lut_limit = "18446744073709551615"
-queue = "evmETH"
+queue = "flr"
 
 
 # Queues
-[queues.evmETH]
+[queues.btc]
+size = 10
+max_dequeues_per_second = 0
+max_workers = 0
+max_attempts = 3
+time_off = 2
+
+[queues.doge]
+size = 10
+max_dequeues_per_second = 0
+max_workers = 0
+max_attempts = 3
+time_off = 2
+
+[queues.xrp]
+size = 10
+max_dequeues_per_second = 0
+max_workers = 0
+max_attempts = 3
+time_off = 2
+
+[queues.eth]
+size = 10
+max_dequeues_per_second = 0
+max_workers = 0
+max_attempts = 3
+time_off = 2
+
+[queues.sgb]
+size = 10
+max_dequeues_per_second = 0
+max_workers = 0
+max_attempts = 3
+time_off = 2
+
+[queues.flr]
 size = 10
 max_dequeues_per_second = 0
 max_workers = 0
