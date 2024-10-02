@@ -144,3 +144,36 @@ reward_epoch_length = 240 # in voting rounds
 ### ABIGEN
 
 For more info follow this [tutorial](https://geth.ethereum.org/docs/tools/abigen)
+
+
+### Currently supported types and sources:
+
+#### Types:
+
+```
+AddressValidity
+BalanceDecreasingTransaction
+ConfirmedBlockHeightExists
+Payment
+ReferencedPaymentNonexistence
+EVMTransaction
+```
+#### Sources:
+
+```
+BTC
+DOGE
+XRP
+ETH
+FLR
+SGB
+```
+
+```
+testBTC (v3)
+testDOGE
+testXRP
+testETH (Sepolia)
+testFLR (coston2)
+testSGB (coston)
+```
