@@ -11,7 +11,6 @@ import (
 
 func (controller *DAController) GetRequests(roundId uint32) ([]DARequest, bool) {
 	round, exists := controller.Rounds.Get(roundId)
-
 	if !exists {
 		return nil, false
 	}
@@ -28,13 +27,15 @@ func (controller *DAController) GetRequests(roundId uint32) ([]DARequest, bool) 
 func AttestationToDARequest(att *attestation.Attestation) DARequest {
 	var status AttestationStatus
 
-	// TODO: granulate options
 	switch att.Status {
 	case attestation.Success:
 		status = Valid
+	case attestation.WrongMIC:
+		status = WrongMIC
+	case attestation.InvalidLUT:
+		status = FailedLUT
 	default:
 		status = Failed
-
 	}
 
 	dARequest := DARequest{
@@ -50,13 +51,11 @@ func AttestationToDARequest(att *attestation.Attestation) DARequest {
 
 func (controller *DAController) GetAttestations(roundId uint32) ([]DAAttestation, bool) {
 	round, exists := controller.Rounds.Get(roundId)
-
 	if !exists {
 		return nil, false
 	}
 
 	merkleTree, err := round.MerkleTree()
-
 	if err != nil {
 		return nil, false
 	}
@@ -65,29 +64,22 @@ func (controller *DAController) GetAttestations(roundId uint32) ([]DAAttestation
 
 	for i := range round.Attestations {
 		att, ok, err := AttestationToDAAttestation(round.Attestations[i])
-
 		if err != nil {
 			return nil, false
 		}
-
 		if ok {
 			err := att.addProof(merkleTree)
-
 			if err != nil {
 				return nil, false
 			}
 
 			attestations = append(attestations, att)
-
 		}
-
 	}
 	return attestations, true
-
 }
 
 func AttestationToDAAttestation(att *attestation.Attestation) (DAAttestation, bool, error) {
-
 	isConfirmed := att.Status == attestation.Success
 	isSelected := att.Consensus
 
@@ -108,13 +100,10 @@ func AttestationToDAAttestation(att *attestation.Attestation) (DAAttestation, bo
 	}
 
 	return dAAttestation, true, nil
-
 }
 
 func (DAAtt *DAAttestation) addProof(tree merkle.Tree) error {
-
 	proofCommon, err := tree.GetProofFromHash(DAAtt.hash)
-
 	if err != nil {
 		return fmt.Errorf("no proof for request %s in round %d", DAAtt.Request, DAAtt.RoundID)
 	}
@@ -128,5 +117,4 @@ func (DAAtt *DAAttestation) addProof(tree merkle.Tree) error {
 	DAAtt.Proof = proof
 
 	return nil
-
 }

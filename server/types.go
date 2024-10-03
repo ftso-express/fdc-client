@@ -16,9 +16,11 @@ const (
 type AttestationStatus string
 
 const (
-	Valid  AttestationStatus = "OK"
-	Failed AttestationStatus = "FAILED"
-	Error  AttestationStatus = "ERROR"
+	Valid     AttestationStatus = "OK"
+	WrongMIC  AttestationStatus = "WrongMIC"
+	FailedLUT AttestationStatus = "FailedLUT"
+	Failed    AttestationStatus = "FAILED"
+	Error     AttestationStatus = "ERROR"
 )
 
 type PDPResponse struct {
