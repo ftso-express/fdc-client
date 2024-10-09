@@ -2,6 +2,38 @@
   <a href="https://flare.network/" target="blank"><img src="https://flare.network/wp-content/uploads/Artboard-1-1.svg" width="400" height="300" alt="Flare Logo" /></a>
 </p>
 
+## TEMP
+
+Module `gitlab.com/flarenetwork/libs/go-flare-common` is currently on a private repo.
+
+First set env variables
+
+```
+export GOPRIVATE=gitlab.com/flarenetwork/libs/go-flare-common
+```
+
+and
+
+```
+export GO111MODULE=on
+```
+
+Open
+
+```
+nano ~/.netrc
+```
+
+and add
+
+```
+machine gitlab.com
+login <userName>
+password <accessToken>
+```
+
+TODO: fix ci
+
 # Flare Data Connector Client
 
 Flare Data Connector client supports tha attestation process. It does the following tasks:
@@ -145,7 +177,6 @@ reward_epoch_length = 240 # in voting rounds
 
 For more info follow this [tutorial](https://geth.ethereum.org/docs/tools/abigen)
 
-
 ### Currently supported types and sources:
 
 #### Types:
@@ -158,6 +189,7 @@ Payment
 ReferencedPaymentNonexistence
 EVMTransaction
 ```
+
 #### Sources:
 
 ```
