@@ -2,9 +2,10 @@ package config_test
 
 import (
 	"fmt"
-	"local/fdc/client/config"
 	"strings"
 	"testing"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"

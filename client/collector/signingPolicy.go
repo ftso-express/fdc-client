@@ -3,12 +3,14 @@ package collector
 import (
 	"context"
 	"errors"
-	"flare-common/database"
-	"flare-common/logger"
-	"flare-common/policy"
-	"local/fdc/client/shared"
-	"local/fdc/client/timing"
 	"time"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/policy"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/shared"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
 
 	"github.com/ethereum/go-ethereum/common"
 	"gorm.io/gorm"

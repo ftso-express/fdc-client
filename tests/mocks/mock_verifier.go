@@ -2,16 +2,18 @@ package mocks
 
 import (
 	"encoding/json"
-	"flare-common/database"
-	"flare-common/logger"
 	"fmt"
 	"io"
 
-	"local/fdc/client/attestation"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
+
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"

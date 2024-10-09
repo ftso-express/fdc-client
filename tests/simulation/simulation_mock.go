@@ -2,10 +2,12 @@ package main
 
 import (
 	"flag"
-	"flare-common/logger"
-	"local/fdc/client/config"
-	"local/fdc/client/timing"
-	"local/fdc/tests/mocks"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
+	"gitlab.com/flarenetwork/fdc/fdc-client/tests/mocks"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 )

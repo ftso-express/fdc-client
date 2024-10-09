@@ -2,15 +2,17 @@ package server
 
 import (
 	"encoding/hex"
-	"flare-common/logger"
-	"flare-common/restserver"
-	"flare-common/storage"
 	"fmt"
-	"local/fdc/client/round"
-	"local/fdc/client/timing"
 	"strconv"
 	"strings"
 	"time"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/restserver"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/storage"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/round"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
 )
 
 type FDCProtocolProviderController struct {

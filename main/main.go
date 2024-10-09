@@ -3,16 +3,18 @@ package main
 import (
 	"context"
 	"flag"
-	"flare-common/logger"
-	"local/fdc/client/collector"
-	"local/fdc/client/config"
-	"local/fdc/client/manager"
-	"local/fdc/client/shared"
-	"local/fdc/client/timing"
-	"local/fdc/server"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/collector"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/manager"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/shared"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
+	"gitlab.com/flarenetwork/fdc/fdc-client/server"
 )
 
 const (

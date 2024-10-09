@@ -3,11 +3,13 @@ package collector
 import (
 	"context"
 	"encoding/hex"
-	"flare-common/database"
-	"flare-common/logger"
-	"flare-common/policy"
-	"local/fdc/client/shared"
 	"math/big"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/policy"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/shared"
 
 	"fmt"
 

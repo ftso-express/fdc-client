@@ -2,13 +2,14 @@ package attestation_test
 
 import (
 	"context"
-	"flare-common/database"
-	"local/fdc/client/attestation"
-	"local/fdc/client/config"
-	"local/fdc/tests/mocks"
 	"math/big"
 	"testing"
 	"time"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
+	"gitlab.com/flarenetwork/fdc/fdc-client/tests/mocks"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
 
 	"github.com/stretchr/testify/require"
 )

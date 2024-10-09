@@ -1,9 +1,10 @@
 package bitvotes_test
 
 import (
-	bitvotes "local/fdc/client/attestation/bitVotes"
 	"math/big"
 	"testing"
+
+	bitvotes "gitlab.com/flarenetwork/fdc/fdc-client/client/attestation/bitVotes"
 
 	"github.com/stretchr/testify/require"
 )

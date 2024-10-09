@@ -2,10 +2,12 @@ package collector
 
 import (
 	"context"
-	"flare-common/database"
-	"flare-common/logger"
-	"local/fdc/client/timing"
 	"time"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
 
 	"github.com/ethereum/go-ethereum/common"
 	"gorm.io/gorm"

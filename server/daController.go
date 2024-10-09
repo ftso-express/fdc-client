@@ -4,11 +4,13 @@ package server
 
 import (
 	"errors"
-	"flare-common/logger"
-	"flare-common/restserver"
-	"flare-common/storage"
-	"local/fdc/client/round"
 	"strconv"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/restserver"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/storage"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/round"
 )
 
 type DAController struct {

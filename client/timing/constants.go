@@ -1,7 +1,7 @@
 package timing
 
 import (
-	"local/fdc/client/config"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
 )
 
 const (

@@ -1,13 +1,15 @@
 package round_test
 
 import (
-	"flare-common/database"
-	"flare-common/policy"
 	"fmt"
-	"local/fdc/client/attestation"
-	"local/fdc/client/round"
-	"local/fdc/client/utils"
 	"math/big"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/policy"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/round"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/utils"
 
 	"testing"
 

@@ -7,8 +7,8 @@ import (
 	"os"
 	"testing"
 
-	"local/fdc/client/attestation"
-	"local/fdc/client/config"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"

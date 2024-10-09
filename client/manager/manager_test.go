@@ -2,18 +2,20 @@ package manager
 
 import (
 	"context"
-	"flare-common/database"
-	"flare-common/payload"
-	"flare-common/policy"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/payload"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/policy"
 
 	"fmt"
-	"local/fdc/client/attestation"
-	"local/fdc/client/config"
-	"local/fdc/client/shared"
-	"local/fdc/tests/mocks"
 	"strconv"
 	"testing"
 	"time"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/shared"
+	"gitlab.com/flarenetwork/fdc/fdc-client/tests/mocks"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"

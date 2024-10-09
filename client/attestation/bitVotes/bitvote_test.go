@@ -2,10 +2,11 @@ package bitvotes_test
 
 import (
 	"encoding/hex"
-	bitvotes "local/fdc/client/attestation/bitVotes"
 	"math/big"
 	"math/rand"
 	"testing"
+
+	bitvotes "gitlab.com/flarenetwork/fdc/fdc-client/client/attestation/bitVotes"
 
 	"github.com/stretchr/testify/require"
 )

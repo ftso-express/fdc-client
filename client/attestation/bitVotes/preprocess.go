@@ -1,9 +1,10 @@
 package bitvotes
 
 import (
-	"local/fdc/client/utils"
 	"math/big"
 	"slices"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/utils"
 )
 
 type FilterResults struct {

@@ -1,7 +1,7 @@
 package server
 
 import (
-	"local/fdc/client/attestation"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
 
 	"github.com/ethereum/go-ethereum/common"
 )

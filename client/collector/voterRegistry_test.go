@@ -1,9 +1,11 @@
 package collector_test
 
 import (
-	"flare-common/database"
-	"local/fdc/client/collector"
 	"testing"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/collector"
 
 	"github.com/stretchr/testify/require"
 )

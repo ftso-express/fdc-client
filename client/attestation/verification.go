@@ -3,13 +3,14 @@ package attestation
 import (
 	"encoding/binary"
 	"errors"
-	"flare-common/logger"
 	"math/big"
 	"slices"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
 )
 
 var stringArgument abi.Argument

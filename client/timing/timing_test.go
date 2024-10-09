@@ -2,8 +2,9 @@ package timing_test
 
 import (
 	"fmt"
-	"local/fdc/client/timing"
 	"testing"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
 
 	"github.com/stretchr/testify/require"
 )

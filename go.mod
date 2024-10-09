@@ -1,9 +1,8 @@
-module local/fdc
+module gitlab.com/flarenetwork/fdc/fdc-client
 
 go 1.23.0
 
 require (
-	flare-common v0.0.0-00010101000000-000000000000
 	github.com/BurntSushi/toml v1.4.0
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/ethereum/go-ethereum v1.14.8
@@ -11,11 +10,10 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/cors v1.11.1
 	github.com/stretchr/testify v1.9.0
+	gitlab.com/flarenetwork/libs/go-flare-common v0.0.0-20241009141327-aadb463b21a0
 	gorm.io/driver/sqlite v1.5.6
 	gorm.io/gorm v1.25.11
 )
-
-replace flare-common => ./flare-common
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
@@ -35,23 +33,23 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
 	github.com/ethereum/c-kzg-4844 v1.0.3 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.5 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08 // indirect
-	github.com/getkin/kin-openapi v0.127.0 // indirect
+	github.com/getkin/kin-openapi v0.123.0 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/go-openapi/jsonpointer v0.21.0 // indirect
-	github.com/go-openapi/swag v0.23.0 // indirect
+	github.com/go-openapi/jsonpointer v0.20.2 // indirect
+	github.com/go-openapi/swag v0.22.8 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.22.0 // indirect
+	github.com/go-playground/validator/v10 v10.19.0 // indirect
 	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/gorilla/schema v1.4.1 // indirect
+	github.com/gorilla/schema v1.3.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/holiman/uint256 v1.3.1 // indirect
 	github.com/invopop/jsonschema v0.12.0 // indirect
-	github.com/invopop/yaml v0.3.1 // indirect
+	github.com/invopop/yaml v0.2.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
@@ -67,7 +65,7 @@ require (
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.10.1 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
-	github.com/shurcooL/httpgzip v0.0.0-20230704072819-d1585fc322fa // indirect
+	github.com/shurcooL/httpgzip v0.0.0-20190720172056-320755c1c1b0 // indirect
 	github.com/supranational/blst v0.3.13 // indirect
 	github.com/swaggest/swgui v1.8.1 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220614013038-64ee5596c38a // indirect
@@ -79,7 +77,7 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.26.0 // indirect
 	golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e // indirect
-	golang.org/x/net v0.28.0 // indirect
+	golang.org/x/net v0.24.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/text v0.18.0 // indirect

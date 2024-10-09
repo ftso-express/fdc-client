@@ -3,12 +3,15 @@ package collector_test
 import (
 	"context"
 	"encoding/hex"
-	"flare-common/database"
-	"flare-common/payload"
-	"local/fdc/client/collector"
-	"local/fdc/client/timing"
+
 	"testing"
 	"time"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/collector"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/payload"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"

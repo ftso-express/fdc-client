@@ -2,9 +2,11 @@ package server
 
 import (
 	"encoding/hex"
-	"flare-common/merkle"
 	"fmt"
-	"local/fdc/client/attestation"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/merkle"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
 )
 
 //  wip

@@ -2,13 +2,15 @@ package server
 
 import (
 	"context"
-	"flare-common/logger"
-	"flare-common/restserver"
-	"flare-common/storage"
-	"local/fdc/client/config"
-	"local/fdc/client/round"
 	"net/http"
 	"time"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/restserver"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/storage"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/round"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"

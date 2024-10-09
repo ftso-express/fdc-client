@@ -3,7 +3,8 @@ package mocks
 import (
 	"context"
 	"crypto/ecdsa"
-	"flare-common/logger"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"

@@ -2,16 +2,18 @@ package collector
 
 import (
 	"context"
-	"flare-common/contracts/registry"
-	"flare-common/contracts/relay"
-	"flare-common/contracts/submission"
 
-	"flare-common/contracts/fdchub"
-	"flare-common/database"
-	"flare-common/logger"
-	"flare-common/payload"
-	"local/fdc/client/config"
-	"local/fdc/client/shared"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/contracts/registry"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/contracts/relay"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/contracts/submission"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/contracts/fdchub"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/payload"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/shared"
 
 	"time"
 

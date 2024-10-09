@@ -1,9 +1,9 @@
 package config
 
 import (
-	"flare-common/database"
-	"flare-common/logger"
-	"flare-common/queue"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/queue"
 
 	"math/big"
 

@@ -3,9 +3,10 @@ package server
 import (
 	"encoding/binary"
 	"encoding/hex"
-	"flare-common/logger"
-	"flare-common/payload"
 	"fmt"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/payload"
 
 	"github.com/ethereum/go-ethereum/common"
 )

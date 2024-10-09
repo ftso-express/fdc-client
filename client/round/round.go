@@ -1,15 +1,17 @@
 package round
 
 import (
-	"flare-common/merkle"
-	"flare-common/payload"
-	"flare-common/policy"
 	"fmt"
-	"local/fdc/client/attestation"
-	bitvotes "local/fdc/client/attestation/bitVotes"
-	"local/fdc/client/utils"
 	"math/big"
 	"sort"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/merkle"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/payload"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/policy"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
+	bitvotes "gitlab.com/flarenetwork/fdc/fdc-client/client/attestation/bitVotes"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/utils"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

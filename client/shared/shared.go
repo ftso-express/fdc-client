@@ -1,11 +1,12 @@
 package shared
 
 import (
-	"flare-common/contracts/relay"
-	"flare-common/database"
-	"flare-common/payload"
-	"flare-common/storage"
-	"local/fdc/client/round"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/contracts/relay"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/payload"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/storage"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/round"
 
 	"github.com/ethereum/go-ethereum/common"
 )

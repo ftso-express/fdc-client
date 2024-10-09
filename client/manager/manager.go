@@ -2,19 +2,21 @@ package manager
 
 import (
 	"context"
-	"flare-common/database"
-	"flare-common/logger"
-	"flare-common/payload"
-	"flare-common/policy"
-	"flare-common/storage"
 	"fmt"
-	"local/fdc/client/attestation"
-	"local/fdc/client/config"
-	"local/fdc/client/round"
-	"local/fdc/client/shared"
-	"local/fdc/client/timing"
-	"local/fdc/client/utils"
 	"time"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/payload"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/policy"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/storage"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/round"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/shared"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/utils"
 
 	"github.com/pkg/errors"
 )

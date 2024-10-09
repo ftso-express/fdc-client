@@ -2,10 +2,12 @@ package manager
 
 import (
 	"context"
-	"flare-common/logger"
-	"flare-common/queue"
-	"local/fdc/client/attestation"
-	"local/fdc/client/config"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/queue"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
 )
 
 type attestationQueue = queue.PriorityQueue[*attestation.Attestation]

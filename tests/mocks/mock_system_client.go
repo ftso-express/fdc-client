@@ -2,15 +2,17 @@ package mocks
 
 import (
 	"encoding/json"
-	"flare-common/logger"
 	"io"
-	"local/fdc/client/config"
-	"local/fdc/client/timing"
-	"local/fdc/server"
 	"net/http"
 	"net/url"
 	"strconv"
 	"time"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
+	"gitlab.com/flarenetwork/fdc/fdc-client/server"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"

@@ -2,16 +2,18 @@ package server_test
 
 import (
 	"encoding/hex"
-	"flare-common/policy"
-	"flare-common/storage"
 	"fmt"
-	"local/fdc/client/attestation"
-	bitvotes "local/fdc/client/attestation/bitVotes"
-	"local/fdc/client/config"
-	"local/fdc/client/round"
-	"local/fdc/server"
 	"math/big"
 	"testing"
+
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/policy"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/storage"
+
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
+	bitvotes "gitlab.com/flarenetwork/fdc/fdc-client/client/attestation/bitVotes"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
+	"gitlab.com/flarenetwork/fdc/fdc-client/client/round"
+	"gitlab.com/flarenetwork/fdc/fdc-client/server"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
