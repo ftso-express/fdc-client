@@ -29,7 +29,7 @@ func main() {
 	if err != nil {
 		logger.Panicf("cannot read configs: %s", err)
 	}
-	logger.SetLogger(userConfigRaw.Logging)
+	logger.Set(userConfigRaw.Logging)
 
 	err = timing.Set(systemConfig.Timing)
 	if err != nil {

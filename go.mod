@@ -10,7 +10,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/cors v1.11.1
 	github.com/stretchr/testify v1.9.0
-	gitlab.com/flarenetwork/libs/go-flare-common v0.0.0-20241009141327-aadb463b21a0
+	gitlab.com/flarenetwork/libs/go-flare-common v0.0.0-20241010114454-b24b60b2e269
 	gorm.io/driver/sqlite v1.5.6
 	gorm.io/gorm v1.25.11
 )

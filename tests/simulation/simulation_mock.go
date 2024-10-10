@@ -34,7 +34,7 @@ func main() {
 	if err != nil {
 		logger.Panicf("cannot read configs: %s", err)
 	}
-	logger.SetLogger(userConfig.Logging)
+	logger.Set(userConfig.Logging)
 	err = timing.Set(systemConfig.Timing)
 	if err != nil {
 		logger.Panicf("cannot set timing: %s", err)

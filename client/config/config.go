@@ -12,12 +12,12 @@ import (
 )
 
 type userCommon struct {
-	Chain      string              `toml:"chain"`
-	ProtocolID uint8               `toml:"protocol_id"`
-	DB         database.DBConfig   `toml:"db"`
-	RestServer RestServer          `toml:"rest_server"`
-	Queues     Queues              `toml:"queues"`
-	Logging    logger.LoggerConfig `toml:"logger"`
+	Chain      string          `toml:"chain"`
+	ProtocolID uint8           `toml:"protocol_id"`
+	DB         database.Config `toml:"db"`
+	RestServer RestServer      `toml:"rest_server"`
+	Queues     Queues          `toml:"queues"`
+	Logging    logger.Config   `toml:"logger"`
 }
 
 type UserRaw struct {
