@@ -27,7 +27,7 @@ type Manager struct {
 	requests              <-chan []database.Log
 	bitVotes              <-chan payload.Round
 	signingPolicies       <-chan []shared.VotersData
-	signingPolicyStorage  *policy.SigningPolicyStorage
+	signingPolicyStorage  *policy.Storage
 	attestationTypeConfig config.AttestationTypes
 	queues                priorityQueues
 }
@@ -222,15 +222,16 @@ func (m *Manager) OnSigningPolicy(data shared.VotersData) error {
 	return err
 }
 
+// VotersDataCheck checks consistency of votersData.
 func VotersDataCheck(data shared.VotersData) error {
 	if len(data.Policy.Voters) != len(data.Policy.Weights) {
 		return errors.New("policy error: signing addresses and weights do not match")
 	}
 	if len(data.SubmitToSigningAddress) != len(data.Policy.Voters) {
-		logger.Error("policy error: submit to signing addresses map incomplete or matching submission addresses")
+		return errors.New("policy error: submit to signing addresses map incomplete or matching submission addresses")
 	}
 	if len(utils.Invert(data.SubmitToSigningAddress)) != len(data.Policy.Voters) {
-		logger.Error("policy error: matching signing policy addresses")
+		return errors.New("policy error: matching signing policy addresses")
 	}
 
 	return nil

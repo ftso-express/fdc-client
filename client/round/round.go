@@ -7,7 +7,7 @@ import (
 
 	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/merkle"
 	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/payload"
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/policy"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/voters"
 
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
 	bitvotes "gitlab.com/flarenetwork/fdc/fdc-client/client/attestation/bitVotes"
@@ -37,12 +37,12 @@ type Round struct {
 	bitVoteCheckList             map[common.Address]*bitvotes.WeightedBitVote
 	ConsensusCalculationFinished bool
 	ConsensusBitVote             bitvotes.BitVote
-	voterSet                     *policy.VoterSet
+	voterSet                     *voters.Set
 	merkleTree                   merkle.Tree
 }
 
 // New returns a pointer to a new round with ID and voterSet.
-func New(ID uint32, voterSet *policy.VoterSet) *Round {
+func New(ID uint32, voterSet *voters.Set) *Round {
 	return &Round{
 		ID:                           ID,
 		voterSet:                     voterSet,

@@ -5,7 +5,7 @@ import (
 	"math/big"
 
 	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/policy"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/voters"
 
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/round"
@@ -131,7 +131,7 @@ func TestAddAttestation(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		round := round.New(1, policy.NewVoterSet(nil, nil, nil))
+		round := round.New(1, voters.NewSet(nil, nil, nil))
 
 		for j, request := range test.requests {
 			att, err := attestation.AttestationFromDatabaseLog(request)

@@ -6,8 +6,8 @@ import (
 	"math/big"
 	"testing"
 
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/policy"
 	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/storage"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/voters"
 
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
 	bitvotes "gitlab.com/flarenetwork/fdc/fdc-client/client/attestation/bitVotes"
@@ -39,7 +39,7 @@ func makeController(t *testing.T) server.DAController {
 
 	require.NoError(t, err)
 
-	round := round.New(1, policy.NewVoterSet(nil, nil, nil))
+	round := round.New(1, voters.NewSet(nil, nil, nil))
 	round.Attestations = append(round.Attestations, &attestation.Attestation{
 		Request:           request,
 		Response:          response,

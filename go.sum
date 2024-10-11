@@ -270,10 +270,8 @@ github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673/go.mod h1:N3UwUGtsr
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo0=
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
-gitlab.com/flarenetwork/libs/go-flare-common v0.0.0-20241009141327-aadb463b21a0 h1:nfMUSFC7+cb2b+PAjMuAh60f08fekkkGsrZeONkLTII=
-gitlab.com/flarenetwork/libs/go-flare-common v0.0.0-20241009141327-aadb463b21a0/go.mod h1:NDYj1SfTeXILD79DaEKwDPs9LSsKyzayB3ABB+JBudc=
-gitlab.com/flarenetwork/libs/go-flare-common v0.0.0-20241010114454-b24b60b2e269 h1:vExWmTK9q+feDfOYX9b/Zua5Nap/RvocQPptpPwygT4=
-gitlab.com/flarenetwork/libs/go-flare-common v0.0.0-20241010114454-b24b60b2e269/go.mod h1:NDYj1SfTeXILD79DaEKwDPs9LSsKyzayB3ABB+JBudc=
+gitlab.com/flarenetwork/libs/go-flare-common v0.0.0-20241011090602-6ebdb15ebd47 h1:elCqH53FYi/9mt9+lkdbCJa88eGn/1WM3/C5ff8tMUU=
+gitlab.com/flarenetwork/libs/go-flare-common v0.0.0-20241011090602-6ebdb15ebd47/go.mod h1:NDYj1SfTeXILD79DaEKwDPs9LSsKyzayB3ABB+JBudc=
 go.uber.org/goleak v1.3.0 h1:2K3zAYmnTNqV73imy9J1T3WC+gmCePx2hEGkimedGto=
 go.uber.org/goleak v1.3.0/go.mod h1:CoHD4mav9JJNrW/WLlf7HGZPjdw8EucARQHekz1X6bE=
 go.uber.org/multierr v1.11.0 h1:blXXJkSxSSfBVBlC76pxqeO+LN3aDfLQo+309xJstO0=

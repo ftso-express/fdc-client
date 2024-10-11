@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/policy"
 	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/storage"
+	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/voters"
 
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
 	bitvotes "gitlab.com/flarenetwork/fdc/fdc-client/client/attestation/bitVotes"
@@ -71,7 +71,7 @@ func TestServer(t *testing.T) {
 	abi, err := config.ArgumentsFromABI(abiFile)
 	require.NoError(t, err)
 
-	round := round.New(votingRoundID, policy.NewVoterSet(nil, nil, nil))
+	round := round.New(votingRoundID, voters.NewSet(nil, nil, nil))
 	round.Attestations = append(round.Attestations, &attestation.Attestation{
 		Request:     request,
 		Response:    response,
