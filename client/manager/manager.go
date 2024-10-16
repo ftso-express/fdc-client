@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/payload"
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/policy"
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/storage"
+	"github.com/flare-foundation/go-flare-common/pkg/database"
+	"github.com/flare-foundation/go-flare-common/pkg/logger"
+	"github.com/flare-foundation/go-flare-common/pkg/payload"
+	"github.com/flare-foundation/go-flare-common/pkg/policy"
+	"github.com/flare-foundation/go-flare-common/pkg/storage"
 
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"

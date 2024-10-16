@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
+	"github.com/flare-foundation/go-flare-common/pkg/logger"
 
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"

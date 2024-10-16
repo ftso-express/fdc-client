@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"math/big"
 
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/voters"
+	"github.com/flare-foundation/go-flare-common/pkg/database"
+	"github.com/flare-foundation/go-flare-common/pkg/voters"
 
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/round"

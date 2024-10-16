@@ -5,9 +5,9 @@ import (
 	"math/big"
 	"sort"
 
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/merkle"
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/payload"
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/voters"
+	"github.com/flare-foundation/go-flare-common/pkg/merkle"
+	"github.com/flare-foundation/go-flare-common/pkg/payload"
+	"github.com/flare-foundation/go-flare-common/pkg/voters"
 
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
 	bitvotes "gitlab.com/flarenetwork/fdc/fdc-client/client/attestation/bitVotes"

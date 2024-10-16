@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/merkle"
+	"github.com/flare-foundation/go-flare-common/pkg/merkle"
 
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
 )

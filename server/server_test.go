@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/storage"
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/voters"
+	"github.com/flare-foundation/go-flare-common/pkg/storage"
+	"github.com/flare-foundation/go-flare-common/pkg/voters"
 
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
 	bitvotes "gitlab.com/flarenetwork/fdc/fdc-client/client/attestation/bitVotes"

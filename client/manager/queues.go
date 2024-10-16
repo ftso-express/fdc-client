@@ -3,8 +3,8 @@ package manager
 import (
 	"context"
 
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/queue"
+	"github.com/flare-foundation/go-flare-common/pkg/logger"
+	"github.com/flare-foundation/go-flare-common/pkg/queue"
 
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"

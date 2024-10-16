@@ -10,8 +10,8 @@ import (
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/collector"
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
 
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/payload"
+	"github.com/flare-foundation/go-flare-common/pkg/database"
+	"github.com/flare-foundation/go-flare-common/pkg/payload"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"

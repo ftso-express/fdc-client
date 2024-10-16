@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/contracts/fdchub"
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
+	"github.com/flare-foundation/go-flare-common/pkg/contracts/fdchub"
+	"github.com/flare-foundation/go-flare-common/pkg/logger"
 
 	bitvotes "gitlab.com/flarenetwork/fdc/fdc-client/client/attestation/bitVotes"
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/collector"

@@ -7,8 +7,8 @@ import (
 	"encoding/hex"
 	"math/big"
 
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/contracts/relay"
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
+	"github.com/flare-foundation/go-flare-common/pkg/contracts/relay"
+	"github.com/flare-foundation/go-flare-common/pkg/database"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"

@@ -3,7 +3,7 @@ package collector_test
 import (
 	"testing"
 
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
+	"github.com/flare-foundation/go-flare-common/pkg/database"
 
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/collector"
 

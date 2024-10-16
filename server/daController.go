@@ -6,9 +6,9 @@ import (
 	"errors"
 	"strconv"
 
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/restserver"
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/storage"
+	"github.com/flare-foundation/go-flare-common/pkg/logger"
+	"github.com/flare-foundation/go-flare-common/pkg/restserver"
+	"github.com/flare-foundation/go-flare-common/pkg/storage"
 
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/round"
 )

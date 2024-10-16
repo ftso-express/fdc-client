@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
+	"github.com/flare-foundation/go-flare-common/pkg/logger"
 
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/collector"
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"

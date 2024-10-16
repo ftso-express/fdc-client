@@ -48,7 +48,7 @@ func readToml[C any](filePath string) (C, error) {
 
 	err = toml.Unmarshal(file, &config)
 	if err != nil {
-		return config, fmt.Errorf("failed marshaling file %s with: %s", filePath, err)
+		return config, fmt.Errorf("failed unmarshaling file %s with: %s", filePath, err)
 	}
 
 	return config, nil

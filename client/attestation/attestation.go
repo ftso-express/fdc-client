@@ -9,10 +9,10 @@ import (
 	"math"
 	"math/big"
 
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/contracts/fdchub"
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/database"
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/events"
-	"gitlab.com/flarenetwork/libs/go-flare-common/pkg/logger"
+	"github.com/flare-foundation/go-flare-common/pkg/contracts/fdchub"
+	"github.com/flare-foundation/go-flare-common/pkg/database"
+	"github.com/flare-foundation/go-flare-common/pkg/events"
+	"github.com/flare-foundation/go-flare-common/pkg/logger"
 
 	bitvotes "gitlab.com/flarenetwork/fdc/fdc-client/client/attestation/bitVotes"
 	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
