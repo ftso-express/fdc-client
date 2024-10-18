@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
+	"github.com/flare-foundation/fdc-client/client/attestation"
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"

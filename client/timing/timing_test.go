@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
+	"github.com/flare-foundation/fdc-client/client/timing"
 
 	"github.com/stretchr/testify/require"
 )

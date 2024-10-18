@@ -1,4 +1,4 @@
-module gitlab.com/flarenetwork/fdc/fdc-client
+module github.com/flare-foundation/fdc-client
 
 go 1.23.0
 

@@ -13,10 +13,10 @@ import (
 	"github.com/flare-foundation/go-flare-common/pkg/contracts/fdchub"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 
-	bitvotes "gitlab.com/flarenetwork/fdc/fdc-client/client/attestation/bitVotes"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/collector"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
+	bitvotes "github.com/flare-foundation/fdc-client/client/attestation/bitVotes"
+	"github.com/flare-foundation/fdc-client/client/collector"
+	"github.com/flare-foundation/fdc-client/client/config"
+	"github.com/flare-foundation/fdc-client/client/timing"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"

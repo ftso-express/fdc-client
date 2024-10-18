@@ -13,12 +13,12 @@ import (
 	"github.com/flare-foundation/go-flare-common/pkg/storage"
 	"github.com/flare-foundation/go-flare-common/pkg/voters"
 
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
-	bitvotes "gitlab.com/flarenetwork/fdc/fdc-client/client/attestation/bitVotes"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/round"
-	"gitlab.com/flarenetwork/fdc/fdc-client/server"
-	"gitlab.com/flarenetwork/fdc/fdc-client/tests/mocks"
+	"github.com/flare-foundation/fdc-client/client/attestation"
+	bitvotes "github.com/flare-foundation/fdc-client/client/attestation/bitVotes"
+	"github.com/flare-foundation/fdc-client/client/config"
+	"github.com/flare-foundation/fdc-client/client/round"
+	"github.com/flare-foundation/fdc-client/server"
+	"github.com/flare-foundation/fdc-client/tests/mocks"
 
 	"github.com/bradleyjkemp/cupaloy"
 	"github.com/ethereum/go-ethereum/common"

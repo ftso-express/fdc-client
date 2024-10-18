@@ -14,9 +14,9 @@ import (
 	"github.com/flare-foundation/go-flare-common/pkg/events"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 
-	bitvotes "gitlab.com/flarenetwork/fdc/fdc-client/client/attestation/bitVotes"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
+	bitvotes "github.com/flare-foundation/fdc-client/client/attestation/bitVotes"
+	"github.com/flare-foundation/fdc-client/client/config"
+	"github.com/flare-foundation/fdc-client/client/timing"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"

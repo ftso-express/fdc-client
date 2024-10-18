@@ -11,12 +11,12 @@ import (
 	"github.com/flare-foundation/go-flare-common/pkg/policy"
 	"github.com/flare-foundation/go-flare-common/pkg/storage"
 
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/round"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/shared"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/utils"
+	"github.com/flare-foundation/fdc-client/client/attestation"
+	"github.com/flare-foundation/fdc-client/client/config"
+	"github.com/flare-foundation/fdc-client/client/round"
+	"github.com/flare-foundation/fdc-client/client/shared"
+	"github.com/flare-foundation/fdc-client/client/timing"
+	"github.com/flare-foundation/fdc-client/client/utils"
 
 	"github.com/pkg/errors"
 )
@@ -91,8 +91,6 @@ func (m *Manager) Run(ctx context.Context) {
 			}
 
 		case bitVotesForRound := <-m.bitVotes:
-			logger.Debugf("Received %d bitVotes for round %d", len(bitVotesForRound.Messages), bitVotesForRound.ID)
-
 			for i := range bitVotesForRound.Messages {
 				err := m.OnBitVote(bitVotesForRound.Messages[i])
 				if err != nil {

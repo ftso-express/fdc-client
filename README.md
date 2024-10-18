@@ -4,19 +4,20 @@
 
 # Flare Data Connector Client
 
-Flare Data Connector client supports tha attestation process. It does the following tasks:
+Flare Data Connector client supports tha attestation process.
+It does the following tasks:
 
 -   Queries Flare C-Chain indexer for signing policies, attestation requests, and bitVotes.
 -   Assigns the attestation requests to the correct voting rounds and begins their verification process.
 -   Provides bitVote for each round.
 -   Computes consensus bitVote for each round.
--   For each round, provides Merkle root of Merkle tree build on hashes of confirmed attestations.
+-   For each round, provides Merkle root of Merkle tree build on hashes of the confirmed attestations.
 
 The client has no direct interactions with the Flare blockchain/node. The data is read through C-Chain indexer and submitted through Flare System Client.
 
 ## Protocol
 
-Link to specs (TODO)
+See [whitepaper](https://flare.network/wp-content/uploads/FDC_WP_171024_02.pdf).
 
 ## Tests
 
@@ -34,7 +35,7 @@ The configurations are set in `userConfig.toml` file in `configs` folder.
 # options are: "coston", "songbird", "coston2", "flare"
 chain = <chainName>
 
-protocolID = <protocolID>
+protocol_id = <protocolID>
 ```
 
 ### C-chain Indexer
@@ -64,6 +65,8 @@ api_keys = ["12345", "123456"]
 title = "FDC protocol data provider API"
 fsp_sub_router_title = "FDC protocol data provider for FSP client"
 fsp_sub_router_path = "/fsp"
+da_sub_router_title = "DA endpoints"
+da_sub_router_path = "/da"
 version = "0.0.0"
 swagger_path = "/api-doc"
 

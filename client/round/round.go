@@ -9,9 +9,9 @@ import (
 	"github.com/flare-foundation/go-flare-common/pkg/payload"
 	"github.com/flare-foundation/go-flare-common/pkg/voters"
 
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
-	bitvotes "gitlab.com/flarenetwork/fdc/fdc-client/client/attestation/bitVotes"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/utils"
+	"github.com/flare-foundation/fdc-client/client/attestation"
+	bitvotes "github.com/flare-foundation/fdc-client/client/attestation/bitVotes"
+	"github.com/flare-foundation/fdc-client/client/utils"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

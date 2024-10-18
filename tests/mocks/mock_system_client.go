@@ -10,9 +10,9 @@ import (
 
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
-	"gitlab.com/flarenetwork/fdc/fdc-client/server"
+	"github.com/flare-foundation/fdc-client/client/config"
+	"github.com/flare-foundation/fdc-client/client/timing"
+	"github.com/flare-foundation/fdc-client/server"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"

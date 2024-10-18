@@ -40,7 +40,7 @@ test:
     before_script:
         - go get github.com/boumenot/gocover-cobertura
     script:
-        - go test -v -coverpkg=gitlab.com/flarenetwork/fdc/fdc-client/... -coverprofile=${COVERAGE_FILE} -covermode count ./...
+        - go test -v -coverpkg=github.com/flare-foundation/fdc-client/... -coverprofile=${COVERAGE_FILE} -covermode count ./...
         - go tool cover -func=${COVERAGE_FILE}
         - go run github.com/boumenot/gocover-cobertura < ${COVERAGE_FILE} > ${COBERTURA_FILE}
     artifacts:

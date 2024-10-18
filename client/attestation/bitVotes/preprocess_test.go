@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"testing"
 
-	bitvotes "gitlab.com/flarenetwork/fdc/fdc-client/client/attestation/bitVotes"
+	bitvotes "github.com/flare-foundation/fdc-client/client/attestation/bitVotes"
 
 	"github.com/stretchr/testify/require"
 )

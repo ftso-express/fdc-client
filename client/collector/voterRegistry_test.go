@@ -5,7 +5,7 @@ import (
 
 	"github.com/flare-foundation/go-flare-common/pkg/database"
 
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/collector"
+	"github.com/flare-foundation/fdc-client/client/collector"
 
 	"github.com/stretchr/testify/require"
 )

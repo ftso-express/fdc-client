@@ -7,9 +7,9 @@ import (
 	"github.com/flare-foundation/go-flare-common/pkg/database"
 	"github.com/flare-foundation/go-flare-common/pkg/voters"
 
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/round"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/utils"
+	"github.com/flare-foundation/fdc-client/client/attestation"
+	"github.com/flare-foundation/fdc-client/client/round"
+	"github.com/flare-foundation/fdc-client/client/utils"
 
 	"testing"
 

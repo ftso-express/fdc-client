@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"slices"
 
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/utils"
+	"github.com/flare-foundation/fdc-client/client/utils"
 )
 
 type FilterResults struct {

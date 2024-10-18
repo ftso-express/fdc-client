@@ -11,8 +11,8 @@ import (
 	"github.com/flare-foundation/go-flare-common/pkg/restserver"
 	"github.com/flare-foundation/go-flare-common/pkg/storage"
 
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/round"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
+	"github.com/flare-foundation/fdc-client/client/round"
+	"github.com/flare-foundation/fdc-client/client/timing"
 )
 
 type FDCProtocolProviderController struct {

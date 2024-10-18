@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/collector"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
+	"github.com/flare-foundation/fdc-client/client/collector"
+	"github.com/flare-foundation/fdc-client/client/timing"
 
 	"github.com/flare-foundation/go-flare-common/pkg/database"
 	"github.com/flare-foundation/go-flare-common/pkg/payload"

@@ -9,7 +9,7 @@ import (
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 	"github.com/flare-foundation/go-flare-common/pkg/policy"
 
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/shared"
+	"github.com/flare-foundation/fdc-client/client/shared"
 
 	"fmt"
 

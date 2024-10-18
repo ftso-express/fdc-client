@@ -6,7 +6,7 @@ import (
 	"github.com/flare-foundation/go-flare-common/pkg/payload"
 	"github.com/flare-foundation/go-flare-common/pkg/storage"
 
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/round"
+	"github.com/flare-foundation/fdc-client/client/round"
 
 	"github.com/ethereum/go-ethereum/common"
 )

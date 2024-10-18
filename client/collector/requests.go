@@ -7,7 +7,7 @@ import (
 	"github.com/flare-foundation/go-flare-common/pkg/database"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
+	"github.com/flare-foundation/fdc-client/client/timing"
 
 	"github.com/ethereum/go-ethereum/common"
 	"gorm.io/gorm"

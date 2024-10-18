@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flare-foundation/fdc-client/client/attestation"
+	"github.com/flare-foundation/fdc-client/client/config"
+	"github.com/flare-foundation/fdc-client/tests/mocks"
 	"github.com/flare-foundation/go-flare-common/pkg/database"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
-	"gitlab.com/flarenetwork/fdc/fdc-client/tests/mocks"
 
 	"github.com/stretchr/testify/require"
 )

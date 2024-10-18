@@ -6,8 +6,8 @@ import (
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 	"github.com/flare-foundation/go-flare-common/pkg/queue"
 
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/attestation"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
+	"github.com/flare-foundation/fdc-client/client/attestation"
+	"github.com/flare-foundation/fdc-client/client/config"
 )
 
 type attestationQueue = queue.PriorityQueue[*attestation.Attestation]

@@ -9,12 +9,12 @@ import (
 
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/collector"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/config"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/manager"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/shared"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
-	"gitlab.com/flarenetwork/fdc/fdc-client/server"
+	"github.com/flare-foundation/fdc-client/client/collector"
+	"github.com/flare-foundation/fdc-client/client/config"
+	"github.com/flare-foundation/fdc-client/client/manager"
+	"github.com/flare-foundation/fdc-client/client/shared"
+	"github.com/flare-foundation/fdc-client/client/timing"
+	"github.com/flare-foundation/fdc-client/server"
 )
 
 const (

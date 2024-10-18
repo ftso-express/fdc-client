@@ -9,8 +9,8 @@ import (
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 	"github.com/flare-foundation/go-flare-common/pkg/policy"
 
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/shared"
-	"gitlab.com/flarenetwork/fdc/fdc-client/client/timing"
+	"github.com/flare-foundation/fdc-client/client/shared"
+	"github.com/flare-foundation/fdc-client/client/timing"
 
 	"github.com/ethereum/go-ethereum/common"
 	"gorm.io/gorm"
