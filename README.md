@@ -134,6 +134,8 @@ The addresses must be specified in the systemConfig file.
 submit_contract = "0x2cA6571Daa15ce734Bbd0Bf27D5C9D16787fc33f"
 relay_contract = "0x32D46A1260BB2D8C9d5Ab1C9bBd7FF7D7CfaabCC"
 fdc_contract = "0xCf6798810Bc8C0B803121405Fee2A5a9cc0CA5E5"
+voter_registry_contract = "0xE2c06DF29d175Aa0EcfcD10134eB96f8C94448A3"
+
 ```
 
 The timestamp of the start of the first reward epoch (T0) and length of reward epoch have to be specified.
@@ -143,10 +145,6 @@ The timestamp of the start of the first reward epoch (T0) and length of reward e
 t0 = 1658429955 # in seconds
 reward_epoch_length = 240 # in voting rounds
 ```
-
-### ABIGEN
-
-For more info follow this [tutorial](https://geth.ethereum.org/docs/tools/abigen)
 
 ### Currently supported types and sources:
 
