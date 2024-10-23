@@ -36,7 +36,7 @@ topic = "0x91d0280e969157fc6c5b8f952f237b03d934b18534dafcac839075bbc33522f8"
 
 
 [[indexer.collect_logs]]
-contract_address = "0xb682dEEf4f8e298d86bFc3e21f50c675151FB974" # FdcHub
+contract_address = "0x1750499D05Ed1674d822430FB960d5F6731fDf64" # FdcHub
 topic = "undefined"
 
 [[indexer.collect_logs]]

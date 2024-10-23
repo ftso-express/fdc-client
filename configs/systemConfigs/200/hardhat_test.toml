@@ -2,11 +2,11 @@
 [addresses]
 submit_contract = "0x18b9306737eaf6E8FC8e737F488a1AE077b18053"
 relay_contract = "0x5A0773Ff307Bf7C71a832dBB5312237fD3437f9F"
-fdc_contract = "0xb682dEEf4f8e298d86bFc3e21f50c675151FB974"
+fdc_contract = "0x1750499D05Ed1674d822430FB960d5F6731fDf64"
 voter_registry_contract = "0xB00cC45B4a7d3e1FEE684cFc4417998A1c183e6d"
 
 [timing]
-t0 = 1724394673
+t0 = 1729652370
 t0_reward_delay = 20000
 reward_epoch_length = 5
 collect_duration_sec = 20

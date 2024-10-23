@@ -4,8 +4,8 @@
 
 ### Simulate chain and Flare System
 
-Using the repository `flare-smart-contracts-v2`, branch `fdc`
-found [here](https://gitlab.com/flarenetwork/flare-smart-contracts-v2/-/tree/fdc?ref_type=heads)
+Using the repository `flare-smart-contracts-v2`
+found [here](https://gitlab.com/flarenetwork/flare-smart-contracts-v2)
 one can deploy all the Fast Updates contracts
 together with the whole Flare system and voter repository. Navigate to the
 repository and run
