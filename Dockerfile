@@ -16,7 +16,13 @@ RUN go build -o /app/fdc-client main/main.go
 FROM debian:latest AS execution
 
 WORKDIR /app
+
+# binary
 COPY --from=builder /app/fdc-client .
+# abis and system configs
+COPY --from=builder /build/configs/abis /app/configs/abis
+COPY --from=builder /build/configs/systemConfigs /app/configs/systemConfigs
+# ssl certificates
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 
