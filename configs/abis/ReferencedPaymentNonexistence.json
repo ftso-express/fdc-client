@@ -51,9 +51,19 @@
           "internalType": "bytes32",
           "name": "standardPaymentReference",
           "type": "bytes32"
+        },
+        {
+          "internalType": "bool",
+          "name": "checkSourceAddresses",
+          "type": "bool"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "sourceAddressesRoot",
+          "type": "bytes32"
         }
       ],
-      "internalType": "struct ReferencedPaymentNonexistence.RequestBody",
+      "internalType": "struct IReferencedPaymentNonexistence.RequestBody",
       "name": "requestBody",
       "type": "tuple"
     },
@@ -75,12 +85,12 @@
           "type": "uint64"
         }
       ],
-      "internalType": "struct ReferencedPaymentNonexistence.ResponseBody",
+      "internalType": "struct IReferencedPaymentNonexistence.ResponseBody",
       "name": "responseBody",
       "type": "tuple"
     }
   ],
-  "internalType": "struct ReferencedPaymentNonexistence.Response",
-  "name": "data",
+  "internalType": "struct IReferencedPaymentNonexistence.Response",
+  "name": "_response",
   "type": "tuple"
 }
