@@ -66,6 +66,6 @@
         }
     ],
     "internalType": "struct IConfirmedBlockHeightExists.Response",
-    "name": "_response",
+    "name": "data",
     "type": "tuple"
 }

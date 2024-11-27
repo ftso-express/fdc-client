@@ -116,6 +116,6 @@
         }
     ],
     "internalType": "struct IPayment.Response",
-    "name": "_response",
+    "name": "data",
     "type": "tuple"
 }
