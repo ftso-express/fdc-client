@@ -29,6 +29,8 @@ const (
 	requestListenerInterval       = 2 * time.Second
 	databasePollTime              = 2 * time.Second
 	bitVoteHeadStart              = 5 * time.Second
+
+	syncRetry = 10
 )
 
 var signingPolicyInitializedEventSel common.Hash
@@ -134,7 +136,7 @@ func (c *Collector) Run(ctx context.Context) {
 // WaitForDBToSync waits for db to sync. After 10 unsuccessful attempts it panics.
 func WaitForDBToSync(ctx context.Context, db *gorm.DB) {
 	k := 0
-	for k < 10 {
+	for k < syncRetry {
 		if k > 0 {
 			logger.Debugf("Checking database for %v/10 time", k)
 		}
@@ -168,7 +170,7 @@ func WaitForDBToSync(ctx context.Context, db *gorm.DB) {
 
 	outOfSync := time.Since(dbTime)
 	if outOfSync > outOfSyncTolerance {
-		logger.Panic("Database out of sync after 10 attempts. Delayed for %v", outOfSync)
+		logger.Panic("Database out of sync after %v attempts. Delayed for %v", syncRetry, outOfSync)
 	} else {
 		logger.Debug("Database in sync")
 	}
