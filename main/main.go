@@ -48,7 +48,7 @@ func main() {
 
 	// Start attestation client collector
 	collector := collector.New(userConfigRaw, systemConfig, sharedDataPipes)
-	go collector.Run(ctx)
+	collector.Run(ctx)
 
 	// Start attestation client manager
 	manager, err := manager.New(userConfigRaw, attestationTypeConfig, sharedDataPipes)

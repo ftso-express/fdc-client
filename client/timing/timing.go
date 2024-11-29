@@ -4,6 +4,9 @@ import (
 	"fmt"
 )
 
+// RoundIDForTimestamp calculates roundID that is active at timestamp.
+//
+// j-th round is active in [T0 + j * CollectDurationSec, T0 + (j+1)* CollectDurationSec)
 func RoundIDForTimestamp(t uint64) (uint32, error) {
 	if t < Chain.T0 {
 		return 0, fmt.Errorf("timestamp: %d before first round : %d", t, Chain.T0)

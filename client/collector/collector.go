@@ -23,7 +23,9 @@ import (
 
 const (
 	bitVoteOffChainTriggerSeconds = 15
-	outOfSyncTolerance            = 60
+	outOfSyncTolerance            = 15 * time.Second
+	maxSleepTime                  = 10 * time.Minute
+	minSleepTime                  = time.Second
 	requestListenerInterval       = 2 * time.Second
 	databasePollTime              = 2 * time.Second
 	bitVoteHeadStart              = 5 * time.Second
@@ -116,22 +118,58 @@ func New(user *config.UserRaw, system *config.System, sharedDataPipes *shared.Da
 	return &runner
 }
 
-// Run starts SigningPolicyInitializedListener, BitVoteListener, and AttestationRequestListener,
-// assigns their channels to the RoundManager, and starts the RoundManager.
+// Run starts SigningPolicyInitializedListener, BitVoteListener, and AttestationRequestListener in go routines.
 func (c *Collector) Run(ctx context.Context) {
-	state, err := database.FetchState(ctx, c.DB, nil)
-	if err != nil {
-		logger.Panic("database error:", err)
-	}
 
-	if k := time.Now().Unix() - int64(state.BlockTimestamp); k > outOfSyncTolerance {
-		logger.Panicf("database not up to date. lags for %d minutes", k/60)
-	}
+	WaitForDBToSync(ctx, c.DB)
 
 	go SigningPolicyInitializedListener(ctx, c.DB, c.RelayContractAddress, c.VoterRegistryContractAddress, c.SigningPolicies)
 	go AttestationRequestListener(ctx, c.DB, c.FdcContractAddress, requestListenerInterval, c.Requests)
 
 	chooseTrigger := make(chan uint32)
 	go BitVoteListener(ctx, c.DB, c.SubmitContractAddress, Submit2FuncSel, c.ProtocolID, chooseTrigger, c.BitVotes)
-	PrepareChooseTrigger(ctx, chooseTrigger, c.DB)
+	go PrepareChooseTrigger(ctx, chooseTrigger, c.DB)
+}
+
+// WaitForDBToSync waits for db to sync. After 10 unsuccessful attempts it panics.
+func WaitForDBToSync(ctx context.Context, db *gorm.DB) {
+	k := 0
+	for k < 10 {
+		if k > 0 {
+			logger.Debugf("Checking database for %v/10 time", k)
+		}
+		state, err := database.FetchState(ctx, db, nil)
+		if err != nil {
+			logger.Panic("database error:", err)
+		}
+
+		dbTime := time.Unix(int64(state.BlockTimestamp), 0)
+
+		outOfSync := time.Since(dbTime)
+		if outOfSync < outOfSyncTolerance {
+			logger.Debug("Database in sync")
+			return
+		}
+
+		logger.Warnf("Database out of sync. Delayed for %v", outOfSync)
+		sleepTime := min(maxSleepTime, outOfSync/100)
+		sleepTime = max(sleepTime, minSleepTime)
+		logger.Warnf("Sleeping for %v", sleepTime)
+		k++
+		time.Sleep(sleepTime)
+	}
+
+	state, err := database.FetchState(ctx, db, nil)
+	if err != nil {
+		logger.Panic("database error:", err)
+	}
+
+	dbTime := time.Unix(int64(state.BlockTimestamp), 0)
+
+	outOfSync := time.Since(dbTime)
+	if outOfSync > outOfSyncTolerance {
+		logger.Panic("Database out of sync after 10 attempts. Delayed for %v", outOfSync)
+	} else {
+		logger.Debug("Database in sync")
+	}
 }
