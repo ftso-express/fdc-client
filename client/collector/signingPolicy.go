@@ -92,7 +92,7 @@ func spiTargetedListener(
 		untilStart := time.Until(time.Unix(int64(expectedSPIStart)-int64(timing.Chain.CollectDurationSec)*startOffset, 0)) // head start for querying of signing policy
 		timer := time.NewTimer(untilStart)
 
-		logger.Infof("next signing policy expected in %s hours", untilStart)
+		logger.Infof("next signing policy expected in %s", untilStart)
 		select {
 		case <-timer.C:
 			logger.Debug("querying for next signing policy")
