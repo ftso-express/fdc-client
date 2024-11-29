@@ -25,12 +25,12 @@ const (
 	bitVoteOffChainTriggerSeconds = 15
 	outOfSyncTolerance            = 15 * time.Second
 	maxSleepTime                  = 10 * time.Minute
-	minSleepTime                  = time.Second
+	minSleepTime                  = 5 * time.Second
 	requestListenerInterval       = 2 * time.Second
 	databasePollTime              = 2 * time.Second
 	bitVoteHeadStart              = 5 * time.Second
 
-	syncRetry = 10
+	syncRetry = 30
 )
 
 var signingPolicyInitializedEventSel common.Hash
@@ -138,7 +138,7 @@ func WaitForDBToSync(ctx context.Context, db *gorm.DB) {
 	k := 0
 	for k < syncRetry {
 		if k > 0 {
-			logger.Debugf("Checking database for %v/10 time", k)
+			logger.Debugf("Checking database for %v/%v time", k, syncRetry)
 		}
 		state, err := database.FetchState(ctx, db, nil)
 		if err != nil {
@@ -161,6 +161,7 @@ func WaitForDBToSync(ctx context.Context, db *gorm.DB) {
 		time.Sleep(sleepTime)
 	}
 
+	logger.Warnf("Checking database for the final time")
 	state, err := database.FetchState(ctx, db, nil)
 	if err != nil {
 		logger.Panic("database error:", err)
