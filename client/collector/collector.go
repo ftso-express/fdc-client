@@ -154,7 +154,7 @@ func WaitForDBToSync(ctx context.Context, db *gorm.DB) {
 		}
 
 		logger.Warnf("Database out of sync. Delayed for %v", outOfSync)
-		sleepTime := min(maxSleepTime, outOfSync/100)
+		sleepTime := min(maxSleepTime, outOfSync/20)
 		sleepTime = max(sleepTime, minSleepTime)
 		logger.Warnf("Sleeping for %v", sleepTime)
 		k++
