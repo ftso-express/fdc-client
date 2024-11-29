@@ -133,7 +133,7 @@ func (c *Collector) Run(ctx context.Context) {
 	go PrepareChooseTrigger(ctx, chooseTrigger, c.DB)
 }
 
-// WaitForDBToSync waits for db to sync. After 10 unsuccessful attempts it panics.
+// WaitForDBToSync waits for db to sync. After many unsuccessful attempts it panics.
 func WaitForDBToSync(ctx context.Context, db *gorm.DB) {
 	k := 0
 	for k < syncRetry {
@@ -171,7 +171,7 @@ func WaitForDBToSync(ctx context.Context, db *gorm.DB) {
 
 	outOfSync := time.Since(dbTime)
 	if outOfSync > outOfSyncTolerance {
-		logger.Panic("Database out of sync after %v attempts. Delayed for %v", syncRetry, outOfSync)
+		logger.Panic("Database out of sync after %v retries. Delayed for %v", syncRetry, outOfSync)
 	} else {
 		logger.Debug("Database in sync")
 	}
