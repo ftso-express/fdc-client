@@ -47,15 +47,16 @@ func main() {
 	sharedDataPipes := shared.NewDataPipes()
 
 	// Start attestation client collector
-	collector := collector.New(userConfigRaw, systemConfig, sharedDataPipes)
-	collector.Run(ctx)
+	col := collector.New(userConfigRaw, systemConfig, sharedDataPipes)
+	col.WaitForDBToSync(ctx)
+	go col.Run(ctx)
 
 	// Start attestation client manager
-	manager, err := manager.New(userConfigRaw, attestationTypeConfig, sharedDataPipes)
+	mngr, err := manager.New(userConfigRaw, attestationTypeConfig, sharedDataPipes)
 	if err != nil {
 		logger.Panicf("failed to create the manager: %s", err)
 	}
-	go manager.Run(ctx)
+	go mngr.Run(ctx)
 
 	// Run attestation client server
 	srv := server.New(&sharedDataPipes.Rounds, userConfigRaw.ProtocolID, userConfigRaw.RestServer)

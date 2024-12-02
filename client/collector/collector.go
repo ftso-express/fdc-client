@@ -123,8 +123,6 @@ func New(user *config.UserRaw, system *config.System, sharedDataPipes *shared.Da
 // Run starts SigningPolicyInitializedListener, BitVoteListener, and AttestationRequestListener in go routines.
 func (c *Collector) Run(ctx context.Context) {
 
-	WaitForDBToSync(ctx, c.DB)
-
 	go SigningPolicyInitializedListener(ctx, c.DB, c.RelayContractAddress, c.VoterRegistryContractAddress, c.SigningPolicies)
 	go AttestationRequestListener(ctx, c.DB, c.FdcContractAddress, requestListenerInterval, c.Requests)
 
@@ -134,13 +132,13 @@ func (c *Collector) Run(ctx context.Context) {
 }
 
 // WaitForDBToSync waits for db to sync. After many unsuccessful attempts it panics.
-func WaitForDBToSync(ctx context.Context, db *gorm.DB) {
+func (c *Collector) WaitForDBToSync(ctx context.Context) {
 	k := 0
 	for k < syncRetry {
 		if k > 0 {
 			logger.Debugf("Checking database for %v/%v time", k, syncRetry)
 		}
-		state, err := database.FetchState(ctx, db, nil)
+		state, err := database.FetchState(ctx, c.DB, nil)
 		if err != nil {
 			logger.Panic("database error:", err)
 		}
@@ -162,7 +160,7 @@ func WaitForDBToSync(ctx context.Context, db *gorm.DB) {
 	}
 
 	logger.Warnf("Checking database for the final time")
-	state, err := database.FetchState(ctx, db, nil)
+	state, err := database.FetchState(ctx, c.DB, nil)
 	if err != nil {
 		logger.Panic("database error:", err)
 	}
