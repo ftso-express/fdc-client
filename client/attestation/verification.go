@@ -3,6 +3,7 @@ package attestation
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math/big"
 	"slices"
 
@@ -28,7 +29,7 @@ type Request []byte
 
 type Response []byte
 
-// IsStaticType checks whether bytes that represent abi.encoded response that encodes an instance of static type.
+// IsStaticType checks whether bytes that represent abi.encoded response encode an instance of static type.
 // abi.encode(X) = enc((X)) of X of type T is encoding of tuple (X) of type (T). By specification, enc((X)) = head(X)tail(X).
 // If T is static, head(X) = enc(X) and tail(X) is empty. If T is dynamic, head(X) = bytes32(len(head(X))) = bytes32(32) and tail = enc(X).
 // See https://docs.soliditylang.org/en/latest/abi-spec.html for detailed specification.
@@ -56,7 +57,7 @@ func (r Request) AttestationType() ([32]byte, error) {
 	return res, nil
 }
 
-// Source returns the source of the request (the second 32 bytes).
+// Source returns the source (the second 32 bytes).
 func (r Request) Source() ([32]byte, error) {
 	res := [32]byte{}
 	if len(r) < 96 {
@@ -81,7 +82,8 @@ func (r Request) MIC() (common.Hash, error) {
 }
 
 // ComputeMIC computes Mic from the response.
-// Mic is defined by solidity code abi.encode(response,"Flare") where response is a instance of a struct defined by the attestation type.
+//
+// Mic is defined by solidity code abi.encode(abi.Encode(response,"Flare")) where response is an instance of a struct defined by the attestation type.
 // It is assumed that roundID in the response is set to 0.
 func (r Response) ComputeMIC(args *abi.Arguments) (common.Hash, error) {
 	decoded, err := args.Unpack(r)
@@ -143,6 +145,8 @@ func validLUT(lut, lutLimit, roundStart uint64) bool {
 
 // AddRound sets the roundID in the response (third 32 bytes).
 func (r Response) AddRound(roundID uint32) error {
+	resLength := len(r)
+
 	static, err := IsStaticType(r)
 	if err != nil {
 		return err
@@ -153,7 +157,7 @@ func (r Response) AddRound(roundID uint32) error {
 	roundIDEndByte := 32 * 3
 	commonFieldsLength := 32 * 4
 
-	// if Response is encoded dynamic struct the first 32 bytes are bytes32(32)
+	// if Response is encoded dynamic struct, the first 32 bytes are bytes32(32)
 	if !static {
 		roundIDStartByte += 32
 		roundIDEndByte += 32
@@ -168,8 +172,17 @@ func (r Response) AddRound(roundID uint32) error {
 	roundIDEncoded := binary.BigEndian.AppendUint32(make([]byte, 0), roundID)
 	roundIDSlot := append(make([]byte, 32-len(roundIDEncoded)), roundIDEncoded...)
 
-	_ = slices.Replace(r, roundIDStartByte, roundIDEndByte, roundIDSlot...)
+	// sanity check/unreachable
+	if len(roundIDSlot) != roundIDEndByte-roundIDStartByte {
+		return fmt.Errorf("trying to fit %v bytes into %v bytes", len(roundIDSlot), roundIDEndByte-roundIDStartByte)
+	}
 
+	r = slices.Replace(r, roundIDStartByte, roundIDEndByte, roundIDSlot...)
+
+	// sanity check/unreachable
+	if len(r) != resLength {
+		return fmt.Errorf("length of Response changed at AddRound: before %v, after: %v", resLength, len(r))
+	}
 	return nil
 }
 
