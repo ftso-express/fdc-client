@@ -86,7 +86,7 @@ func EarlierLog(a, b IndexLog) bool {
 	return false
 }
 
-// attestationFromDatabaseLog creates an Attestation from a request event log.
+// attestationFromDatabaseLog creates an Attestation from an attestation request event log.
 func AttestationFromDatabaseLog(request database.Log) (Attestation, error) {
 	requestLog, err := ParseAttestationRequestLog(request)
 	if err != nil {
@@ -243,7 +243,7 @@ func BitVoteFromAttestations(attestations []*Attestation) (bitvotes.BitVote, err
 	bitVector := big.NewInt(0)
 
 	// Max bitVector size for bitVote is fits into 2 bytes (65536 bits)
-	if len(attestations) > 65535 {
+	if len(attestations) > math.MaxUint16 {
 		return bitvotes.BitVote{}, errors.New("more than 65536 attestations")
 	}
 

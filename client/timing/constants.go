@@ -20,6 +20,7 @@ var Chain config.Timing = config.Timing{
 	ChooseDurationSec:  defaultChooseDurationSec,
 }
 
+// Set sets global Chain timing configurations.
 func Set(chainTiming config.Timing) error {
 	if chainTiming.T0 != 0 {
 		Chain.T0 = chainTiming.T0

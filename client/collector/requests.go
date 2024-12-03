@@ -13,16 +13,17 @@ import (
 	"gorm.io/gorm"
 )
 
-// AttestationRequestListener initiates a channel that serves attestation requests events emitted by fdcContractAddress.
+// AttestationRequestListener initiates a channel that serves attestation request events emitted by fdcHub.
 func AttestationRequestListener(
 	ctx context.Context,
 	db *gorm.DB,
-	fdcContractAddress common.Address,
+	fdcHub common.Address,
 	listenerInterval time.Duration,
 	logChan chan<- []database.Log,
 ) {
 	trigger := time.NewTicker(listenerInterval)
 
+	// initial query
 	_, startTimestamp, err := timing.LastCollectPhaseStart(uint64(time.Now().Unix()))
 	if err != nil {
 		logger.Panic("time:", err)
@@ -36,7 +37,7 @@ func AttestationRequestListener(
 	lastQueriedBlock := state.Index
 
 	params := database.LogsParams{
-		Address: fdcContractAddress,
+		Address: fdcHub,
 		Topic0:  AttestationRequestEventSel,
 		From:    int64(startTimestamp),
 		To:      int64(state.Index),
@@ -49,6 +50,7 @@ func AttestationRequestListener(
 		logger.Panic("fetch initial logs error")
 	}
 
+	// add requests to the channel
 	if len(logs) > 0 {
 		select {
 		case logChan <- logs:
@@ -58,6 +60,7 @@ func AttestationRequestListener(
 		}
 	}
 
+	// infinite loop, making query once per listenerInterval from last queried block to the latest confirmed block in indexer db
 	for {
 		select {
 		case <-trigger.C:
@@ -73,7 +76,7 @@ func AttestationRequestListener(
 		}
 
 		params := database.LogsParams{
-			Address: fdcContractAddress,
+			Address: fdcHub,
 			Topic0:  AttestationRequestEventSel,
 			From:    int64(lastQueriedBlock),
 			To:      int64(state.Index),
@@ -89,6 +92,7 @@ func AttestationRequestListener(
 
 		lastQueriedBlock = state.Index
 
+		// add requests to the channel
 		if len(logs) > 0 {
 			select {
 			case logChan <- logs:
@@ -97,6 +101,5 @@ func AttestationRequestListener(
 				return
 			}
 		}
-
 	}
 }

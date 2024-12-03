@@ -23,6 +23,10 @@ type VotersData struct {
 	SubmitToSigningAddress map[common.Address]common.Address
 }
 
+// DataPipes are connection between components of the client.
+//
+//   - Rounds are shared between manager and server
+//   - Channels are shared between collector (send to) and manager (receive from)
 type DataPipes struct {
 	Rounds   storage.Cyclic[uint32, *round.Round] // cyclically cached rounds with buffer roundBuffer.
 	Requests chan []database.Log
@@ -30,6 +34,7 @@ type DataPipes struct {
 	Voters   chan []VotersData
 }
 
+// NewDataPipes created new DataPipes.
 func NewDataPipes() *DataPipes {
 	return &DataPipes{
 		Rounds:   storage.NewCyclic[uint32, *round.Round](roundBuffer),

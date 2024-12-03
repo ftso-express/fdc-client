@@ -12,12 +12,11 @@ import (
 
 type attestationQueue = queue.PriorityQueue[*attestation.Attestation]
 
-type priorityQueues map[string]*attestationQueue
+type attestationQueues map[string]*attestationQueue
 
-// buildQueues builds queues from configurations
-func buildQueues(queuesConfigs config.Queues) priorityQueues {
-
-	queues := make(priorityQueues)
+// buildQueues builds attestation queues from configurations.
+func buildQueues(queuesConfigs config.Queues) attestationQueues {
+	queues := make(attestationQueues)
 
 	for k := range queuesConfigs {
 
@@ -28,7 +27,6 @@ func buildQueues(queuesConfigs config.Queues) priorityQueues {
 	}
 
 	return queues
-
 }
 
 // handler handles dequeued attestation.
@@ -36,8 +34,8 @@ func handler(ctx context.Context, at *attestation.Attestation) error {
 	return at.Handle(ctx)
 }
 
-// runQueues runs all queues at once.
-func runQueues(ctx context.Context, queues priorityQueues) {
+// runQueues runs all attestation queues at once.
+func runQueues(ctx context.Context, queues attestationQueues) {
 	for k := range queues {
 		go func(k string) {
 			run(ctx, queues[k])
@@ -45,7 +43,7 @@ func runQueues(ctx context.Context, queues priorityQueues) {
 	}
 }
 
-// run tracks and handles all dequeued attestations from queue.
+// run tracks and handles all dequeued attestations from a queue.
 func run(ctx context.Context, queue *attestationQueue) {
 	for {
 		err := queue.Dequeue(ctx, handler)
@@ -58,5 +56,4 @@ func run(ctx context.Context, queue *attestationQueue) {
 			return
 		}
 	}
-
 }

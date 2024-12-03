@@ -62,7 +62,7 @@ type Source struct {
 	URL       string
 	APIKey    string
 	LUTLimit  uint64
-	QueueName string
+	QueueName string // name of the queue that manages access to the Source
 }
 
 type sourceBig struct {

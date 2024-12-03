@@ -28,7 +28,7 @@ func ParseAttestationTypes(attTypesConfigUnparsed AttestationTypesUnparsed) (Att
 	return attTypesConfig, nil
 }
 
-// ArgumentsFromABI convert byte encoded json abi into abu.Arguments.
+// ArgumentsFromABI converts byte encoded json ABI into abi.Arguments.
 func ArgumentsFromABI(abiBytes []byte) (abi.Arguments, error) {
 	var arg abi.Argument
 
@@ -59,9 +59,9 @@ func parseSource(sourceConfigBig sourceBig) (Source, error) {
 			QueueName: sourceConfigBig.QueueName,
 		},
 		nil
-
 }
 
+// ParseAttestationType parses attestation type configurations.
 func ParseAttestationType(attTypeConfigUnparsed AttestationTypeUnparsed) (AttestationType, error) {
 	responseArguments, responseAbiString, err := ReadABI(attTypeConfigUnparsed.ABIPath)
 	if err != nil {
@@ -112,5 +112,4 @@ func StringToByte32(str string) ([32]byte, error) {
 	copy(strBytes[:], []byte(str))
 
 	return strBytes, nil
-
 }

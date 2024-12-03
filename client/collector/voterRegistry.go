@@ -76,7 +76,7 @@ func SubmitToSigningPolicyAddress(ctx context.Context, db *gorm.DB, registryCont
 	return submitToSigning, nil
 }
 
-// AddSubmitAddressesToSigningPolicy parses SigningPolicyInitialized event and appends map from submit addresses to signingPolicy addresses.
+// AddSubmitAddressesToSigningPolicy parses SigningPolicyInitialized event, assembles map from submit addresses to signingPolicy addresses, and returns them as VotersData.
 func AddSubmitAddressesToSigningPolicy(ctx context.Context, db *gorm.DB, registryContractAddress common.Address, signingPolicyLog database.Log) (shared.VotersData, error) {
 	data, err := policy.ParseSigningPolicyInitializedEvent(signingPolicyLog)
 	if err != nil {

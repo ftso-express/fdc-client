@@ -24,7 +24,7 @@ func SigningPolicyInitializedListener(
 	registryContractAddress common.Address,
 	votersDataChan chan<- []shared.VotersData,
 ) {
-
+	// initial query
 	params := database.LatestLogsParams{
 		Address: relayContractAddress,
 		Topic0:  signingPolicyInitializedEventSel,
@@ -66,7 +66,7 @@ func SigningPolicyInitializedListener(
 
 // spiTargetedListener that only starts aggressive queries for new signingPolicyInitialized events a bit before the expected emission and stops once it gets one and waits until the next window.
 //
-// spi = signing policy initialized
+// spi = signingPolicyInitialized
 func spiTargetedListener(
 	ctx context.Context,
 	db *gorm.DB,
@@ -82,6 +82,7 @@ func spiTargetedListener(
 	}
 
 	lastInitializedRewardEpochID := lastSigningPolicy.RewardEpochId.Uint64()
+
 	startOffset := int64(10) // Start collecting signing policy event 10 voting epochs before the expected start of the next reward epoch
 	if (timing.Chain.RewardEpochLength/20)+1 < 10 {
 		startOffset = int64(timing.Chain.RewardEpochLength/20) + 1 // Start 1/20 of voting epochs if 1/20 of all voting epochs in reward epoch is less than 10
@@ -96,7 +97,6 @@ func spiTargetedListener(
 		select {
 		case <-timer.C:
 			logger.Debug("querying for next signing policy")
-
 		case <-ctx.Done():
 			logger.Info("spiTargetedListener exiting:", ctx.Err())
 			return
@@ -154,7 +154,8 @@ func queryNextSPI(
 
 			votersDataArray := make([]shared.VotersData, 0)
 			if len(logs) > 1 {
-				logger.Warnf("More than one signing policy initialized event found in the same end of reward epoch query window (reward epoch %d)", latestRewardEpoch)
+				// this should never happen
+				logger.Warnf("More than one signing policy initialized event found in the same reward epoch query window (reward epoch %d)", latestRewardEpoch)
 			}
 			for i := range logs {
 				votersData, err := AddSubmitAddressesToSigningPolicy(ctx, db, registryContractAddress, logs[i])
@@ -175,7 +176,6 @@ func queryNextSPI(
 		select {
 		case <-ticker.C:
 			logger.Debug("starting next queryNextSPI iteration")
-
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}

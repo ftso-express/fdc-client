@@ -29,6 +29,8 @@ const (
 	Failed
 )
 
+const BitVoteMaxNoOfOperations = 20_000_000 // maximal number of operations in the BitVote algorithm
+
 type Round struct {
 	ID                           uint32
 	Attestations                 []*attestation.Attestation
@@ -41,7 +43,7 @@ type Round struct {
 	merkleTree                   merkle.Tree
 }
 
-// New returns a pointer to a new round with ID and voterSet.
+// New returns a pointer to a new Round with ID and voterSet.
 func New(ID uint32, voterSet *voters.Set) *Round {
 	return &Round{
 		ID:                           ID,
@@ -53,7 +55,7 @@ func New(ID uint32, voterSet *voters.Set) *Round {
 }
 
 // AddAttestation checks whether an attestation with such request is already in the round.
-// If not it is added to the round, if yes the fee is added to the existent attestation
+// If not, it is added to the round. If yes, the fee is added to the existent attestation
 // and Index is set to the earlier one.
 func (r *Round) AddAttestation(attToAdd *attestation.Attestation) bool {
 	identifier := crypto.Keccak256Hash(attToAdd.Request)
@@ -76,7 +78,7 @@ func (r *Round) AddAttestation(attToAdd *attestation.Attestation) bool {
 }
 
 // sortAttestations sorts round's attestations according to their IndexLog.
-// we assume that attestations have at least one index.
+// We assume that attestations have at least one index.
 func (r *Round) sortAttestations() {
 	sort.Slice(r.Attestations, func(i, j int) bool {
 		return attestation.EarlierLog(r.Attestations[i].Index(), r.Attestations[j].Index())
@@ -109,7 +111,7 @@ func (r *Round) ComputeConsensusBitVote() error {
 		fees[i] = a.Fee
 	}
 
-	consensus, err := bitvotes.EnsembleConsensusBitVote(r.bitVotes, fees, r.voterSet.TotalWeight, 20000000)
+	consensus, err := bitvotes.EnsembleConsensusBitVote(r.bitVotes, fees, r.voterSet.TotalWeight, BitVoteMaxNoOfOperations)
 	if err != nil {
 		return err
 	}
@@ -119,10 +121,10 @@ func (r *Round) ComputeConsensusBitVote() error {
 	return r.setConsensusStatus(consensus)
 }
 
-// GetConsensusBitVote returns triplet
-// - consensus BitVote
-// - bool indicating whether the consensus BitVote is successfully computed
-// - bool indicating whether the consensus BitVote computation took place
+// GetConsensusBitVote returns triplet:
+//   - consensus BitVote
+//   - bool indicating whether the consensus BitVote is successfully computed
+//   - bool indicating whether the consensus BitVote computation took place
 func (r *Round) GetConsensusBitVote() (bitvotes.BitVote, bool, bool) {
 	if r.ConsensusBitVote.BitVector == nil {
 		return bitvotes.BitVote{}, false, r.ConsensusCalculationFinished
@@ -130,17 +132,8 @@ func (r *Round) GetConsensusBitVote() (bitvotes.BitVote, bool, bool) {
 	return r.ConsensusBitVote, true, r.ConsensusCalculationFinished
 }
 
-// ConsensusBitVoteHex returns hex string encoded consensus BitVote if it is already computed.
-func (r *Round) ConsensusBitVoteHex() (string, error) {
-
-	if r.ConsensusBitVote.BitVector == nil {
-		return "", errors.New("no consensus bitVote")
-	}
-
-	return r.ConsensusBitVote.EncodeBitVoteHex(), nil
-}
-
 // setConsensusStatus sets consensus status of the attestations.
+//
 // The scenario where a chosen attestation is missing is not possible as in such case, it is not possible to compute the consensus bitVote.
 // It is assumed that the Attestations are already ordered.
 func (r *Round) setConsensusStatus(consensusBitVote bitvotes.BitVote) error {
@@ -187,7 +180,7 @@ func (r *Round) MerkleTreeCached() (merkle.Tree, error) {
 	return r.MerkleTree()
 }
 
-// MerkleRoot returns Merkle root for a round if there is one.
+// MerkleRoot returns Merkle root for a round if it is possible to compute it.
 func (r *Round) MerkleRoot() (common.Hash, error) {
 	tree, err := r.MerkleTreeCached()
 	if err != nil {

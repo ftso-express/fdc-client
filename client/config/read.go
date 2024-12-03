@@ -12,13 +12,16 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 )
 
-func ReadConfigs(userFilePath, systemFilePath string) (*UserRaw, *System, error) {
+// ReadConfigs reads user and system configurations from userFilePath and systemDirectoryPath.
+//
+// System configurations are read for Chain and protocolID set in the user configurations.
+func ReadConfigs(userFilePath, systemDirectoryPath string) (*UserRaw, *System, error) {
 	userConfigRaw, err := ReadUserRaw(userFilePath)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	systemConfig, err := ReadSystem(systemFilePath, userConfigRaw.Chain, userConfigRaw.ProtocolID)
+	systemConfig, err := ReadSystem(systemDirectoryPath, userConfigRaw.Chain, userConfigRaw.ProtocolID)
 	if err != nil {
 		return nil, nil, err
 	}

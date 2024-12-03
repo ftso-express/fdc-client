@@ -69,7 +69,6 @@ func BitVoteListener(
 			if ok {
 				bitVotes = append(bitVotes, bitVote)
 			}
-
 		}
 
 		if len(bitVotes) > 0 {
@@ -84,9 +83,7 @@ func BitVoteListener(
 		} else {
 			logger.Infof("No bitVotes for round %d", roundID)
 		}
-
 	}
-
 }
 
 // PrepareChooseTrigger tracks chain timestamps and passes roundID of the round whose choose phase has just ended to the trigger channel.
@@ -130,7 +127,6 @@ func PrepareChooseTrigger(ctx context.Context, trigger chan uint32, db *gorm.DB)
 				logger.Info("prepareChooseTriggers exiting:", ctx.Err())
 				return
 			}
-
 		}
 
 		select {
@@ -141,7 +137,6 @@ func PrepareChooseTrigger(ctx context.Context, trigger chan uint32, db *gorm.DB)
 			logger.Info("prepareChooseTriggers exiting:", ctx.Err())
 		}
 	}
-
 }
 
 // configureTicker resets the ticker at headStart before start to collect phase duration.
@@ -149,14 +144,13 @@ func configureTicker(ctx context.Context, ticker *time.Ticker, start time.Time, 
 	select {
 	case <-time.After(time.Until(start) - headStart):
 		ticker.Reset(time.Duration(timing.Chain.CollectDurationSec) * time.Second)
-
 	case <-ctx.Done():
 		return
 	}
 }
 
 // tryTriggerBitVote checks whether the blockchain timestamp has surpassed the end of choose phase or local time has surpassed it for more than bitVoteOffChainTriggerSeconds.
-// If conditions are met, roundID is passed to the channel c.
+// If conditions are met, roundID is passed to the channel c, and nextChoosePhaseRoundIDEnd and nextChoosePhaseEndTimestamp are updated.
 func tryTriggerBitVote(
 	ctx context.Context,
 	nextChoosePhaseRoundIDEnd *uint32,

@@ -18,14 +18,14 @@ import (
 )
 
 const (
-	SYSTEM_DIRECTORY string = "configs/systemConfigs" // relative to project root
+	systemDirectory string = "configs/systemConfigs" // relative to project root
 )
 
 var CfgFlag = flag.String("config", "configs/userConfig.toml", "Configuration file (toml format)")
 
 func main() {
 	flag.Parse()
-	userConfigRaw, systemConfig, err := config.ReadConfigs(*CfgFlag, SYSTEM_DIRECTORY)
+	userConfigRaw, systemConfig, err := config.ReadConfigs(*CfgFlag, systemDirectory)
 	if err != nil {
 		logger.Panicf("cannot read configs: %s", err)
 	}

@@ -29,7 +29,7 @@ type Manager struct {
 	signingPolicies       <-chan []shared.VotersData
 	signingPolicyStorage  *policy.Storage
 	attestationTypeConfig config.AttestationTypes
-	queues                priorityQueues
+	queues                attestationQueues
 }
 
 // New initializes attestation round manager from raw user configurations.
@@ -158,7 +158,7 @@ func (m *Manager) GetOrCreateRound(roundID uint32) (*round.Round, error) {
 	return roundForID, nil
 }
 
-// OnBitVote process payload message that is assumed to be a bitVote and adds it to the correct round.
+// OnBitVote processes payload message that is assumed to be a bitVote and adds it to the correct round.
 func (m *Manager) OnBitVote(message payload.Message) error {
 	if message.Timestamp < timing.ChooseStartTimestamp(message.VotingRound) {
 		return fmt.Errorf("bitVote from %s for voting round %d too soon", message.From, message.VotingRound)
@@ -181,8 +181,8 @@ func (m *Manager) OnBitVote(message payload.Message) error {
 	return nil
 }
 
-// OnRequest process the attestation request.
-// The request parsed into an Attestation that is assigned to an attestation round according to the timestamp.
+// OnRequest processes the attestation request.
+// The request is parsed into an Attestation that is assigned to an attestation round according to the timestamp.
 // The request is added to verifier queue.
 func (m *Manager) OnRequest(ctx context.Context, request database.Log) error {
 	attestation, err := attestation.AttestationFromDatabaseLog(request)
@@ -205,7 +205,7 @@ func (m *Manager) OnRequest(ctx context.Context, request database.Log) error {
 	return nil
 }
 
-// OnSigningPolicy parses SigningPolicyInitialized log and stores it into the signingPolicyStorage.
+// OnSigningPolicy parses SigningPolicyInitialized log and submit addresses, and stores it into the signingPolicyStorage.
 func (m *Manager) OnSigningPolicy(data shared.VotersData) error {
 	err := VotersDataCheck(data)
 	if err != nil {
@@ -235,7 +235,7 @@ func VotersDataCheck(data shared.VotersData) error {
 	return nil
 }
 
-// retryUnsuccessfulChosen adds the request that were chosen by the consensus bitVote but were not confirmed to the priority verifier queues.
+// retryUnsuccessfulChosen adds the requests that are without successful response but were chosen by the consensus bitVote to the priority verifier queues.
 func (m *Manager) retryUnsuccessfulChosen(ctx context.Context, round *round.Round) (int, error) {
 	count := 0 //only for logging
 
