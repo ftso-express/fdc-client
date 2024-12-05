@@ -6,7 +6,7 @@ require (
 	github.com/BurntSushi/toml v1.4.0
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/ethereum/go-ethereum v1.14.11
-	github.com/flare-foundation/go-flare-common v0.1.4
+	github.com/flare-foundation/go-flare-common v0.1.5
 	github.com/gorilla/mux v1.8.1
 	github.com/pkg/errors v0.9.1
 	github.com/rs/cors v1.11.1
