@@ -10,6 +10,8 @@ type ResponseStatus string
 
 const (
 	Ok           ResponseStatus = "OK"
+	Empty        ResponseStatus = "EMPTY"
+	Retry        ResponseStatus = "RETRY"
 	NotAvailable ResponseStatus = "NOT_AVAILABLE"
 )
 

@@ -29,10 +29,10 @@ func newFDCProtocolProviderController(rounds *storage.Cyclic[uint32, *round.Roun
 	return &FDCProtocolProviderController{rounds: rounds, protocolID: protocolID}
 }
 
-const hexPrefix = "0x"
+const HexPrefix = "0x"
 
 func validateEVMAddressString(address string) bool {
-	address = strings.TrimPrefix(address, hexPrefix)
+	address = strings.TrimPrefix(address, HexPrefix)
 	dec, err := hex.DecodeString(address)
 	if err != nil {
 		return false
@@ -87,8 +87,9 @@ func submitXController(
 		return PDPResponse{}, restserver.InternalServerErrorHandler(err)
 	}
 	if !exists {
-		return PDPResponse{}, restserver.NotAvailableErrorHandler(fmt.Errorf("commit data for round id %d not available", pathParams.votingRoundID))
+		return PDPResponse{Data: HexPrefix, Status: Empty}, nil
 	}
+
 	response := PDPResponse{Data: rsp, Status: Ok}
 	return response, nil
 }
@@ -119,10 +120,6 @@ func (controller *FDCProtocolProviderController) submitSignaturesController(
 		logger.Error(err)
 		return PDPResponse{}, restserver.BadParamsErrorHandler(err)
 	}
-	response, exists, err := controller.submitSignaturesService(pathParams.votingRoundID, pathParams.submitAddress)
-	if err != nil || !exists {
-		return PDPResponse{}, restserver.NotAvailableErrorHandler(fmt.Errorf("round id %d not available", pathParams.votingRoundID))
-
-	}
+	response := controller.submitSignaturesService(pathParams.votingRoundID, pathParams.submitAddress)
 	return response, nil
 }
