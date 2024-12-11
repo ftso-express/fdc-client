@@ -1,8 +1,6 @@
 package server
 
 import (
-	"fmt"
-
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 	"github.com/flare-foundation/go-flare-common/pkg/payload"
 )
@@ -29,8 +27,7 @@ func (controller *FDCProtocolProviderController) submit2Service(roundID uint32, 
 	}
 
 	payloadMsg := payload.BuildMessage(controller.protocolID, roundID, bitVote)
-
-	logger.Debugf("submit2: for round %d: %s", roundID, payloadMsg)
+	logger.Infof("submit2: for round %d: %s", roundID, payloadMsg)
 
 	return payloadMsg, true, nil
 }
@@ -63,11 +60,7 @@ func (controller *FDCProtocolProviderController) submitSignaturesService(roundID
 	}
 
 	message := payload.BuildMessageForSigning(uint8(controller.protocolID), uint32(roundID), false, root)
-
-	logger.Debug("SubmitSignaturesHandler")
-	logger.Debugf("round: %s", fmt.Sprint(roundID))
-	logger.Debugf("root: %v", root)
-	logger.Debugf("consensus: %s", encodedBitVote)
+	logger.Infof("submirSignatures: round: %v, root: %v, consensus: %s", roundID, root, encodedBitVote)
 
 	return payload.SubprotocolResponse{Status: payload.Ok, Data: message, AdditionalData: encodedBitVote}
 }

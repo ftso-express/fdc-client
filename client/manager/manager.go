@@ -103,10 +103,8 @@ func (m *Manager) Run(ctx context.Context) {
 			}
 
 			now := time.Now()
-
 			err := r.ComputeConsensusBitVote()
-
-			logger.Infof("BitVote algorithm finished in %s", time.Since(now))
+			logger.Debugf("BitVote algorithm finished in %s", time.Since(now))
 
 			if err != nil {
 				logger.Warnf("Failed bitVote in round %d: %s", bitVotesForRound.ID, err)
