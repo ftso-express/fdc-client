@@ -31,7 +31,7 @@ func BitVoteListener(
 
 		select {
 		case roundID = <-trigger:
-			logger.Debug("starting next BitVoteListener iteration")
+			logger.Debugf("starting BitVoteListener for round %v", roundID)
 
 		case <-ctx.Done():
 			logger.Info("BitVoteListener exiting:", ctx.Err())
@@ -131,8 +131,6 @@ func PrepareChooseTrigger(ctx context.Context, trigger chan uint32, db *gorm.DB)
 
 		select {
 		case <-bitVoteTicker.C:
-			logger.Debug("starting next prepareChooseTriggers outer iteration")
-
 		case <-ctx.Done():
 			logger.Info("prepareChooseTriggers exiting:", ctx.Err())
 		}

@@ -152,7 +152,7 @@ func (m *Manager) GetOrCreateRound(roundID uint32) (*round.Round, error) {
 
 	roundForID = round.New(roundID, policy.Voters)
 	m.lastRoundCreated = roundID
-	logger.Debugf("Round %d created", roundID)
+	logger.Infof("Round %d created", roundID)
 
 	m.Rounds.Store(roundID, roundForID)
 	return roundForID, nil
