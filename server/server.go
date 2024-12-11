@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
+	"github.com/flare-foundation/go-flare-common/pkg/payload"
 	"github.com/flare-foundation/go-flare-common/pkg/restserver"
 	"github.com/flare-foundation/go-flare-common/pkg/storage"
 
@@ -84,13 +85,13 @@ func RegisterFDCProviderRoutes(router restserver.Router, protocolID uint8, round
 	controller := newFDCProtocolProviderController(rounds, protocolID)
 	paramMap := map[string]string{"votingRoundID": "Voting round ID", "submitAddress": "Submit address"}
 
-	submit1Handler := restserver.GeneralRouteHandler(controller.submit1Controller, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{}, securities)
+	submit1Handler := restserver.GeneralRouteHandler(controller.submit1Controller, http.MethodGet, http.StatusOK, paramMap, nil, nil, payload.SubprotocolResponse{}, securities)
 	router.AddRoute("/submit1/{votingRoundID}/{submitAddress}", submit1Handler, "Submit1")
 
-	submit2Handler := restserver.GeneralRouteHandler(controller.submit2Controller, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{}, securities)
+	submit2Handler := restserver.GeneralRouteHandler(controller.submit2Controller, http.MethodGet, http.StatusOK, paramMap, nil, nil, payload.SubprotocolResponse{}, securities)
 	router.AddRoute("/submit2/{votingRoundID}/{submitAddress}", submit2Handler, "Submit2")
 
-	submitSignaturesHandler := restserver.GeneralRouteHandler(controller.submitSignaturesController, http.MethodGet, http.StatusOK, paramMap, nil, nil, PDPResponse{}, securities)
+	submitSignaturesHandler := restserver.GeneralRouteHandler(controller.submitSignaturesController, http.MethodGet, http.StatusOK, paramMap, nil, nil, payload.SubprotocolResponse{}, securities)
 	router.AddRoute("/submitSignatures/{votingRoundID}/{submitAddress}", submitSignaturesHandler, "SubmitSignatures")
 }
 

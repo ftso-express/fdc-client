@@ -6,13 +6,11 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-type ResponseStatus string
+type DAResponseStatus string
 
 const (
-	Ok           ResponseStatus = "OK"
-	Empty        ResponseStatus = "EMPTY"
-	Retry        ResponseStatus = "RETRY"
-	NotAvailable ResponseStatus = "NOT_AVAILABLE"
+	Ok           DAResponseStatus = "OK"
+	NotAvailable DAResponseStatus = "NOT_AVAILABLE"
 )
 
 type AttestationStatus string
@@ -24,12 +22,6 @@ const (
 	Failed    AttestationStatus = "FAILED"
 	Error     AttestationStatus = "ERROR"
 )
-
-type PDPResponse struct {
-	Status         ResponseStatus `json:"status"`
-	Data           string         `json:"data"`
-	AdditionalData string         `json:"additionalData"`
-}
 
 type DARequest struct {
 	Request   string                 `json:"request"`

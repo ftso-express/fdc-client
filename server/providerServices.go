@@ -1,14 +1,10 @@
 package server
 
 import (
-	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 	"github.com/flare-foundation/go-flare-common/pkg/payload"
-
-	"github.com/ethereum/go-ethereum/common"
 )
 
 // submit1Service returns an empty response.
@@ -41,20 +37,20 @@ func (controller *FDCProtocolProviderController) submit2Service(roundID uint32, 
 
 // submitSignaturesService returns merkleRoot encoded in to payload for signing, additionalData.
 // Additional data is concatenation of stored randomNumber and consensusBitVote.
-func (controller *FDCProtocolProviderController) submitSignaturesService(roundID uint32, _ string) PDPResponse {
+func (controller *FDCProtocolProviderController) submitSignaturesService(roundID uint32, _ string) payload.SubprotocolResponse {
 	votingRound, exists := controller.rounds.Get(roundID)
 	if !exists {
 		logger.Infof("submitSignatures: round %d not stored", roundID)
-		return PDPResponse{Status: Empty}
+		return payload.SubprotocolResponse{Status: payload.Empty}
 	}
 
 	consensusBitVote, exists, computed := votingRound.GetConsensusBitVote()
 	if !computed {
 		logger.Debugf("submitSignatures: consensus bitVote for round %d not computed", roundID)
-		return PDPResponse{Status: Retry}
+		return payload.SubprotocolResponse{Status: payload.Retry}
 	} else if !exists {
 		logger.Infof("submitSignatures: consensus bitVote for round %d not available: %s", roundID)
-		return PDPResponse{Status: Empty}
+		return payload.SubprotocolResponse{Status: payload.Empty}
 	}
 
 	encodedBitVote := "0x" + consensusBitVote.EncodeBitVoteHex()
@@ -63,33 +59,15 @@ func (controller *FDCProtocolProviderController) submitSignaturesService(roundID
 	if err != nil {
 		logger.Infof("submitSignatures: Merkle root for round %d not available: %s", roundID, err)
 
-		return PDPResponse{Status: Retry}
+		return payload.SubprotocolResponse{Status: payload.Retry}
 	}
 
-	message := buildMessageForSigning(uint8(controller.protocolID), uint32(roundID), root)
+	message := payload.BuildMessageForSigning(uint8(controller.protocolID), uint32(roundID), false, root)
 
 	logger.Debug("SubmitSignaturesHandler")
 	logger.Debugf("round: %s", fmt.Sprint(roundID))
 	logger.Debugf("root: %v", root)
 	logger.Debugf("consensus: %s", encodedBitVote)
 
-	return PDPResponse{Status: Ok, Data: message, AdditionalData: encodedBitVote}
-}
-
-// buildMessageForSigning builds payload message for submitSignatures.
-//
-// protocolID (1 byte)
-// roundID (4 bytes)
-// randomQualityScore (1 byte)
-// merkleRoot (32 bytes)
-func buildMessageForSigning(protocolID uint8, roundID uint32, merkleRoot common.Hash) string {
-	data := make([]byte, 38)
-
-	data[0] = uint8(protocolID)
-	binary.BigEndian.PutUint32(data[1:5], uint32(roundID))
-	data[5] = 0 // is secure random not used in FDC protocol
-	copy(data[6:38], merkleRoot[:])
-
-	return "0x" + hex.EncodeToString(data)
-
+	return payload.SubprotocolResponse{Status: payload.Ok, Data: message, AdditionalData: encodedBitVote}
 }

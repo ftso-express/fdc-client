@@ -18,12 +18,12 @@ type DAController struct {
 }
 
 type RequestsResponse struct {
-	Status   ResponseStatus
+	Status   DAResponseStatus
 	Requests []DARequest
 }
 
 type AttestationResponse struct {
-	Status       ResponseStatus
+	Status       DAResponseStatus
 	Attestations []DAAttestation
 }
 

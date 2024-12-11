@@ -39,7 +39,7 @@ const (
 var (
 	submitContractAddr = common.HexToAddress(submitContractAddrHex)
 	funcSel            = [4]byte{1, 2, 3, 4}
-	payload            = []byte{1, 2, 3, 4, 5, 6, 7, 8}
+	payloadMsg         = []byte{1, 2, 3, 4, 5, 6, 7, 8}
 )
 
 var relayContractAddr = common.HexToAddress(relayContractAddrHex)
@@ -192,11 +192,11 @@ func newTestTx() (*database.Transaction, error) {
 		return nil, err
 	}
 
-	if err := binary.Write(&b, binary.BigEndian, uint16(len(payload))); err != nil {
+	if err := binary.Write(&b, binary.BigEndian, uint16(len(payloadMsg))); err != nil {
 		return nil, err
 	}
 
-	b.Write(payload)
+	b.Write(payloadMsg)
 
 	return &database.Transaction{Input: hex.EncodeToString(b.Bytes())}, nil
 }

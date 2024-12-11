@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
+	"github.com/flare-foundation/go-flare-common/pkg/payload"
 
 	"github.com/flare-foundation/fdc-client/client/config"
 	"github.com/flare-foundation/fdc-client/client/timing"
-	"github.com/flare-foundation/fdc-client/server"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -50,7 +50,7 @@ func SystemClientIteration(userConfig *config.UserRaw, submitAddress, submitSigA
 	<-timer.C
 
 	rspData, err := MakeGetRequest("submit1", &userConfig.RestServer, round, submitAddress.Hex())
-	if err != nil || rspData.Status != server.Ok {
+	if err != nil || rspData.Status != payload.Ok {
 		logger.Error("error submit1 response ", rspData, err)
 		return
 	}
@@ -59,7 +59,7 @@ func SystemClientIteration(userConfig *config.UserRaw, submitAddress, submitSigA
 	timer = time.NewTimer(time.Until(time.Unix(int64(submit2Time+6), 0)))
 	<-timer.C
 	rspData, err = MakeGetRequest("submit2", &userConfig.RestServer, round, submitAddress.Hex())
-	if err != nil || rspData.Status != server.Ok {
+	if err != nil || rspData.Status != payload.Ok {
 		logger.Error("error submit2 response ", rspData, err)
 		return
 	}
@@ -68,7 +68,7 @@ func SystemClientIteration(userConfig *config.UserRaw, submitAddress, submitSigA
 	timer = time.NewTimer(time.Until(time.Unix(int64(submitSignature+5), 0)))
 	<-timer.C
 	rspData, err = MakeGetRequest("submitSignatures", &userConfig.RestServer, round, submitSigAddress.Hex())
-	if err != nil || rspData.Status != server.Ok {
+	if err != nil || rspData.Status != payload.Ok {
 		logger.Error("error submit2 response ", rspData, err)
 		return
 	}
@@ -77,7 +77,7 @@ func SystemClientIteration(userConfig *config.UserRaw, submitAddress, submitSigA
 
 func MakeGetRequest(
 	apiName string, cfg *config.RestServer, votingRoundID uint32, submitAddress string,
-) (*server.PDPResponse, error) {
+) (*payload.SubprotocolResponse, error) {
 	p, err := url.JoinPath(
 		cfg.FSPSubpath,
 		apiName,
@@ -118,7 +118,7 @@ func MakeGetRequest(
 		return nil, err
 	}
 
-	rspData := new(server.PDPResponse)
+	rspData := new(payload.SubprotocolResponse)
 	if err = json.Unmarshal(body, rspData); err != nil {
 		return nil, err
 	}

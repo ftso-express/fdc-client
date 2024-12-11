@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flare-foundation/go-flare-common/pkg/payload"
 	"github.com/flare-foundation/go-flare-common/pkg/storage"
 	"github.com/flare-foundation/go-flare-common/pkg/voters"
 
@@ -110,7 +111,7 @@ func TestServer(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Log(rspData)
-		require.Equal(t, server.Ok, rspData.Status)
+		require.Equal(t, payload.Ok, rspData.Status)
 		cupaloy.SnapshotT(t, rspData)
 	})
 
@@ -119,7 +120,7 @@ func TestServer(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Log(rspData)
-		require.Equal(t, server.Ok, rspData.Status)
+		require.Equal(t, payload.Ok, rspData.Status)
 
 		require.Equal(t, "0xc80000000100", rspData.Data[:14])
 

@@ -48,7 +48,7 @@ func run(ctx context.Context, queue *attestationQueue) {
 	for {
 		err := queue.Dequeue(ctx, handler)
 		if err != nil {
-			logger.Error(err)
+			logger.Warn(err)
 		}
 
 		if err := ctx.Err(); err != nil {

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
+	"github.com/flare-foundation/go-flare-common/pkg/payload"
 	"github.com/flare-foundation/go-flare-common/pkg/restserver"
 	"github.com/flare-foundation/go-flare-common/pkg/storage"
 
@@ -67,30 +68,30 @@ func submitXController(
 	_ interface{},
 	service func(uint32, string) (string, bool, error),
 	timeLock func(uint32) uint64,
-) (PDPResponse, *restserver.ErrorHandler) {
+) (payload.SubprotocolResponse, *restserver.ErrorHandler) {
 	pathParams, err := validateSubmitXParams(params)
 
 	if err != nil {
 		logger.Error(err)
-		return PDPResponse{}, restserver.BadParamsErrorHandler(err)
+		return payload.SubprotocolResponse{}, restserver.BadParamsErrorHandler(err)
 	}
 
 	atTheEarliest := timeLock(pathParams.votingRoundID)
 	now := uint64(time.Now().Unix())
 	if atTheEarliest > now {
-		return PDPResponse{}, restserver.ToEarlyErrorHandler(fmt.Errorf("to early %v before %d", atTheEarliest-now, atTheEarliest))
+		return payload.SubprotocolResponse{}, restserver.ToEarlyErrorHandler(fmt.Errorf("to early %v before %d", atTheEarliest-now, atTheEarliest))
 	}
 
 	rsp, exists, err := service(pathParams.votingRoundID, pathParams.submitAddress)
 	if err != nil {
 		logger.Error(err)
-		return PDPResponse{}, restserver.InternalServerErrorHandler(err)
+		return payload.SubprotocolResponse{}, restserver.InternalServerErrorHandler(err)
 	}
 	if !exists {
-		return PDPResponse{Data: HexPrefix, Status: Empty}, nil
+		return payload.SubprotocolResponse{Data: HexPrefix, Status: payload.Empty}, nil
 	}
 
-	response := PDPResponse{Data: rsp, Status: Ok}
+	response := payload.SubprotocolResponse{Data: rsp, Status: payload.Ok}
 	return response, nil
 }
 
@@ -98,7 +99,7 @@ func (controller *FDCProtocolProviderController) submit1Controller(
 	params map[string]string,
 	queryParams interface{},
 	body interface{},
-) (PDPResponse, *restserver.ErrorHandler) {
+) (payload.SubprotocolResponse, *restserver.ErrorHandler) {
 	return submitXController(params, queryParams, body, controller.submit1Service, timing.RoundStartTime)
 }
 
@@ -106,7 +107,7 @@ func (controller *FDCProtocolProviderController) submit2Controller(
 	params map[string]string,
 	queryParams interface{},
 	body interface{},
-) (PDPResponse, *restserver.ErrorHandler) {
+) (payload.SubprotocolResponse, *restserver.ErrorHandler) {
 	return submitXController(params, queryParams, body, controller.submit2Service, timing.ChooseStartTimestamp)
 }
 
@@ -114,11 +115,11 @@ func (controller *FDCProtocolProviderController) submitSignaturesController(
 	params map[string]string,
 	queryParams interface{},
 	body interface{},
-) (PDPResponse, *restserver.ErrorHandler) {
+) (payload.SubprotocolResponse, *restserver.ErrorHandler) {
 	pathParams, err := validateSubmitXParams(params)
 	if err != nil {
 		logger.Error(err)
-		return PDPResponse{}, restserver.BadParamsErrorHandler(err)
+		return payload.SubprotocolResponse{}, restserver.BadParamsErrorHandler(err)
 	}
 	response := controller.submitSignaturesService(pathParams.votingRoundID, pathParams.submitAddress)
 	return response, nil
