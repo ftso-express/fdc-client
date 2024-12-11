@@ -87,7 +87,7 @@ func (m *Manager) Run(ctx context.Context) {
 			deleted := m.signingPolicyStorage.RemoveBefore(uint32(m.lastRoundCreated)) // delete all signing policies that have already ended
 
 			for j := range deleted {
-				logger.Infof("deleted signing policy for epoch %d", deleted[j])
+				logger.Debugf("deleted signing policy for epoch %d", deleted[j])
 			}
 
 		case bitVotesForRound := <-m.bitVotes:
