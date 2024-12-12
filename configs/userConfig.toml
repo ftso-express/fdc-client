@@ -188,39 +188,39 @@ size = 10
 max_dequeues_per_second = 0
 max_workers = 0
 max_attempts = 3
-time_off = 2
+time_off = "2s"
 
 [queues.doge]
 size = 10
 max_dequeues_per_second = 0
 max_workers = 0
 max_attempts = 3
-time_off = 2
+time_off = "2s"
 
 [queues.xrp]
 size = 10
 max_dequeues_per_second = 0
 max_workers = 0
 max_attempts = 3
-time_off = 2
+time_off = "2s"
 
 [queues.eth]
 size = 10
 max_dequeues_per_second = 0
 max_workers = 0
 max_attempts = 3
-time_off = 2
+time_off = "2s"
 
 [queues.sgb]
 size = 10
 max_dequeues_per_second = 0
 max_workers = 0
 max_attempts = 3
-time_off = 2
+time_off = "2s"
 
 [queues.flr]
 size = 10
 max_dequeues_per_second = 0
 max_workers = 0
 max_attempts = 3
-time_off = 2
+time_off = "2s"

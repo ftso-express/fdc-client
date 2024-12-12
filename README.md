@@ -118,7 +118,7 @@ size = 10
 max_dequeues_per_second = 100 # 0 for unlimited
 max_workers = 10 # 0 for unlimited
 max_attempts = 3 # negative for unlimited
-time_off = 2 # in seconds. Time off after each unsuccessful attempt.
+time_off = "2s" # time off after each unsuccessful attempt.
 ```
 
 ### System Configs
