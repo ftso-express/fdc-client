@@ -5,7 +5,7 @@ import (
 	"github.com/flare-foundation/go-flare-common/pkg/payload"
 )
 
-// submit1Service returns an empty response.
+// submit1Service returns an empty response with boolean (always false) that indicate its nonexistence.
 func (controller *FDCProtocolProviderController) submit1Service(_ uint32, _ string) (string, bool, error) {
 	return "0x", false, nil
 }

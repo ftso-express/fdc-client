@@ -16,6 +16,8 @@ import (
 	"github.com/flare-foundation/fdc-client/client/timing"
 )
 
+const hexPrefix = "0x"
+
 type FDCProtocolProviderController struct {
 	rounds     *storage.Cyclic[uint32, *round.Round]
 	protocolID uint8
@@ -30,10 +32,8 @@ func newFDCProtocolProviderController(rounds *storage.Cyclic[uint32, *round.Roun
 	return &FDCProtocolProviderController{rounds: rounds, protocolID: protocolID}
 }
 
-const HexPrefix = "0x"
-
 func validateEVMAddressString(address string) bool {
-	address = strings.TrimPrefix(address, HexPrefix)
+	address = strings.TrimPrefix(address, hexPrefix)
 	dec, err := hex.DecodeString(address)
 	if err != nil {
 		return false
@@ -88,7 +88,7 @@ func submitXController(
 		return payload.SubprotocolResponse{}, restserver.InternalServerErrorHandler(err)
 	}
 	if !exists {
-		return payload.SubprotocolResponse{Data: HexPrefix, Status: payload.Empty}, nil
+		return payload.SubprotocolResponse{Data: hexPrefix, Status: payload.Empty}, nil
 	}
 
 	response := payload.SubprotocolResponse{Data: rsp, Status: payload.Ok}

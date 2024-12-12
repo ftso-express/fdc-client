@@ -86,7 +86,7 @@ func EarlierLog(a, b IndexLog) bool {
 	return false
 }
 
-// attestationFromDatabaseLog creates an Attestation from an attestation request event log.
+// AttestationFromDatabaseLog creates an Attestation from an attestation request event log.
 func AttestationFromDatabaseLog(request database.Log) (Attestation, error) {
 	requestLog, err := ParseAttestationRequestLog(request)
 	if err != nil {
