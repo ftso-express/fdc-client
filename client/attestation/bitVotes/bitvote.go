@@ -12,7 +12,7 @@ const (
 )
 
 type BitVote struct {
-	Length    uint16 //number of attestations
+	Length    uint16 // number of attestations
 	BitVector *big.Int
 }
 

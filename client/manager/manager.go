@@ -92,7 +92,11 @@ func (m *Manager) Run(ctx context.Context) {
 
 		case bitVotesForRound := <-m.bitVotes:
 			for i := range bitVotesForRound.Messages {
-				err := m.OnBitVote(bitVotesForRound.Messages[i])
+				bitVoteErr, err := m.OnBitVote(bitVotesForRound.Messages[i])
+
+				if bitVoteErr != nil {
+					logger.Debug("bad bitVote: %s", bitVoteErr)
+				}
 				if err != nil {
 					logger.Errorf("bit vote error: %s", err)
 				}
@@ -157,26 +161,26 @@ func (m *Manager) GetOrCreateRound(roundID uint32) (*round.Round, error) {
 }
 
 // OnBitVote processes payload message that is assumed to be a bitVote and adds it to the correct round.
-func (m *Manager) OnBitVote(message payload.Message) error {
+func (m *Manager) OnBitVote(message payload.Message) (error, error) {
 	if message.Timestamp < timing.ChooseStartTimestamp(message.VotingRound) {
-		return fmt.Errorf("bitVote from %s for voting round %d too soon", message.From, message.VotingRound)
+		return fmt.Errorf("bitVote from %s for voting round %d too soon", message.From, message.VotingRound), nil
 	}
 
 	if message.Timestamp >= timing.ChooseEndTimestamp(message.VotingRound) {
-		return fmt.Errorf("bitVote from %s for voting round %d too late", message.From, message.VotingRound)
+		return fmt.Errorf("bitVote from %s for voting round %d too late", message.From, message.VotingRound), nil
 	}
 
 	round, err := m.GetOrCreateRound(message.VotingRound)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = round.ProcessBitVote(message)
 	if err != nil {
-		return fmt.Errorf("error processing bitVote from %s for voting round %d: %s", message.From, message.VotingRound, err)
+		return fmt.Errorf("error processing bitVote from %s for voting round %d: %s", message.From, message.VotingRound, err), nil
 	}
 
-	return nil
+	return nil, nil
 }
 
 // OnRequest processes the attestation request.

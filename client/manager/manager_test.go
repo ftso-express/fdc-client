@@ -130,12 +130,15 @@ func TestManagerMethods(t *testing.T) {
 		bitVoteMessageBadVoter,
 		bitVoteMessageWrongLength,
 	} {
-		err = mngr.OnBitVote(badBitVote)
-		require.Error(t, err, fmt.Sprintf("error in bad bitVote %d", i))
+		bverr, err := mngr.OnBitVote(badBitVote)
+		require.Error(t, bverr, fmt.Sprintf("error in bad bitVote %d", i))
+		require.NoError(t, err)
+
 	}
 	bitVoteMessageCorrect := bitVoteMessage
 	bitVoteMessageCorrect.Payload = []byte{0, 0}
-	err = mngr.OnBitVote(bitVoteMessageCorrect)
+	bverr, err := mngr.OnBitVote(bitVoteMessageCorrect)
+	require.NoError(t, bverr)
 	require.NoError(t, err)
 
 	_, ok := mngr.Rounds.Get(664111)
