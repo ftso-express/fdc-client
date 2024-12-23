@@ -235,8 +235,8 @@ func (r *Round) ProcessBitVote(message payload.Message) error {
 				TransactionIndex: message.TransactionIndex,
 			},
 		}
-
 		r.bitVotes = append(r.bitVotes, weightedBitVote)
+		r.bitVoteCheckList[message.From] = weightedBitVote
 	} else if exists && bitvotes.EarlierTx(weightedBitVote.IndexTx, bitvotes.IndexTx{BlockNumber: message.BlockNumber, TransactionIndex: message.TransactionIndex}) {
 		// more than one submission. The later submission is considered to be valid.
 		weightedBitVote.BitVote = bitVote
