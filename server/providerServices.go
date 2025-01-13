@@ -60,7 +60,7 @@ func (controller *FDCProtocolProviderController) submitSignaturesService(roundID
 	}
 
 	message := payload.BuildMessageForSigning(uint8(controller.protocolID), uint32(roundID), false, root)
-	logger.Infof("submirSignatures: round: %v, root: %v, consensus: %s", roundID, root, encodedBitVote)
+	logger.Infof("submitSignatures: round: %v, root: %v, consensus: %s", roundID, root, encodedBitVote)
 
 	return payload.SubprotocolResponse{Status: payload.Ok, Data: message, AdditionalData: encodedBitVote}
 }
