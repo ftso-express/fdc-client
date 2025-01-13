@@ -1,0 +1,10 @@
+[addresses]
+submit_contract = "0x2cA6571Daa15ce734Bbd0Bf27D5C9D16787fc33f"
+relay_contract = "0x57a4c3676d08Aa5d15410b5A6A80fBcEF72f3F45"
+fdc_contract = "0xc25c749DC27Efb1864Cb3DADa8845B7687eB2d44"
+voter_registry_contract = "0x2580101692366e2f331e891180d9ffdF861Fce83"
+
+
+[timing]
+t0 = 1658430000
+reward_epoch_length = 3360
