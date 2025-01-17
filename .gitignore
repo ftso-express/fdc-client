@@ -26,3 +26,5 @@ logs/
 
 # Temporary file
 tmp/
+
+.vscode/
