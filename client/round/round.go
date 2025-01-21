@@ -18,21 +18,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-type RoundStatus int
-
-const (
-	Collecting RoundStatus = iota
-	Choosing
-	Retry
-	Committed
-	Done
-	Failed
-)
-
 const BitVoteMaxNoOfOperations = 20_000_000 // maximal number of operations in the BitVote algorithm
 
 type Round struct {
 	ID                           uint32
+	Status                       *attestation.RoundStatus
 	Attestations                 []*attestation.Attestation
 	attestationMap               map[common.Hash]*attestation.Attestation
 	bitVotes                     []*bitvotes.WeightedBitVote
@@ -45,8 +35,13 @@ type Round struct {
 
 // New returns a pointer to a new Round with ID and voterSet.
 func New(ID uint32, voterSet *voters.Set) *Round {
+
+	Status := new(attestation.RoundStatus)
+	*Status = attestation.PreConsensus
+
 	return &Round{
 		ID:                           ID,
+		Status:                       Status,
 		voterSet:                     voterSet,
 		attestationMap:               make(map[common.Hash]*attestation.Attestation),
 		bitVoteCheckList:             make(map[common.Address]*bitvotes.WeightedBitVote),
@@ -73,6 +68,7 @@ func (r *Round) AddAttestation(attToAdd *attestation.Attestation) bool {
 
 	r.attestationMap[identifier] = attToAdd
 	r.Attestations = append(r.Attestations, attToAdd)
+	attToAdd.RoundStatus = r.Status
 
 	return true
 }
@@ -117,6 +113,7 @@ func (r *Round) ComputeConsensusBitVote() error {
 	}
 
 	r.ConsensusBitVote = consensus
+	*r.Status = attestation.Consensus
 
 	return r.setConsensusStatus(consensus)
 }
@@ -166,6 +163,7 @@ func (r *Round) MerkleTree() (merkle.Tree, error) {
 
 	merkleTree := merkle.Build(hashes, false)
 	r.merkleTree = merkleTree
+	*r.Status = attestation.Done
 
 	return merkleTree, nil
 }

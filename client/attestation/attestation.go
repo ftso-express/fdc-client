@@ -13,6 +13,7 @@ import (
 	"github.com/flare-foundation/go-flare-common/pkg/database"
 	"github.com/flare-foundation/go-flare-common/pkg/events"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
+	"github.com/flare-foundation/go-flare-common/pkg/queue"
 
 	bitvotes "github.com/flare-foundation/fdc-client/client/attestation/bitVotes"
 	"github.com/flare-foundation/fdc-client/client/config"
@@ -20,6 +21,16 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+)
+
+type RoundStatus int
+
+const (
+	Unassigned   RoundStatus = iota // round not assigned
+	PreConsensus                    // before consensus bit-vector is computed
+	Consensus                       // consensus bit-vector already computed
+	Done                            // merkle root successfully queried by fsp client
+	Failed
 )
 
 type Status int
@@ -42,7 +53,6 @@ var fdcFilterer *fdchub.FdcHubFilterer
 
 // init sets the fdcFilterer
 func init() {
-
 	var err error
 
 	fdcFilterer, err = fdchub.NewFdcHubFilterer(common.Address{}, nil)
@@ -61,6 +71,7 @@ type IndexLog struct {
 type Attestation struct {
 	Indexes           []IndexLog // indexLogs of all logs in the round with the Request. The earliest is in the first place.
 	RoundID           uint32
+	RoundStatus       *RoundStatus
 	Request           Request
 	Response          Response
 	Fee               *big.Int // sum of fees of all logs in the round with the Request
@@ -100,12 +111,17 @@ func AttestationFromDatabaseLog(request database.Log) (Attestation, error) {
 
 	indexes := []IndexLog{{request.BlockNumber, request.LogIndex}}
 
+	roundStatus := new(RoundStatus)
+
+	*roundStatus = Unassigned
+
 	attestation := Attestation{
-		Indexes: indexes,
-		RoundID: roundID,
-		Request: requestLog.Data,
-		Fee:     requestLog.Fee,
-		Status:  Waiting,
+		Indexes:     indexes,
+		RoundID:     roundID,
+		Request:     requestLog.Data,
+		Fee:         requestLog.Fee,
+		Status:      Waiting,
+		RoundStatus: roundStatus,
 	}
 
 	return attestation, nil
@@ -114,6 +130,12 @@ func AttestationFromDatabaseLog(request database.Log) (Attestation, error) {
 // Handle sends the attestation request to the correct verifier server and validates the response.
 // The response is saved in the struct.
 func (a *Attestation) Handle(ctx context.Context) error {
+	if a.Status == Success || *a.RoundStatus == Done {
+		return fmt.Errorf("%s, handling already confirmed request or round closed", queue.NotRatedDequeue)
+	} else if *a.RoundStatus == Consensus && !a.Consensus {
+		return fmt.Errorf("%s, delayed request not in consensus", queue.NotRatedDequeue)
+	}
+
 	responseBytes, confirmed, err := ResolveAttestationRequest(ctx, a)
 	if err != nil {
 		a.Status = ProcessError

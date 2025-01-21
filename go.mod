@@ -6,7 +6,6 @@ require (
 	github.com/BurntSushi/toml v1.4.0
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/ethereum/go-ethereum v1.14.11
-	github.com/flare-foundation/go-flare-common v1.0.2
 	github.com/gorilla/mux v1.8.1
 	github.com/pkg/errors v0.9.1
 	github.com/rs/cors v1.11.1
@@ -34,6 +33,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
 	github.com/ethereum/c-kzg-4844 v1.0.3 // indirect
 	github.com/ethereum/go-verkle v0.1.1-0.20240829091221-dffa7562dbe9 // indirect
+	github.com/flare-foundation/go-flare-common v1.0.3-0.20250121135110-393570c3d381 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.6 // indirect
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08 // indirect

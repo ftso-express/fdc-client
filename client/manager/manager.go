@@ -124,8 +124,6 @@ func (m *Manager) Run(ctx context.Context) {
 			}
 
 		case requests := <-m.requests:
-			logger.Debugf("Received %d requests.", len(requests))
-
 			for i := range requests {
 				err := m.OnRequest(ctx, requests[i])
 				if err != nil {
