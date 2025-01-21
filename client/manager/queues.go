@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"time"
 
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 	"github.com/flare-foundation/go-flare-common/pkg/queue"
@@ -45,15 +46,29 @@ func runQueues(ctx context.Context, queues attestationQueues) {
 
 // run tracks and handles all dequeued attestations from a queue.
 func run(ctx context.Context, queue *attestationQueue) {
-	for {
-		err := queue.Dequeue(ctx, handler)
-		if err != nil {
-			logger.Warn(err)
-		}
+	stop := make(chan error)
 
-		if err := ctx.Err(); err != nil {
+	for {
+		select {
+		case err := <-stop:
 			logger.Infof("queue worker exiting: %v", err)
 			return
+
+		default:
+			if queue.Length() > 0 {
+				go func() {
+					err := queue.Dequeue(ctx, handler)
+					if err != nil {
+						logger.Warn(err)
+					}
+
+					if err := ctx.Err(); err != nil {
+						stop <- err
+					}
+				}()
+			} else {
+				time.Sleep(10 * time.Millisecond)
+			}
 		}
 	}
 }
