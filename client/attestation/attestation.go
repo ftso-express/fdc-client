@@ -131,8 +131,10 @@ func AttestationFromDatabaseLog(request database.Log) (Attestation, error) {
 // The response is saved in the struct.
 func (a *Attestation) Handle(ctx context.Context) error {
 	if a.Status == Success || *a.RoundStatus == Done {
+		logger.Debugf("discarding request in round %d", a.RoundID)
 		return fmt.Errorf("%s, handling already confirmed request or round closed", queue.NotRatedDequeue)
 	} else if *a.RoundStatus == Consensus && !a.Consensus {
+		logger.Debugf("discarding request in round %d", a.RoundID)
 		return fmt.Errorf("%s, delayed request not in consensus", queue.NotRatedDequeue)
 	}
 
