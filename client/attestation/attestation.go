@@ -13,7 +13,6 @@ import (
 	"github.com/flare-foundation/go-flare-common/pkg/database"
 	"github.com/flare-foundation/go-flare-common/pkg/events"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
-	"github.com/flare-foundation/go-flare-common/pkg/queue"
 
 	bitvotes "github.com/flare-foundation/fdc-client/client/attestation/bitVotes"
 	"github.com/flare-foundation/fdc-client/client/config"
@@ -129,15 +128,23 @@ func AttestationFromDatabaseLog(request database.Log) (Attestation, error) {
 
 // Handle sends the attestation request to the correct verifier server and validates the response.
 // The response is saved in the struct.
-func (a *Attestation) Handle(ctx context.Context) error {
-	if a.Status == Success || *a.RoundStatus == Done {
-		logger.Debugf("discarding request in round %d", a.RoundID)
-		return fmt.Errorf("%s, handling already confirmed request or round closed", queue.NotRatedDequeue)
+func (a *Attestation) Discard(ctx context.Context) bool {
+	if a.Status == Success {
+		logger.Debugf("discarding already confirmed request in round %d", a.RoundID)
+		return true
+	} else if *a.RoundStatus == Done {
+		logger.Debugf("discarding request in finished round %d", a.RoundID)
+		return true
 	} else if *a.RoundStatus == Consensus && !a.Consensus {
-		logger.Debugf("discarding request in round %d", a.RoundID)
-		return fmt.Errorf("%s, delayed request not in consensus", queue.NotRatedDequeue)
+		logger.Debugf("discarding unselected request in round %d", a.RoundID)
+		return true
 	}
+	return false
+}
 
+// Handle sends the attestation request to the correct verifier server and validates the response.
+// The response is saved in the struct.
+func (a *Attestation) Handle(ctx context.Context) error {
 	responseBytes, confirmed, err := ResolveAttestationRequest(ctx, a)
 	if err != nil {
 		a.Status = ProcessError
