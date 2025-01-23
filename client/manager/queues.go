@@ -19,10 +19,8 @@ func buildQueues(queuesConfigs config.Queues) attestationQueues {
 	queues := make(attestationQueues)
 
 	for k := range queuesConfigs {
-
 		params := queuesConfigs[k]
 		queue := queue.NewPriority[*attestation.Attestation](&params)
-
 		queues[k] = &queue
 	}
 

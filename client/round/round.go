@@ -22,7 +22,7 @@ const BitVoteMaxNoOfOperations = 20_000_000 // maximal number of operations in t
 
 type Round struct {
 	ID                           uint32
-	Status                       *attestation.RoundStatus
+	Status                       *attestation.RoundStatusMutex
 	Attestations                 []*attestation.Attestation
 	attestationMap               map[common.Hash]*attestation.Attestation
 	bitVotes                     []*bitvotes.WeightedBitVote
@@ -35,9 +35,8 @@ type Round struct {
 
 // New returns a pointer to a new Round with ID and voterSet.
 func New(ID uint32, voterSet *voters.Set) *Round {
-
-	Status := new(attestation.RoundStatus)
-	*Status = attestation.PreConsensus
+	Status := new(attestation.RoundStatusMutex)
+	Status.Value = attestation.PreConsensus
 
 	return &Round{
 		ID:                           ID,
@@ -113,7 +112,9 @@ func (r *Round) ComputeConsensusBitVote() error {
 	}
 
 	r.ConsensusBitVote = consensus
-	*r.Status = attestation.Consensus
+	r.Status.Lock()
+	r.Status.Value = attestation.Consensus
+	r.Status.Unlock()
 
 	return r.setConsensusStatus(consensus)
 }
@@ -163,7 +164,9 @@ func (r *Round) MerkleTree() (merkle.Tree, error) {
 
 	merkleTree := merkle.Build(hashes, false)
 	r.merkleTree = merkleTree
-	*r.Status = attestation.Done
+	r.Status.Lock()
+	r.Status.Value = attestation.Done
+	r.Status.Unlock()
 
 	return merkleTree, nil
 }

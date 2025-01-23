@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"sync"
 
 	"github.com/flare-foundation/go-flare-common/pkg/contracts/fdchub"
 	"github.com/flare-foundation/go-flare-common/pkg/database"
@@ -31,6 +32,11 @@ const (
 	Done                            // merkle root successfully queried by fsp client
 	Failed
 )
+
+type RoundStatusMutex struct {
+	Value RoundStatus
+	sync.RWMutex
+}
 
 type Status int
 
@@ -70,7 +76,7 @@ type IndexLog struct {
 type Attestation struct {
 	Indexes           []IndexLog // indexLogs of all logs in the round with the Request. The earliest is in the first place.
 	RoundID           uint32
-	RoundStatus       *RoundStatus
+	RoundStatus       *RoundStatusMutex
 	Request           Request
 	Response          Response
 	Fee               *big.Int // sum of fees of all logs in the round with the Request
@@ -110,9 +116,9 @@ func AttestationFromDatabaseLog(request database.Log) (Attestation, error) {
 
 	indexes := []IndexLog{{request.BlockNumber, request.LogIndex}}
 
-	roundStatus := new(RoundStatus)
+	roundStatus := new(RoundStatusMutex)
 
-	*roundStatus = Unassigned
+	roundStatus.Value = Unassigned
 
 	attestation := Attestation{
 		Indexes:     indexes,
@@ -129,13 +135,16 @@ func AttestationFromDatabaseLog(request database.Log) (Attestation, error) {
 // Handle sends the attestation request to the correct verifier server and validates the response.
 // The response is saved in the struct.
 func (a *Attestation) Discard(ctx context.Context) bool {
+	a.RoundStatus.RLock()
+	defer a.RoundStatus.RUnlock()
+
 	if a.Status == Success {
 		logger.Debugf("discarding already confirmed request in round %d", a.RoundID)
 		return true
-	} else if *a.RoundStatus == Done {
+	} else if a.RoundStatus.Value == Done {
 		logger.Debugf("discarding request in finished round %d", a.RoundID)
 		return true
-	} else if *a.RoundStatus == Consensus && !a.Consensus {
+	} else if a.RoundStatus.Value == Consensus && !a.Consensus {
 		logger.Debugf("discarding unselected request in round %d", a.RoundID)
 		return true
 	}
