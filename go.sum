@@ -74,6 +74,8 @@ github.com/ethereum/go-verkle v0.1.1-0.20240829091221-dffa7562dbe9 h1:8NfxH2iXvJ
 github.com/ethereum/go-verkle v0.1.1-0.20240829091221-dffa7562dbe9/go.mod h1:M3b90YRnzqKyyzBEWJGqj8Qff4IDeXnzFw0P9bFw3uk=
 github.com/flare-foundation/go-flare-common v1.1.0-rc.0 h1:Fkf9/RCKHa7Ynxi2G6wm9TAq9AvF3nY7jhYbmrN6BSc=
 github.com/flare-foundation/go-flare-common v1.1.0-rc.0/go.mod h1:znM2IpczjntjZGO4cHJKqrtdwCF1+2wWLXqAo1Ag1ek=
+github.com/flare-foundation/go-flare-common v1.1.0 h1:Q38jY9velfo1ZLzAyxN1Gwo4H4vwCoAzyRNby3HleoI=
+github.com/flare-foundation/go-flare-common v1.1.0/go.mod h1:znM2IpczjntjZGO4cHJKqrtdwCF1+2wWLXqAo1Ag1ek=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/fsnotify/fsnotify v1.4.9/go.mod h1:znqG4EE+3YCdAaPaxE2ZRY/06pZUdp0tY4IgpuI1SZQ=
 github.com/fsnotify/fsnotify v1.5.4/go.mod h1:OVB6XrOHzAwXMpEM7uPOzcehqUV2UqJxmVXmkdnm1bU=
