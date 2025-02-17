@@ -115,7 +115,7 @@ func (m *Manager) Run(ctx context.Context) {
 			} else {
 				logger.Debugf("Consensus bitVote %s for round %d computed.", r.ConsensusBitVote.EncodeBitVoteHex(), bitVotesForRound.ID)
 
-				noOfRetried, err := m.retryUnsuccessfulChosen(ctx, r)
+				noOfRetried, err := m.retryUnsuccessfulChosen(r)
 				if err != nil {
 					logger.Warnf("error retrying round %d: s", r.ID, err)
 				} else if noOfRetried > 0 {
@@ -236,7 +236,7 @@ func VotersDataCheck(data shared.VotersData) error {
 }
 
 // retryUnsuccessfulChosen adds the requests that are without successful response but were chosen by the consensus bitVote to the priority verifier queues.
-func (m *Manager) retryUnsuccessfulChosen(ctx context.Context, round *round.Round) (int, error) {
+func (m *Manager) retryUnsuccessfulChosen(round *round.Round) (int, error) {
 	count := 0 //only for logging
 
 	for i := range round.Attestations {
@@ -248,10 +248,8 @@ func (m *Manager) retryUnsuccessfulChosen(ctx context.Context, round *round.Roun
 				return 0, fmt.Errorf("retry: no queue: %s", queueName)
 			}
 
-			err := queue.EnqueuePriority(ctx, round.Attestations[i])
-			if err != nil {
-				return 0, err
-			}
+			weight := weight{round.ID}
+			queue.AddFast(round.Attestations[i], weight)
 
 			count++
 		}
@@ -272,7 +270,8 @@ func (m *Manager) AddToQueue(ctx context.Context, attestation *attestation.Attes
 		return fmt.Errorf("queue %s does not exist", attestation.QueueName)
 	}
 
-	err = queue.Enqueue(ctx, attestation)
+	weight := weight{attestation.RoundID}
+	queue.Add(attestation, weight)
 
-	return err
+	return nil
 }

@@ -1,11 +1,11 @@
 package config
 
 import (
+	"math/big"
+
 	"github.com/flare-foundation/go-flare-common/pkg/database"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
-	"github.com/flare-foundation/go-flare-common/pkg/queue"
-
-	"math/big"
+	"github.com/flare-foundation/go-flare-common/pkg/priority"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -95,4 +95,4 @@ type Timing struct {
 	ChooseDurationSec  uint64 `toml:"choose_duration_sec"`
 }
 
-type Queues map[string]queue.PriorityQueueParams
+type Queues map[string]priority.Params

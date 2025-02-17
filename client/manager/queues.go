@@ -3,14 +3,29 @@ package manager
 import (
 	"context"
 
-	"github.com/flare-foundation/go-flare-common/pkg/logger"
-	"github.com/flare-foundation/go-flare-common/pkg/queue"
-
 	"github.com/flare-foundation/fdc-client/client/attestation"
 	"github.com/flare-foundation/fdc-client/client/config"
+	"github.com/flare-foundation/go-flare-common/pkg/priority"
 )
 
-type attestationQueue = queue.PriorityQueue[*attestation.Attestation]
+// weight implements priority.Weight[wTup]
+type weight struct {
+	Round uint32
+}
+
+func (x weight) Self() weight {
+	return x
+}
+
+// Less returns true if x represents lower priority than y
+//
+//   - ">" later rounds have lower priority
+//   - "=" implementation detail (if two items have the same priority, we do not want the later to have priority)
+func (x weight) Less(y weight) bool {
+	return x.Round >= y.Round
+}
+
+type attestationQueue = priority.PriorityQueue[*attestation.Attestation, weight]
 
 type attestationQueues map[string]*attestationQueue
 
@@ -20,7 +35,7 @@ func buildQueues(queuesConfigs config.Queues) attestationQueues {
 
 	for k := range queuesConfigs {
 		params := queuesConfigs[k]
-		queue := queue.NewPriority[*attestation.Attestation](&params)
+		queue := priority.New[*attestation.Attestation, weight](params, k)
 		queues[k] = &queue
 	}
 
@@ -47,16 +62,15 @@ func runQueues(ctx context.Context, queues attestationQueues) {
 }
 
 // run tracks and handles all dequeued attestations from a queue.
-func run(ctx context.Context, queue *attestationQueue) {
+func run(ctx context.Context, q *attestationQueue) {
+	q.InitiateAndRun(ctx)
 	for {
-		err := queue.DequeueAsync(ctx, handler, discard)
-		if err != nil {
-			logger.Warn(err)
-		}
+		q.Dequeue(ctx, handler, discard)
 
-		if err := ctx.Err(); err != nil {
-			logger.Infof("queue worker exiting: %v", err)
+		select {
+		case <-ctx.Done():
 			return
+		default:
 		}
 	}
 }
