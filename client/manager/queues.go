@@ -8,24 +8,21 @@ import (
 	"github.com/flare-foundation/go-flare-common/pkg/priority"
 )
 
-// weight implements priority.Weight[wTup]
-type weight struct {
-	Round uint32
+// Weight implements priority.Weight[wTup]
+type Weight struct {
+	Index attestation.IndexLog
 }
 
-func (x weight) Self() weight {
+func (x Weight) Self() Weight {
 	return x
 }
 
 // Less returns true if x represents lower priority than y
-//
-//   - ">" later rounds have lower priority
-//   - "=" implementation detail (if two items have the same priority, we do not want the later to have priority)
-func (x weight) Less(y weight) bool {
-	return x.Round >= y.Round
+func (x Weight) Less(y Weight) bool {
+	return attestation.EarlierLog(y.Index, x.Index)
 }
 
-type attestationQueue = priority.PriorityQueue[*attestation.Attestation, weight]
+type attestationQueue = priority.PriorityQueue[*attestation.Attestation, Weight]
 
 type attestationQueues map[string]*attestationQueue
 
@@ -35,7 +32,7 @@ func buildQueues(queuesConfigs config.Queues) attestationQueues {
 
 	for k := range queuesConfigs {
 		params := queuesConfigs[k]
-		queue := priority.New[*attestation.Attestation, weight](params, k)
+		queue := priority.New[*attestation.Attestation, Weight](params, k)
 		queues[k] = &queue
 	}
 

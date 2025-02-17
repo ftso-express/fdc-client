@@ -248,7 +248,7 @@ func (m *Manager) retryUnsuccessfulChosen(round *round.Round) (int, error) {
 				return 0, fmt.Errorf("retry: no queue: %s", queueName)
 			}
 
-			weight := weight{round.ID}
+			weight := Weight{round.Attestations[i].Index()}
 			queue.AddFast(round.Attestations[i], weight)
 
 			count++
@@ -270,7 +270,7 @@ func (m *Manager) AddToQueue(ctx context.Context, attestation *attestation.Attes
 		return fmt.Errorf("queue %s does not exist", attestation.QueueName)
 	}
 
-	weight := weight{attestation.RoundID}
+	weight := Weight{attestation.Index()}
 	queue.Add(attestation, weight)
 
 	return nil
