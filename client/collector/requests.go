@@ -89,7 +89,7 @@ func AttestationRequestListener(
 			logger.Error("fetch logs error:", err)
 			continue
 		}
-		logger.Debugf("Received %d requests from blocks (%d,%d]", len(logs), lastQueriedBlock, state.Index)
+		// logger.Debugf("Received %d requests from blocks (%d,%d]", len(logs), lastQueriedBlock, state.Index)
 
 		lastQueriedBlock = state.Index
 
