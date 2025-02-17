@@ -14,6 +14,7 @@ import (
 	"github.com/flare-foundation/go-flare-common/pkg/database"
 	"github.com/flare-foundation/go-flare-common/pkg/events"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
+	"github.com/flare-foundation/go-flare-common/pkg/priority"
 
 	bitvotes "github.com/flare-foundation/fdc-client/client/attestation/bitVotes"
 	"github.com/flare-foundation/fdc-client/client/config"
@@ -73,6 +74,20 @@ type IndexLog struct {
 	LogIndex    uint64 // consecutive number of log in block
 }
 
+// Weight implements priority.Weight[wTup]
+type Weight struct {
+	Index IndexLog
+}
+
+func (x Weight) Self() Weight {
+	return x
+}
+
+// Less returns true if x represents lower priority than y
+func (x Weight) Less(y Weight) bool {
+	return EarlierLog(y.Index, x.Index)
+}
+
 type Attestation struct {
 	Indexes           []IndexLog // indexLogs of all logs in the round with the Request. The earliest is in the first place.
 	RoundID           uint32
@@ -88,6 +103,8 @@ type Attestation struct {
 	LUTLimit          uint64
 	QueueName         string
 	Credentials       *VerifierCredentials
+
+	QueuePointer *priority.Item[priority.Wrapped[*Attestation], Weight]
 }
 
 // earlierLog returns true if a has lower blockNumber then b or has the same blockNumber and lower LogIndex. Otherwise, it returns false.

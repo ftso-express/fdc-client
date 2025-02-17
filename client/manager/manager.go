@@ -248,7 +248,7 @@ func (m *Manager) retryUnsuccessfulChosen(round *round.Round) (int, error) {
 				return 0, fmt.Errorf("retry: no queue: %s", queueName)
 			}
 
-			weight := Weight{round.Attestations[i].Index()}
+			weight := attestation.Weight{Index: round.Attestations[i].Index()}
 			queue.AddFast(round.Attestations[i], weight)
 
 			count++
@@ -259,19 +259,20 @@ func (m *Manager) retryUnsuccessfulChosen(round *round.Round) (int, error) {
 }
 
 // AddToQueue adds the attestation to the correct verifier queue.
-func (m *Manager) AddToQueue(ctx context.Context, attestation *attestation.Attestation) error {
-	err := attestation.PrepareRequest(m.attestationTypeConfig)
+func (m *Manager) AddToQueue(ctx context.Context, att *attestation.Attestation) error {
+	err := att.PrepareRequest(m.attestationTypeConfig)
 	if err != nil {
 		return fmt.Errorf("preparing request: %s", err)
 	}
 
-	queue, ok := m.queues[attestation.QueueName]
+	queue, ok := m.queues[att.QueueName]
 	if !ok {
-		return fmt.Errorf("queue %s does not exist", attestation.QueueName)
+		return fmt.Errorf("queue %s does not exist", att.QueueName)
 	}
 
-	weight := Weight{attestation.Index()}
-	queue.Add(attestation, weight)
+	weight := attestation.Weight{Index: att.Index()}
+	att.QueuePointer = queue.Add(att, weight) // for future use cases
 
 	return nil
+
 }
