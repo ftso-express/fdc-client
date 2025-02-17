@@ -7,11 +7,11 @@
 Flare Data Connector client supports tha attestation process.
 It does the following tasks:
 
--   Queries Flare C-Chain indexer for signing policies, attestation requests, and bitVotes.
--   Assigns the attestation requests to the correct voting rounds and begins their verification process.
--   Provides bitVote for each round.
--   Computes consensus bitVote for each round.
--   For each round, provides Merkle root of Merkle tree build on hashes of the confirmed attestations.
+- Queries Flare C-Chain indexer for signing policies, attestation requests, and bitVotes.
+- Assigns the attestation requests to the correct voting rounds and begins their verification process.
+- Provides bitVote for each round.
+- Computes consensus bitVote for each round.
+- For each round, provides Merkle root of Merkle tree build on hashes of the confirmed attestations.
 
 The client has no direct interactions with the Flare blockchain/node. The data is read through C-Chain indexer and submitted through Flare System Client.
 
@@ -114,10 +114,9 @@ Each queue has the following configs:
 
 ```toml
 [queue.<queueName>]
-size = 10
 max_dequeues_per_second = 100 # 0 for unlimited
 max_workers = 10 # 0 for unlimited
-max_attempts = 3 # negative for unlimited
+max_attempts = 3
 time_off = "2s" # time off after each unsuccessful attempt.
 ```
 
