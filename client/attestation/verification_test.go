@@ -103,7 +103,6 @@ func TestResponse(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, common.HexToHash(test.hash), hash, fmt.Sprintf("error hash in test %d", i))
 	}
-
 }
 
 func TestRequest(t *testing.T) {

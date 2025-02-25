@@ -37,7 +37,6 @@ func TestReadUserRaw(t *testing.T) {
 	sourceConfig, ok := typeConfigs.SourcesConfig[source]
 	require.True(t, ok)
 	require.Equal(t, "12345", sourceConfig.APIKey)
-
 }
 
 func TestReadSystem(t *testing.T) {

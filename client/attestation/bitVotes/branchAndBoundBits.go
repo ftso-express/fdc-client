@@ -36,7 +36,6 @@ type Value struct {
 
 func (v Value) Copy() Value {
 	return Value{new(big.Int).Set(v.CappedValue), new(big.Int).Set(v.UncappedValue)}
-
 }
 
 // Cmp compares Values lexicographically.
@@ -274,7 +273,6 @@ func BranchBits(processInfo *ProcessInfo, currentStatus *SharedStatus, branch in
 	newIncludedVotes, newCurrentWeight := prepareDataForBranchWithOne(processInfo, currentStatus, includedVotes, currentWeight, branch)
 
 	if newCurrentWeight > processInfo.LowerBoundWeight {
-
 		result1 = BranchBits(processInfo, currentStatus, branch+1, newIncludedVotes, newCurrentWeight, feeSum)
 	}
 

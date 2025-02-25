@@ -174,7 +174,6 @@ func (r *Round) MerkleTree() (merkle.Tree, error) {
 // MerkleTreeCached gets Merkle tree from cache if it is already computed or computes it.
 func (r *Round) MerkleTreeCached() (merkle.Tree, error) {
 	if len(r.merkleTree) != 0 {
-
 		return r.merkleTree, nil
 	}
 

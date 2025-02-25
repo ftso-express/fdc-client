@@ -36,7 +36,6 @@ var (
 )
 
 func InMemoryDB(t *testing.T) *gorm.DB {
-
 	db, err := gorm.Open(sqlite.Open("file::memory:"), &gorm.Config{
 		//Logger: logger.Default.LogMode(logger.Info),
 	})
@@ -83,7 +82,6 @@ func TestPrepareChooseTrigger(t *testing.T) {
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
-
 }
 
 func TestBitVoteListener(t *testing.T) {
@@ -144,7 +142,6 @@ func TestBitVoteListener(t *testing.T) {
 	case <-ctx.Done():
 		t.Fatal("context cancelled")
 	}
-
 }
 
 func TestAttestationRequestListener(t *testing.T) {
@@ -199,5 +196,4 @@ func TestAttestationRequestListener(t *testing.T) {
 	case <-ctx.Done():
 		t.Fatal("context cancelled")
 	}
-
 }

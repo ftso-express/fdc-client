@@ -244,7 +244,6 @@ func BranchVotes(
 
 		// check if a branch is possible
 		if newWeight > processInfo.LowerBoundWeight {
-
 			result0 = BranchVotes(processInfo, currentStatus, branch+1, includedBits, feeSum, newWeight)
 		}
 	}
@@ -275,7 +274,6 @@ func prepareDataForBranchWithVote(processInfo *ProcessInfo, currentStatus *Share
 	newFeeSum := new(big.Int).Set(feeSum)
 	for bit := range includedBits {
 		if processInfo.BitVotes[voteIndex].BitVector.Bit(processInfo.Bits[bit].Indexes[0]) == 0 {
-
 			newFeeSum.Sub(newFeeSum, processInfo.Bits[bit].Fee)
 			currentStatus.NumOperations++
 

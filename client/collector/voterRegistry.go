@@ -41,7 +41,6 @@ func fetchVoterRegisteredEventsForRewardEpoch(ctx context.Context, db *gorm.DB, 
 	).Find(&logs).Error
 
 	return logs, err
-
 }
 
 // BuildSubmitToSigningPolicyAddress builds a map from VoterRegisteredEvents mapping submit addresses to signingPolicy addresses.
@@ -58,7 +57,6 @@ func BuildSubmitToSigningPolicyAddress(registryEvents []database.Log) (map[commo
 	}
 
 	return submitToSigning, nil
-
 }
 
 // SubmitToSigningPolicyAddress builds a map for rewardEpochID mapping submit addresses to signingPolicy addresses.

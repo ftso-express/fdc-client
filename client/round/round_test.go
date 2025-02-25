@@ -146,7 +146,6 @@ func TestAddAttestation(t *testing.T) {
 			require.Equal(t, test.fees[j], att.Fee, fmt.Sprintf("wrong fee for attestation %d in test %d", j, i))
 		}
 	}
-
 }
 
 func TestPrepend(t *testing.T) {
@@ -154,7 +153,6 @@ func TestPrepend(t *testing.T) {
 		added    []int
 		expected []int
 	}{
-
 		{
 			added:    []int{1, 1, 1},
 			expected: []int{1, 1, 1},

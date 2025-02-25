@@ -110,7 +110,6 @@ func PrepareChooseTrigger(ctx context.Context, trigger chan uint32, db *gorm.DB)
 			if err != nil {
 				logger.Error("database error:", err)
 			} else {
-
 				done := tryTriggerBitVote(
 					ctx, nextChoosePhaseRoundIDEnd, nextChoosePhaseEndTimestamp, state.BlockTimestamp, trigger,
 				)

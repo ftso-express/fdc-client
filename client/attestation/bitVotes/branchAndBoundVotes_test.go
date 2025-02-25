@@ -205,7 +205,6 @@ func TestMaximizeVotes(t *testing.T) {
 		endBits  map[int]bool
 		endValue bitvotes.Value
 	}{
-
 		{
 			vectors:      []string{"1110", "1101", "1011", "1100"},
 			supports:     []uint16{2, 1, 1, 1},

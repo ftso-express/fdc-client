@@ -2,7 +2,6 @@ package server_test
 
 import (
 	"encoding/hex"
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -20,7 +19,6 @@ import (
 )
 
 func makeController(t *testing.T) server.DAController {
-
 	rounds := storage.NewCyclic[uint32, *round.Round](10)
 
 	controller := server.DAController{Rounds: &rounds}
@@ -28,15 +26,12 @@ func makeController(t *testing.T) server.DAController {
 	hash := common.HexToHash("0x232")
 
 	request, err := hex.DecodeString(requestEVM)
-
 	require.NoError(t, err)
 
 	response, err := hex.DecodeString(responseEVM)
-
 	require.NoError(t, err)
 
 	abi, abiString, err := config.ReadABI("../tests/configs/abis/EVMTransaction.json")
-
 	require.NoError(t, err)
 
 	round := round.New(1, voters.NewSet(nil, nil, nil))
@@ -63,27 +58,19 @@ func TestGetRequests(t *testing.T) {
 	controller := makeController(t)
 
 	requests, ok := controller.GetRequests(1)
-
 	require.True(t, ok)
-
 	require.Len(t, requests, 1)
 
 	requests, ok = controller.GetRequests(2)
 
 	require.True(t, !ok)
-
 	require.Nil(t, requests)
-
 }
 
 func TestGetAttestations(t *testing.T) {
 	controller := makeController(t)
 
 	attestations, ok := controller.GetAttestations(1)
-
 	require.True(t, ok)
-
 	require.Len(t, attestations, 1)
-
-	fmt.Printf("attestations: %v\n", attestations[0].ResponseABI)
 }

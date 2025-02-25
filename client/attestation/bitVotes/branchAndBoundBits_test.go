@@ -191,7 +191,6 @@ func TestCalcValue(t *testing.T) {
 
 		require.Equal(t, test.uncappedValue, value.UncappedValue, fmt.Sprintf("error in test %d", i))
 	}
-
 }
 
 func TestSort(t *testing.T) {
@@ -260,7 +259,6 @@ func TestMaximizeBits(t *testing.T) {
 		endBits  map[int]bool
 		endValue bitvotes.Value
 	}{
-
 		{
 			vectors:      []string{"1110", "1101", "1011", "0100"},
 			supports:     []uint16{2, 1, 1, 1},

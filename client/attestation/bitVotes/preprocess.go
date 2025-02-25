@@ -163,7 +163,6 @@ func (f *AggregatedBit) Value(totalWeight uint16, cache bool) Value {
 	if cache && f.value.CappedValue != nil {
 		return f.value
 	} else if cache {
-
 		f.value = CalcValue(f.Fee, f.Support, totalWeight)
 
 		return f.value

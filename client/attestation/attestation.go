@@ -66,7 +66,6 @@ func init() {
 	if err != nil {
 		logger.Panic("cannot get fdc contract:", err)
 	}
-
 }
 
 type IndexLog struct {
@@ -226,7 +225,6 @@ func (a *Attestation) PrepareRequest(attestationTypesConfigs config.AttestationT
 	a.Status = Processing
 
 	return nil
-
 }
 
 // validateResponse checks the MIC and LUT of the attestation. If both conditions pass, hash is computed and added to the attestation.

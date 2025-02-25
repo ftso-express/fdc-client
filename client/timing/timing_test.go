@@ -109,5 +109,4 @@ func TestTimesForTimestamps(t *testing.T) {
 		require.Equal(t, test.roundIDCollect, roundIDCollect, fmt.Sprintf("wrong roundIDCollect in test %d", i))
 		require.Equal(t, test.collectStart, collectStart, fmt.Sprintf("wrong roundIDCollect in test %d", i))
 	}
-
 }

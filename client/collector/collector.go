@@ -122,7 +122,6 @@ func New(user *config.UserRaw, system *config.System, sharedDataPipes *shared.Da
 
 // Run starts SigningPolicyInitializedListener, BitVoteListener, and AttestationRequestListener in go routines.
 func (c *Collector) Run(ctx context.Context) {
-
 	go SigningPolicyInitializedListener(ctx, c.DB, c.RelayContractAddress, c.VoterRegistryContractAddress, c.SigningPolicies)
 	go AttestationRequestListener(ctx, c.DB, c.FdcContractAddress, requestListenerInterval, c.Requests)
 

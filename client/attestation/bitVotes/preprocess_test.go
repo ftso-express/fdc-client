@@ -169,7 +169,6 @@ func TestFilter(t *testing.T) {
 		RemainingVotes   map[int]bool
 		GuaranteedWeight uint16
 	}{
-
 		{
 			vectors:        []string{"1111", "1100", "1001"},
 			weights:        []uint16{3, 2, 1},
@@ -244,9 +243,7 @@ func TestFilter(t *testing.T) {
 		require.Equal(t, test.GuaranteedFees, results.GuaranteedFees)
 
 		require.Equal(t, test.GuaranteedWeight, results.GuaranteedWeight)
-
 	}
-
 }
 
 func TestFilterAndAggregate(t *testing.T) {
@@ -271,7 +268,6 @@ func TestFilterAndAggregate(t *testing.T) {
 		totalAggWeight uint16
 		totalAggFees   *big.Int
 	}{
-
 		{
 			vectors:        []string{"111111", "111100", "110111", "110100", "111000"},
 			weights:        []uint16{2, 1, 1, 1, 1},

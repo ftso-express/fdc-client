@@ -2,7 +2,6 @@ package utils
 
 // prepend places the element at the beginning of the slice and moves the potentially replaced element to the end.
 func Prepend[T any](slice []T, element T) []T {
-
 	if len(slice) == 0 {
 		slice = append(slice, element)
 		return slice
@@ -13,7 +12,6 @@ func Prepend[T any](slice []T, element T) []T {
 	slice[0] = element
 
 	return slice
-
 }
 
 func Keys[K comparable, V any](m map[K]V) []K {
