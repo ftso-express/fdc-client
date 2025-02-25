@@ -5,6 +5,7 @@ import (
 
 	"github.com/flare-foundation/fdc-client/client/attestation"
 	"github.com/flare-foundation/fdc-client/client/config"
+	"github.com/flare-foundation/go-flare-common/pkg/logger"
 	"github.com/flare-foundation/go-flare-common/pkg/priority"
 )
 
@@ -30,7 +31,7 @@ func handler(ctx context.Context, at *attestation.Attestation) error {
 	return at.Handle(ctx)
 }
 
-// discard discards requests that do not need to be handled
+// discard discards requests that do not need to be handled.
 func discard(ctx context.Context, at *attestation.Attestation) bool {
 	return at.Discard(ctx)
 }
@@ -50,10 +51,8 @@ func run(ctx context.Context, q *attestationQueue) {
 	for {
 		q.Dequeue(ctx, handler, discard)
 
-		select {
-		case <-ctx.Done():
-			return
-		default:
+		if err := ctx.Err(); err != nil {
+			logger.Infof("queue %s exiting: %v ", q.Name(), err)
 		}
 	}
 }

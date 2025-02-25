@@ -150,8 +150,6 @@ func queryNextSPI(
 		}
 
 		if len(logs) > 0 {
-			logger.Debug("Adding signing policy to channel")
-
 			votersDataArray := make([]shared.VotersData, 0)
 			if len(logs) > 1 {
 				// this should never happen
