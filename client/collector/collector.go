@@ -52,7 +52,6 @@ func init() {
 	signingPolicyInitializedEventSel = signingPolicyEvent.ID
 
 	fdcABI, err := fdchub.FdcHubMetaData.GetAbi()
-
 	if err != nil {
 		logger.Panic("cannot get fdcABI:", err)
 	}
@@ -70,7 +69,6 @@ func init() {
 	}
 
 	voterRegisteredEvent, ok := registryABI.Events["VoterRegistered"]
-
 	if !ok {
 		logger.Panic("cannot get VoterRegistered event:", err)
 	}
