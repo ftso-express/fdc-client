@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	bitVoteOffChainTriggerSeconds = 15
+	bitVoteOffChainTriggerSeconds = 20
 	outOfSyncTolerance            = 15 * time.Second
 	maxSleepTime                  = 10 * time.Minute
 	minSleepTime                  = 5 * time.Second
