@@ -84,7 +84,7 @@ func (m *Manager) Run(ctx context.Context) {
 					logger.Error("signing policy error:", err)
 				}
 			}
-			deleted := m.signingPolicyStorage.RemoveBefore(uint32(m.lastRoundCreated)) // delete all signing policies that have already ended
+			deleted := m.signingPolicyStorage.RemoveBefore(m.lastRoundCreated) // delete all signing policies that have already ended
 
 			for j := range deleted {
 				logger.Debugf("deleted signing policy for epoch %d", deleted[j])
@@ -274,5 +274,4 @@ func (m *Manager) AddToQueue(ctx context.Context, att *attestation.Attestation) 
 	att.QueuePointer = queue.Add(att, weight) // for future use cases
 
 	return nil
-
 }

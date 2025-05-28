@@ -133,8 +133,8 @@ func TestManagerMethods(t *testing.T) {
 		bverr, err := mngr.OnBitVote(badBitVote)
 		require.Error(t, bverr, fmt.Sprintf("error in bad bitVote %d", i))
 		require.NoError(t, err)
-
 	}
+
 	bitVoteMessageCorrect := bitVoteMessage
 	bitVoteMessageCorrect.Payload = []byte{0, 0}
 	bverr, err := mngr.OnBitVote(bitVoteMessageCorrect)

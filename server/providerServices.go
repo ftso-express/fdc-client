@@ -59,7 +59,7 @@ func (controller *FDCProtocolProviderController) submitSignaturesService(roundID
 		return payload.SubprotocolResponse{Status: payload.Retry}
 	}
 
-	message := payload.BuildMessageForSigning(uint8(controller.protocolID), uint32(roundID), false, root)
+	message := payload.BuildMessageForSigning(controller.protocolID, roundID, false, root)
 	logger.Infof("submitSignatures: round: %v, root: %v, consensus: %s", roundID, root, encodedBitVote)
 
 	return payload.SubprotocolResponse{Status: payload.Ok, Data: message, AdditionalData: encodedBitVote}

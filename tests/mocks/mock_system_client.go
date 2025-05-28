@@ -108,7 +108,7 @@ func MakeGetRequest(
 		return nil, err
 	}
 
-	defer rsp.Body.Close()
+	defer rsp.Body.Close() //nolint:errcheck
 	if rsp.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("unexpected status code: %s", rsp.Status)
 	}

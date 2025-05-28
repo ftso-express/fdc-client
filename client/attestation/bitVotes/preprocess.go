@@ -43,7 +43,6 @@ func (fr *FilterResults) FilterBits(bitVotes []*WeightedBitVote, fees []*big.Int
 
 			delete(fr.RemainingBits, i)
 		}
-
 	}
 
 	return fr
@@ -101,7 +100,6 @@ votes:
 			fr.GuaranteedWeight += bitVotes[i].Weight
 
 			delete(fr.RemainingVotes, i)
-
 		} else if allZeros {
 			somethingChanged = true
 			fr.AlwaysOutVotes = append(fr.AlwaysOutVotes, i)
@@ -240,7 +238,6 @@ func AggregateVotes(bitVotes []*WeightedBitVote, fees []*big.Int, filterResults 
 			if bit == 1 {
 				feesVote.Add(feesVote, fees[j])
 				identifier += "1"
-
 			} else {
 				identifier += "0"
 			}

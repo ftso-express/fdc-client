@@ -85,7 +85,6 @@ func MockParticipants(systemConfig *config.System, participants []string, client
 			logger.Error("Error: %s", err)
 			continue
 		}
-
 	}
 }
 
@@ -118,29 +117,26 @@ func sendRequest(i int, client *ethclient.Client, fdcHub *fdchub.FdcHub, fromAdd
 	nonce, err := client.PendingNonceAt(context.Background(), fromAddress)
 	if err != nil {
 		return err
-
 	}
+
 	opts.Nonce = big.NewInt(int64(nonce))
 
 	tx, err := fdcHub.RequestAttestation(opts, dataBytes)
 	if err != nil {
 		return err
-
 	}
 
 	receipt, err := bind.WaitMined(context.Background(), client, tx)
 	if err != nil {
 		return err
-
 	}
+
 	if receipt.Status == 0 {
 		reason, err := GetFailingMessage(*client, tx.Hash())
 		if err != nil {
 			return err
-
 		}
 		return fmt.Errorf("error: Transaction fail: %s", reason)
-
 	}
 
 	return nil
@@ -153,7 +149,7 @@ func sendBitvote(round uint32, client *ethclient.Client, toAddress, fromAddress 
 	dataBytes := append(collector.Submit2FuncSel[:], 200)
 
 	votingRound := make([]byte, 4)
-	binary.BigEndian.PutUint32(votingRound, uint32(round)) // todo
+	binary.BigEndian.PutUint32(votingRound, round) // todo
 	dataBytes = append(dataBytes, votingRound...)
 
 	length := make([]byte, 2)
@@ -182,14 +178,14 @@ func sendBitvote(round uint32, client *ethclient.Client, toAddress, fromAddress 
 	receipt, err := bind.WaitMined(context.Background(), client, signedTx)
 	if err != nil {
 		return err
-
 	}
+
 	if receipt.Status == 0 {
 		reason, err := GetFailingMessage(*client, tx.Hash())
 		if err != nil {
 			return err
-
 		}
+
 		return fmt.Errorf("error: Transaction fail: %s", reason)
 	}
 

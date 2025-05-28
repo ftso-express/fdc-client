@@ -89,7 +89,6 @@ func BranchAndBoundVotesDouble(
 		} else {
 			firstDone <- true // wait on the other solution
 		}
-
 	}()
 
 	go func() {
@@ -172,7 +171,6 @@ func BranchAndBoundVotes(
 			Value:   Value{big.NewInt(0), big.NewInt(0)},
 			Optimal: false,
 		}
-
 	}
 
 	if !isOptimal {
@@ -276,7 +274,6 @@ func prepareDataForBranchWithVote(processInfo *ProcessInfo, currentStatus *Share
 		if processInfo.BitVotes[voteIndex].BitVector.Bit(processInfo.Bits[bit].Indexes[0]) == 0 {
 			newFeeSum.Sub(newFeeSum, processInfo.Bits[bit].Fee)
 			currentStatus.NumOperations++
-
 		} else {
 			newIncludedBits[bit] = true
 		}

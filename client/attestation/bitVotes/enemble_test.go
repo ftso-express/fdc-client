@@ -39,7 +39,6 @@ func TestEnsembleRandom(t *testing.T) {
 		aggFee := bitvotes.AggregatedBit{Fee: big.NewInt(1), Indexes: []int{j}, Support: 1}
 
 		aggFees[j] = &aggFee
-
 	}
 
 	start := time.Now()

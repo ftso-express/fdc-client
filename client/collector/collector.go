@@ -27,7 +27,7 @@ const (
 	maxSleepTime                  = 10 * time.Minute
 	minSleepTime                  = 5 * time.Second
 	requestListenerInterval       = 2 * time.Second
-	databasePollTime              = 2 * time.Second
+	databasePollTime              = 1 * time.Second
 	bitVoteHeadStart              = 5 * time.Second
 
 	syncRetry = 30
@@ -42,7 +42,7 @@ var Submit2FuncSel [4]byte
 func init() {
 	relayABI, err := relay.RelayMetaData.GetAbi()
 	if err != nil {
-		logger.Panic("cannot get relayAby:", err)
+		logger.Panic("cannot get relayABI:", err)
 	}
 
 	signingPolicyEvent, ok := relayABI.Events["SigningPolicyInitialized"]
@@ -77,7 +77,7 @@ func init() {
 
 	submissionABI, err := submission.SubmissionMetaData.GetAbi()
 	if err != nil {
-		logger.Panic("cannot get submission ABI:", err)
+		logger.Panic("cannot get submissionABI:", err)
 	}
 	copy(Submit2FuncSel[:], submissionABI.Methods["submit2"].ID[:4])
 }

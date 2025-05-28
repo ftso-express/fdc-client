@@ -58,7 +58,7 @@ func ResolveAttestationRequest(ctx context.Context, att *Attestation) ([]byte, b
 	}
 	respLimited := &io.LimitedReader{R: resp.Body, N: maxRespSize}
 	// close response body after function ends
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	responseBody := ABIEncodedResponseBody{}
 

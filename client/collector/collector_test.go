@@ -3,6 +3,7 @@ package collector_test
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 
 	"testing"
 	"time"
@@ -35,9 +36,11 @@ var (
 	funcSel            = [4]byte{1, 2, 3, 4}
 )
 
-func InMemoryDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open("file::memory:"), &gorm.Config{
-		//Logger: logger.Default.LogMode(logger.Info),
+func InMemoryDB(t *testing.T, name string) *gorm.DB {
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", name)
+
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
+		// Logger: logger.Default.LogMode(logger.Info),
 	})
 
 	if err != nil {
@@ -47,10 +50,10 @@ func InMemoryDB(t *testing.T) *gorm.DB {
 }
 
 func TestPrepareChooseTrigger(t *testing.T) {
-	db := InMemoryDB(t)
-
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	db := InMemoryDB(t, "choose")
 
 	now := uint64(time.Now().Unix())
 
@@ -58,7 +61,6 @@ func TestPrepareChooseTrigger(t *testing.T) {
 		Name: "last_database_block", Index: 12, BlockTimestamp: now, Updated: time.Now()}
 
 	err := db.AutoMigrate(&database.State{})
-
 	require.NoError(t, err)
 
 	db.Create(&state)
@@ -67,7 +69,8 @@ func TestPrepareChooseTrigger(t *testing.T) {
 
 	go collector.PrepareChooseTrigger(ctx, trigger, db)
 
-	time.Sleep(time.Second)
+	time.Sleep(1 * time.Second)
+
 	state.Index = 13
 	state.BlockTimestamp += 90
 
@@ -78,17 +81,17 @@ func TestPrepareChooseTrigger(t *testing.T) {
 	select {
 	case roundID := <-trigger:
 		require.Equal(t, expectedID, roundID)
-
+		cancel()
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
 }
 
 func TestBitVoteListener(t *testing.T) {
-	db := InMemoryDB(t)
-
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	db := InMemoryDB(t, "bitvote")
 
 	err := db.AutoMigrate(&database.Transaction{})
 	require.NoError(t, err)
@@ -148,7 +151,7 @@ func TestAttestationRequestListener(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	db := InMemoryDB(t)
+	db := InMemoryDB(t, "requests")
 
 	now := uint64(time.Now().Unix())
 
@@ -156,7 +159,6 @@ func TestAttestationRequestListener(t *testing.T) {
 		Name: "last_database_block", Index: 205597800, BlockTimestamp: now, Updated: time.Now()}
 
 	err := db.AutoMigrate(&database.State{})
-
 	require.NoError(t, err)
 
 	db.Create(&state)
@@ -173,8 +175,8 @@ func TestAttestationRequestListener(t *testing.T) {
 		Topic3:          "NULL",
 		TransactionHash: "e995790cdbb02e851cd767ee4f36bdf4d172b6fc210a497a505ec9c73330f5d1",
 		LogIndex:        1,
-		Timestamp:       now,
-		BlockNumber:     16497501,
+		Timestamp:       now - 1,
+		BlockNumber:     205597799,
 	}
 
 	db.Create(&requestLog)
@@ -192,7 +194,6 @@ func TestAttestationRequestListener(t *testing.T) {
 	select {
 	case logs := <-requestChan:
 		require.Len(t, logs, 1)
-
 	case <-ctx.Done():
 		t.Fatal("context cancelled")
 	}
