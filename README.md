@@ -145,6 +145,40 @@ t0 = 1658429955 # in seconds
 reward_epoch_length = 240 # in voting rounds
 ```
 
+### Monitoring and Metrics
+
+The client can expose a Prometheus-compatible metrics endpoint at `/metrics`. This can be used to monitor the client's performance and data flow using Prometheus and Grafana.
+
+#### Enabling the Metrics Endpoint
+
+To enable the metrics endpoint, add the following section to your `configs/userConfig.toml` file:
+
+```toml
+[metrics]
+enabled = true
+```
+
+When enabled, the metrics will be available at `http://<addr>:<port>/metrics`, where `<addr>` and `<port>` are the address and port of the REST server.
+
+#### Prometheus Configuration
+
+To scrape the metrics with Prometheus, add the following job to your `prometheus.yml` configuration file:
+
+```yaml
+scrape_configs:
+  - job_name: 'fdc-client'
+    static_configs:
+      - targets: ['localhost:8080']  # Replace with the actual address of your FDC client
+```
+
+#### Grafana Dashboards
+
+Once Prometheus is scraping the metrics, you can create dashboards in Grafana to visualize them. The following metrics are exposed:
+
+- `fdc_collector_items_fetched_total`: The total number of items fetched by the collector, labeled by `item_type`.
+- `fdc_manager_items_processed_total`: The total number of items processed by the manager, labeled by `item_type`.
+- `fdc_queue_size_current`: The current size of the data pipe queues, labeled by `queue_name`.
+
 ### Currently supported types and sources:
 
 #### Types:

@@ -3,8 +3,10 @@ from typing import Any, Dict
 
 from src.config import Config
 from src.database import DatabaseConnector
+from src.metrics import COLLECTOR_ITEMS_FETCHED
 from src.shared import DataPipes
 from src.logger import log
+
 
 class Collector:
     def __init__(self, config: Config, data_pipes: DataPipes):
@@ -13,6 +15,7 @@ class Collector:
         self.db_connector = None
         self.db_connection = None
         log.info("Collector initialized.")
+        self.metrics_enabled = self.config.metrics_config.get("enabled", False)
 
     async def connect_to_db(self):
         """Establishes a connection to the database."""
@@ -50,6 +53,16 @@ class Collector:
                 log.debug("Putting signing policy into queue...")
                 await self.data_pipes.signing_policies.put("signing_policy_from_collector")
                 log.debug("Data successfully put into queues.")
+                if self.metrics_enabled:
+                    COLLECTOR_ITEMS_FETCHED.labels(item_type="attestation_request").inc()
+
+                await self.data_pipes.bit_votes.put("bit_vote_from_collector")
+                if self.metrics_enabled:
+                    COLLECTOR_ITEMS_FETCHED.labels(item_type="bit_vote").inc()
+
+                await self.data_pipes.signing_policies.put("signing_policy_from_collector")
+                if self.metrics_enabled:
+                    COLLECTOR_ITEMS_FETCHED.labels(item_type="signing_policy").inc()
 
                 await asyncio.sleep(10) # Fetch data every 10 seconds
             except asyncio.CancelledError:
