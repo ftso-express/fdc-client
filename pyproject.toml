@@ -10,6 +10,7 @@ dependencies = [
     "uvicorn",
     "eth-abi",
     "pycryptodome",
+    "loguru",
     "prometheus-client",
 ]
 
