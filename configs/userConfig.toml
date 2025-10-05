@@ -1,4 +1,3 @@
-
 # options are: "coston", "songbird", "coston2", "flare"
 chain = "coston"
 
@@ -225,3 +224,6 @@ max_dequeues_per_second = 0
 max_workers = 0
 max_attempts = 3
 time_off = "2s"
+
+[metrics]
+enabled = true
