@@ -12,8 +12,11 @@ services:
       - DB_DATABASE=flare_ftso_indexer
       - DB_USERNAME=root
       - DB_PASSWORD=rootpassword
+    volumes:
+      - ./config.toml:/app/config/userConfig.toml:ro
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: on-failure
 
   db:
@@ -27,6 +30,12 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     restart: always
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 volumes:
   mysql_data:
