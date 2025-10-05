@@ -1,4 +1,5 @@
 import asyncio
+from src.logger import log
 
 class DataPipes:
     """
@@ -6,6 +7,7 @@ class DataPipes:
     the collector, manager, and server components.
     """
     def __init__(self):
+        log.info("Initializing data pipes...")
         self.requests = asyncio.Queue()
         self.bit_votes = asyncio.Queue()
         self.signing_policies = asyncio.Queue()
@@ -15,6 +17,7 @@ class DataPipes:
         # it seems to be a shared data structure rather than a queue.
         # For now, I will represent it as a simple list.
         self.rounds = []
+        log.info("Data pipes initialized.")
 
 if __name__ == '__main__':
     # Example usage:
@@ -22,27 +25,31 @@ if __name__ == '__main__':
         pipes = DataPipes()
 
         # Simulate putting some data into the queues
+        log.debug("Putting data into queues...")
         await pipes.requests.put("attestation_request_1")
         await pipes.bit_votes.put("bit_vote_for_round_123")
         await pipes.signing_policies.put("signing_policy_for_epoch_5")
         pipes.rounds.append("round_data_1")
+        log.debug("Data put into queues.")
 
         # Simulate getting data from the queues
+        log.debug("Getting data from queues...")
         request = await pipes.requests.get()
         bit_vote = await pipes.bit_votes.get()
         policy = await pipes.signing_policies.get()
         round_data = pipes.rounds.pop(0)
+        log.debug("Data retrieved from queues.")
 
-        print(f"Got request: {request}")
-        print(f"Got bit vote: {bit_vote}")
-        print(f"Got signing policy: {policy}")
-        print(f"Got round data: {round_data}")
+        log.info(f"Got request: {request}")
+        log.info(f"Got bit vote: {bit_vote}")
+        log.info(f"Got signing policy: {policy}")
+        log.info(f"Got round data: {round_data}")
 
         assert pipes.requests.empty()
         assert pipes.bit_votes.empty()
         assert pipes.signing_policies.empty()
         assert not pipes.rounds
 
-        print("\nShared data pipes work as expected.")
+        log.info("\nShared data pipes work as expected.")
 
     asyncio.run(main())
