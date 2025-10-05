@@ -13,11 +13,13 @@ services:
       - DB_USERNAME=root
       - DB_PASSWORD=rootpassword
     volumes:
-      - ./config.toml:/app/config/userConfig.toml:ro
+      - ./config.toml:/app/configs/userConfig.toml:ro
     depends_on:
       db:
         condition: service_healthy
     restart: on-failure
+    tty: true
+    stdin_open: true
 
   db:
     image: mysql:8.0
