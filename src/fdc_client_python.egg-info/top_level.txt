@@ -1,8 +1,0 @@
-__main__
-attestation
-collector
-config
-manager
-server
-shared
-timing

@@ -1,3 +1,4 @@
+import os
 import tomli
 from typing import Any, Dict
 
@@ -30,7 +31,19 @@ class Config:
 
     @property
     def database_config(self) -> Dict[str, Any]:
-        return self.user_config.get("db", {})
+        """
+        Returns the database configuration.
+        It prioritizes environment variables over the TOML file config.
+        """
+        config = self.user_config.get("db", {})
+
+        config["host"] = os.environ.get("DB_HOST", config.get("host"))
+        config["port"] = int(os.environ.get("DB_PORT", config.get("port", 3306)))
+        config["database"] = os.environ.get("DB_DATABASE", config.get("database"))
+        config["username"] = os.environ.get("DB_USERNAME", config.get("username"))
+        config["password"] = os.environ.get("DB_PASSWORD", config.get("password"))
+
+        return config
 
     @property
     def rest_server_config(self) -> Dict[str, Any]:

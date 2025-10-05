@@ -1,29 +1,22 @@
-# build executable
-FROM golang:1.23 AS builder
+# Use an official Python runtime as a parent image
+FROM python:3.12-slim
 
-WORKDIR /build
-
-# Copy and download dependencies using go mod
-COPY go.mod go.sum ./
-RUN go mod download
-
-# Copy the code into the container
-COPY . .
-
-# Build the applications
-RUN go build -o /app/fdc-client main/main.go
-
-FROM debian:latest AS execution
-
+# Set the working directory in the container
 WORKDIR /app
 
-# binary
-COPY --from=builder /app/fdc-client .
-# abis and system configs
-COPY --from=builder /build/configs/abis /app/configs/abis
-COPY --from=builder /build/configs/systemConfigs /app/configs/systemConfigs
-# ssl certificates
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+# Copy the dependency definition file
+COPY pyproject.toml .
 
+# Install the dependencies
+# We use --no-cache-dir to keep the image size down
+RUN pip install --no-cache-dir .
 
-CMD ["./fdc-client" ]
+# Copy the rest of the application source code
+COPY src/ ./src
+COPY configs/ ./configs
+
+# Expose the port the app runs on
+EXPOSE 8080
+
+# Define the command to run the application
+CMD ["python3", "-m", "src"]
