@@ -5,6 +5,7 @@ description = "A Python implementation of the Flare Data Connector client."
 dependencies = [
     "tomli",
     "mysql-connector-python",
+    "psycopg2-binary",
     "fastapi",
     "uvicorn",
     "eth-abi",

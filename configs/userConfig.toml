@@ -5,6 +5,7 @@ chain = "coston"
 protocol_id = 200
 
 [db]
+type = "mysql"
 host = "localhost"
 port = 3306
 database = "flare_ftso_indexer"

@@ -37,8 +37,13 @@ class Config:
         """
         config = self.user_config.get("db", {})
 
+        db_type = os.environ.get("DB_TYPE", config.get("type", "mysql"))
+        config["type"] = db_type
+
+        default_port = 5432 if db_type == "postgres" else 3306
+
         config["host"] = os.environ.get("DB_HOST", config.get("host"))
-        config["port"] = int(os.environ.get("DB_PORT", config.get("port", 3306)))
+        config["port"] = int(os.environ.get("DB_PORT", config.get("port", default_port)))
         config["database"] = os.environ.get("DB_DATABASE", config.get("database"))
         config["username"] = os.environ.get("DB_USERNAME", config.get("username"))
         config["password"] = os.environ.get("DB_PASSWORD", config.get("password"))
