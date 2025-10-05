@@ -1,0 +1,10 @@
+tomli
+mysql-connector-python
+fastapi
+uvicorn
+eth-abi
+pycryptodome
+
+[dev]
+pytest
+pytest-asyncio

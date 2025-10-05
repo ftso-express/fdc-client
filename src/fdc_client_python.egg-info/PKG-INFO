@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: fdc-client-python
+Version: 0.1.0
+Summary: A Python implementation of the Flare Data Connector client.
+License-File: LICENSE
+Requires-Dist: tomli
+Requires-Dist: mysql-connector-python
+Requires-Dist: fastapi
+Requires-Dist: uvicorn
+Requires-Dist: eth-abi
+Requires-Dist: pycryptodome
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-asyncio; extra == "dev"
+Dynamic: license-file
