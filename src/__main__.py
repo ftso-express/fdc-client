@@ -8,18 +8,30 @@ from src.collector import Collector
 from src.manager import Manager
 from src.server import RestServer
 from src.shared import DataPipes
-from src.logger import log
+from src.logger import log, setup_logger
 
 async def main():
     """Main application entrypoint."""
 
     tasks: Set[asyncio.Task] = set()
+
+    # 1. Initialize configuration and logger
+    try:
+        # Load config first. Logging during this step will use the default INFO level.
+        config = Config("configs/userConfig.toml", "configs/systemConfigs")
+
+        # Now, re-configure the logger with the level from the config.
+        log_level = config.logging_config.get("level", "INFO")
+        setup_logger(level=log_level)
+
+    except (FileNotFoundError, ValueError) as e:
+        log.error(f"Initialization Error during config load: {e}")
+        return
+
     log.info("FDC Client starting up...")
 
-    # 1. Initialize all components
+    # 2. Initialize all other components
     try:
-        log.debug("Loading configurations...")
-        config = Config("configs/userConfig.toml", "configs/systemConfigs")
         data_pipes = DataPipes()
         log.debug("Configurations loaded successfully.")
 
@@ -41,11 +53,11 @@ async def main():
         uv_server = uvicorn.Server(uv_config)
         log.debug("Uvicorn server configured.")
 
-    except (FileNotFoundError, ValueError) as e:
-        log.error(f"Initialization Error: {e}")
+    except Exception as e:
+        log.error(f"Component Initialization Error: {e}")
         return
 
-    # 2. Setup graceful shutdown
+    # 3. Setup graceful shutdown
     loop = asyncio.get_running_loop()
     stop_event = asyncio.Event()
 
@@ -56,7 +68,7 @@ async def main():
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, shutdown_handler)
 
-    # 3. Create and manage tasks
+    # 4. Create and manage tasks
     try:
         log.info("Creating and starting tasks...")
         collector_task = loop.create_task(collector.run({}))
