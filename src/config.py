@@ -37,7 +37,7 @@ class Config:
 
     @property
     def logging_config(self) -> Dict[str, Any]:
-        return self.user_config.get("logging", {})
+        return self.user_config.get("logger", {})
 
     @property
     def database_config(self) -> Dict[str, Any]:
