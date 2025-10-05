@@ -10,6 +10,7 @@ dependencies = [
     "uvicorn",
     "eth-abi",
     "pycryptodome",
+    "prometheus-client",
 ]
 
 [project.optional-dependencies]

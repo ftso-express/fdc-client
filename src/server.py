@@ -1,6 +1,7 @@
 import uvicorn
 from fastapi import FastAPI, Security, HTTPException, Depends
 from fastapi.security import APIKeyHeader
+from prometheus_client import make_asgi_app
 from starlette.status import HTTP_403_FORBIDDEN
 from typing import List
 
@@ -13,6 +14,8 @@ api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=False)
 class RestServer:
     def __init__(self, data_pipes: DataPipes, config: Config):
         self.data_pipes = data_pipes
+        # Keep a reference to the full config for metrics
+        self.full_config = config
         self.config = config.rest_server_config
         self.app = FastAPI(
             title=self.config.get("title", "FDC Python Client"),
@@ -33,6 +36,11 @@ class RestServer:
         return api_key
 
     def _configure_routes(self):
+        # Add metrics endpoint if enabled
+        if self.full_config.metrics_config.get("enabled", False):
+            metrics_app = make_asgi_app()
+            self.app.mount("/metrics", metrics_app)
+
         # Define sub-routers as specified in the config
         fsp_router = self.config.get("fsp_sub_router_path", "/fsp")
         da_router = self.config.get("da_sub_router_path", "/da")

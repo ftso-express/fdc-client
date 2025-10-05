@@ -55,6 +55,10 @@ class Config:
         return self.user_config.get("rest_server", {})
 
     @property
+    def metrics_config(self) -> Dict[str, Any]:
+        return self.user_config.get("metrics", {})
+
+    @property
     def attestation_provider_config(self) -> Dict[str, Any]:
         return self.user_config.get("verifiers", {})
 
