@@ -128,3 +128,5 @@ dmypy.json
 *.log
 app.log
 server.log
+
+config.toml
